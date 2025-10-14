@@ -1,7 +1,8 @@
 #pragma once
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
-
+#include "../config.h"
+#include "../utils/Diagnostics.h"
 
 namespace Net {
 

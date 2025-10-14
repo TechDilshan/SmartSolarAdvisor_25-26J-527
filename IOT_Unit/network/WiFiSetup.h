@@ -1,6 +1,7 @@
 #pragma once
 #include <WiFi.h>
-
+#include "../secrets.h"
+#include "../utils/Diagnostics.h"
 
 namespace Net {
 
