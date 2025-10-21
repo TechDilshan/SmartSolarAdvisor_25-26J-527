@@ -1,6 +1,4 @@
 #include "config.h"
-#include "network/WiFiSetup.h"
-#include "network/ApiClient.h"
 #include "sensors/DHT22Pair.h"
 #include "sensors/BH1750Pair.h"
 #include "sensors/RainSensors.h"
@@ -20,8 +18,11 @@ void setup() {
   Serial.begin(115200);
   delay(200);
 
-  Net::connectWiFi();
-  TimeKeeper::beginSNTP();
+  Serial.println("=== SMART SOLAR ADVISOR - LOCAL SENSOR TEST ===");
+
+  // Commented out for offline testing
+  // Net::connectWiFi();
+  // TimeKeeper::beginSNTP();
 
   dht.begin();
   lux.begin();
@@ -32,72 +33,48 @@ void setup() {
   nextTick = millis(); // start immediately
 }
 
-StaticJsonDocument<1024> buildPayload() {
-  // Sample sensors
-  DhtReading   dr  = dht.readAveraged();
-  LuxReading   lr  = lux.readAveraged();
-  RainReading  rr  = rain.read();
-  DustReading  ds  = dust.read();
+void printSensorData() {
+  Serial.println("\n----------------------------------------------");
+  Serial.println("📡 Reading all sensors...");
 
-  StaticJsonDocument<1024> doc;
-  doc["device_id"] = DEVICE_ID;
-  doc["site_id"]   = SITE_ID;
-  doc["timestamp"] = TimeKeeper::iso8601();
+  DhtReading   dr = dht.readAveraged();
+  LuxReading   lr = lux.readAveraged();
+  RainReading  rr = rain.read();
+  DustReading  ds = dust.read();
 
-  JsonObject dht1 = doc.createNestedObject("dht1");
-  dht1["temp_c"] = dr.t1;
-  dht1["hum_%"]  = dr.h1;
+  Serial.println("💧 DHT22 #1");
+  Serial.printf("   Temp: %.2f °C  |  Humidity: %.2f %%\n", dr.t1, dr.h1);
+  Serial.println("💧 DHT22 #2");
+  Serial.printf("   Temp: %.2f °C  |  Humidity: %.2f %%\n", dr.t2, dr.h2);
+  Serial.printf("   Avg Temp: %.2f °C  |  Avg Humidity: %.2f %%\n", dr.t_avg, dr.h_avg);
 
-  JsonObject dht2 = doc.createNestedObject("dht2");
-  dht2["temp_c"] = dr.t2;
-  dht2["hum_%"]  = dr.h2;
+  Serial.println("\n☀️  BH1750 Light Sensor");
+  Serial.printf("   Lux1: %.2f  |  Lux2: %.2f  |  Avg: %.2f\n", lr.lux1, lr.lux2, lr.lux_avg);
 
-  JsonObject dhta = doc.createNestedObject("dht_avg");
-  dhta["temp_c"] = dr.t_avg;
-  dhta["hum_%"]  = dr.h_avg;
+  Serial.println("\n🌧 Rain Sensors");
+  Serial.printf("   Sensor1: raw=%d (%.1f%% wet)\n", rr.raw1, rr.pct1);
+  Serial.printf("   Sensor2: raw=%d (%.1f%% wet)\n", rr.raw2, rr.pct2);
 
-  JsonObject bh = doc.createNestedObject("bh1750");
-  bh["lux1"]    = lr.lux1;
-  bh["lux2"]    = lr.lux2;
-  bh["lux_avg"] = lr.lux_avg;
+  Serial.println("\n🌫 Dust Sensor (GP2Y1010AU0F)");
+  Serial.printf("   Raw: %d  |  Voltage: %.2f V  |  Dust Density: %.2f mg/m³\n",
+                ds.raw, ds.voltage, ds.density);
 
-  JsonObject rainj = doc.createNestedObject("rain");
-  rainj["raw1"]  = rr.raw1;
-  rainj["raw2"]  = rr.raw2;
-  rainj["pct1"]  = rr.pct1;
-  rainj["pct2"]  = rr.pct2;
-
-  JsonObject dj = doc.createNestedObject("dust");
-  dj["raw"]      = ds.raw;
-  dj["voltage"]  = ds.voltage;
-  dj["mg_m3"]    = ds.density;
-
-  // room for later (battery, rssi, device uptime)
-  doc["rssi"]    = WiFi.RSSI();
-  doc["uptime_s"]= millis()/1000;
-  return doc;
+  Serial.println("----------------------------------------------\n");
 }
 
 void loop() {
   uint32_t now = millis();
-  if ( (int32_t)(now - nextTick) >= 0 ) {
+  if ((int32_t)(now - nextTick) >= 0) {
     digitalWrite(LED_BUILTIN, HIGH);
 
-    if (Net::ensureWiFi()) {
-      StaticJsonDocument<1024> doc = buildPayload();
-      bool ok = Net::postJson(API_ENDPOINT, doc);
-      logInfo("Upload %s", ok ? "OK" : "FAILED");
-    } else {
-      logWarn("WiFi not available; skipping upload.");
-    }
+    // Just print data (no Wi-Fi / API)
+    printSensorData();
 
     digitalWrite(LED_BUILTIN, LOW);
-    nextTick += LOOP_PERIOD_MS;              // schedule next 5-min slot
-    // guard against millis() overflow drift
+    nextTick += LOOP_PERIOD_MS;  // every 5 minutes
     if ((int32_t)(nextTick - now) < 0 || (nextTick - now) > LOOP_PERIOD_MS)
       nextTick = now + LOOP_PERIOD_MS;
   }
 
-  // Light sleep between polls (saves power & heat)
   delay(50);
 }
