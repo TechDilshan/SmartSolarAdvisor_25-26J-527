@@ -1,4 +1,5 @@
 #include "config.h"
+#include "network/FirebaseSetup.h"  // Firebase with inline WiFi + time
 #include "sensors/DHT22Pair.h"
 #include "sensors/BH1750Pair.h"
 #include "sensors/RainSensors.h"
@@ -7,6 +8,7 @@
 #include "utils/Diagnostics.h"
 #include <ArduinoJson.h>
 
+// ====== SENSOR OBJECTS ======
 DHT22Pair     dht;
 BH1750Pair    lux;
 RainSensors   rain;
@@ -14,16 +16,17 @@ DustGP2Y1010  dust;
 
 uint32_t nextTick = 0;
 
+// ====== SETUP ======
 void setup() {
   Serial.begin(115200);
   delay(200);
 
-  Serial.println("=== SMART SOLAR ADVISOR - LOCAL SENSOR TEST ===");
+  Serial.println("\n=== SMART SOLAR ADVISOR - FIREBASE UPLOAD MODE ===");
 
-  // Commented out for offline testing
-  // Net::connectWiFi();
-  // TimeKeeper::beginSNTP();
+  // Connect Wi-Fi + Time + Firebase (all inline like friend's setup)
+  connectFirebase();
 
+  // Initialize sensors (after time/Firebase like friend)
   dht.begin();
   lux.begin();
   rain.begin();
@@ -33,45 +36,82 @@ void setup() {
   nextTick = millis(); // start immediately
 }
 
-void printSensorData() {
-  Serial.println("\n----------------------------------------------");
-  Serial.println("📡 Reading all sensors...");
+// ====== BUILD JSON PAYLOAD ======
+StaticJsonDocument<1024> buildPayload() {
+  DhtReading   dr  = dht.readAveraged();
+  LuxReading   lr  = lux.readAveraged();
+  RainReading  rr  = rain.read();
+  DustReading  ds  = dust.read();
 
-  DhtReading   dr = dht.readAveraged();
-  LuxReading   lr = lux.readAveraged();
-  RainReading  rr = rain.read();
-  DustReading  ds = dust.read();
+  StaticJsonDocument<1024> doc;
+  doc["device_id"] = DEVICE_ID;
+  doc["site_id"]   = SITE_ID;
+  doc["timestamp"] = TimeKeeper::iso8601();
 
-  Serial.println("💧 DHT22 #1");
-  Serial.printf("   Temp: %.2f °C  |  Humidity: %.2f %%\n", dr.t1, dr.h1);
-  Serial.println("💧 DHT22 #2");
-  Serial.printf("   Temp: %.2f °C  |  Humidity: %.2f %%\n", dr.t2, dr.h2);
-  Serial.printf("   Avg Temp: %.2f °C  |  Avg Humidity: %.2f %%\n", dr.t_avg, dr.h_avg);
+  JsonObject dht1 = doc.createNestedObject("dht1");
+  dht1["temp_c"] = dr.t1;
+  dht1["hum_%"]  = dr.h1;
 
-  Serial.println("\n☀️  BH1750 Light Sensor");
-  Serial.printf("   Lux1: %.2f  |  Lux2: %.2f  |  Avg: %.2f\n", lr.lux1, lr.lux2, lr.lux_avg);
+  JsonObject dht2 = doc.createNestedObject("dht2");
+  dht2["temp_c"] = dr.t2;
+  dht2["hum_%"]  = dr.h2;
 
-  Serial.println("\n🌧 Rain Sensors");
-  Serial.printf("   Sensor1: raw=%d (%.1f%% wet)\n", rr.raw1, rr.pct1);
-  Serial.printf("   Sensor2: raw=%d (%.1f%% wet)\n", rr.raw2, rr.pct2);
+  JsonObject dhta = doc.createNestedObject("dht_avg");
+  dhta["temp_c"] = dr.t_avg;
+  dhta["hum_%"]  = dr.h_avg;
 
-  Serial.println("\n🌫 Dust Sensor (GP2Y1010AU0F)");
-  Serial.printf("   Raw: %d  |  Voltage: %.2f V  |  Dust Density: %.2f mg/m³\n",
-                ds.raw, ds.voltage, ds.density);
+  JsonObject bh = doc.createNestedObject("bh1750");
+  bh["lux1"]    = lr.lux1;
+  bh["lux2"]    = lr.lux2;
+  bh["lux_avg"] = lr.lux_avg;
 
-  Serial.println("----------------------------------------------\n");
+  JsonObject rainj = doc.createNestedObject("rain");
+  rainj["raw1"]  = rr.raw1;
+  rainj["raw2"]  = rr.raw2;
+  rainj["pct1"]  = rr.pct1;
+  rainj["pct2"]  = rr.pct2;
+
+  JsonObject dustj = doc.createNestedObject("dust");
+  dustj["raw"]      = ds.raw;
+  dustj["voltage"]  = ds.voltage;
+  dustj["mg_m3"]    = ds.density;
+
+  // extra info
+  doc["rssi"]    = WiFi.RSSI();
+  doc["uptime_s"]= millis() / 1000;
+
+  return doc;
 }
 
+// ====== PRINT + UPLOAD ======
+void uploadAndDisplay() {
+  StaticJsonDocument<1024> doc = buildPayload();
+
+  // Print to Serial
+  Serial.println("\n----------------------------------------------");
+  Serial.println("📡 SENSOR DATA");
+  serializeJsonPretty(doc, Serial);
+  Serial.println();
+  Serial.println("----------------------------------------------\n");
+
+  // Firebase path (organized by device & timestamp)
+  String fbPath = "/devices/" + String(DEVICE_ID) + "/" + TimeKeeper::iso8601();
+
+  // Upload to Firebase (with checks like friend's updateFirebase)
+  sendToFirebase(fbPath, doc);
+}
+
+// ====== LOOP ======
 void loop() {
   uint32_t now = millis();
   if ((int32_t)(now - nextTick) >= 0) {
     digitalWrite(LED_BUILTIN, HIGH);
 
-    // Just print data (no Wi-Fi / API)
-    printSensorData();
+    uploadAndDisplay();   // Read + show + upload to Firebase
 
     digitalWrite(LED_BUILTIN, LOW);
-    nextTick += LOOP_PERIOD_MS;  // every 5 minutes
+
+    nextTick += LOOP_PERIOD_MS;   // schedule next cycle (5 min)
     if ((int32_t)(nextTick - now) < 0 || (nextTick - now) > LOOP_PERIOD_MS)
       nextTick = now + LOOP_PERIOD_MS;
   }
