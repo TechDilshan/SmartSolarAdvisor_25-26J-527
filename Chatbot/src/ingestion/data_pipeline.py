@@ -8,120 +8,144 @@ from typing import List, Dict
 import json
 from datetime import datetime
 import logging
+import sys
 
-from .pdf_processor import PDFProcessor
-from .web_processor import WebProcessor
-from .dataset_processor import DatasetProcessor
+# Add parent directory to path
+sys.path.append(str(Path(__file__).parent.parent))
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+from ingestion.pdf_processor import PDFProcessor
+from ingestion.web_processor import WebProcessor
+from ingestion.dataset_processor import DatasetProcessor
+from ingestion.text_chunker import TextChunker  # Add this
+from embeddings.embeddings_handler import EmbeddingsHandler  # Add this
+
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
 
 class DataPipeline:
     """Main orchestrator for all data processing"""
     
-    def __init__(self, config, enable_filtering: bool = True, min_relevance_score: float = 0.3):
-        """
-        Initialize data pipeline
-        
-        Args:
-            config: Configuration object with directory paths
-            enable_filtering: Enable solar content filtering
-            min_relevance_score: Minimum relevance score (0-1) to keep content
-        """
+    def __init__(self, config):
         self.config = config
-        self.enable_filtering = enable_filtering
-        self.min_relevance_score = min_relevance_score
         
-        # Initialize processors with filtering settings
+        # Initialize processors
         self.pdf_processor = PDFProcessor(
             config.PDF_DIR, 
-            config.METADATA_DIR,
-            enable_filtering=enable_filtering,
-            min_score=min_relevance_score
+            config.METADATA_DIR
         )
         self.web_processor = WebProcessor(
             config.WEBSITE_DIR,
-            config.METADATA_DIR,
-            enable_filtering=enable_filtering,
-            min_score=min_relevance_score
+            config.METADATA_DIR
         )
         self.dataset_processor = DatasetProcessor(
             config.DATASET_DIR,
-            config.METADATA_DIR,
-            enable_filtering=enable_filtering,
-            min_score=min_relevance_score
+            config.METADATA_DIR
+        )
+        
+        # Initialize chunker
+        self.text_chunker = TextChunker(
+            chunk_size=config.CHUNK_SIZE,
+            chunk_overlap=config.CHUNK_OVERLAP
+        )
+        
+        # Initialize embeddings handler
+        self.embeddings_handler = EmbeddingsHandler(
+            model_name=config.EMBEDDING_MODEL,
+            db_path=str(config.VECTORDB_DIR)
         )
         
         self.all_documents = []
-        self.statistics = {
-            "pdf_count": 0,
-            "website_count": 0,
-            "dataset_count": 0,
-            "total_documents": 0,
-            "total_characters": 0
+        self.all_chunks = []
+    
+    def run_full_pipeline(self):
+        """Run the complete data processing pipeline"""
+        logger.info("=" * 70)
+        logger.info("Starting Full Data Processing Pipeline")
+        logger.info("=" * 70)
+        
+        # Step 1: Process all data sources
+        logger.info("\n[PHASE 1] DATA EXTRACTION")
+        logger.info("-" * 70)
+        self._extract_all_data()
+        
+        # Step 2: Chunk documents
+        logger.info("\n[PHASE 2] TEXT CHUNKING")
+        logger.info("-" * 70)
+        self._chunk_documents()
+        
+        # Step 3: Create embeddings and store in vector database
+        logger.info("\n[PHASE 3] EMBEDDINGS & VECTOR DATABASE")
+        logger.info("-" * 70)
+        self._create_embeddings()
+        
+        # Step 4: Save summary
+        self._save_pipeline_summary()
+        
+        logger.info("\n" + "=" * 70)
+        logger.info("Pipeline Complete!")
+        logger.info("=" * 70)
+        logger.info(f"✓ Total documents processed: {len(self.all_documents)}")
+        logger.info(f"✓ Total chunks created: {len(self.all_chunks)}")
+        logger.info(f"✓ Vector database ready with {self.embeddings_handler.collection.count()} items")
+        logger.info("=" * 70)
+        
+        return {
+            "documents": self.all_documents,
+            "chunks": self.all_chunks,
+            "collection_info": self.embeddings_handler.get_collection_info()
         }
     
-    def run_full_pipeline(self) -> List[Dict]:
-        """
-        Run the complete data processing pipeline
-        
-        Returns:
-            List of all processed documents
-        """
-        logger.info("=" * 70)
-        logger.info("STARTING FULL DATA PROCESSING PIPELINE")
-        logger.info("=" * 70)
-        
-        # Step 1: Process PDFs
-        logger.info("\n[STEP 1/3] Processing PDF files...")
-        logger.info("-" * 70)
+    def _extract_all_data(self):
+        """Extract data from all sources"""
+        # Process PDFs
+        logger.info("\n[1/3] Processing PDF files...")
         pdf_data = self.pdf_processor.process_all_pdfs()
         self._add_to_documents(pdf_data, "pdf")
-        self.statistics["pdf_count"] = len(pdf_data)
         
-        # Step 2: Process Websites
-        logger.info("\n[STEP 2/3] Processing website files...")
-        logger.info("-" * 70)
+        # Process Websites
+        logger.info("\n[2/3] Processing website files...")
         web_data = self.web_processor.process_all_websites()
         self._add_to_documents(web_data, "website")
-        self.statistics["website_count"] = len(web_data)
         
-        # Step 3: Process Datasets
-        logger.info("\n[STEP 3/3] Processing dataset files...")
-        logger.info("-" * 70)
+        # Process Datasets
+        logger.info("\n[3/3] Processing dataset files...")
         dataset_data = self.dataset_processor.process_all_datasets()
         self._add_to_documents(dataset_data, "dataset")
-        self.statistics["dataset_count"] = len(dataset_data)
-        
-        # Update statistics
-        self.statistics["total_documents"] = len(self.all_documents)
-        self.statistics["total_characters"] = sum(
-            len(doc["text"]) for doc in self.all_documents
-        )
         
         # Save all processed documents
         self._save_processed_documents()
+    
+    def _chunk_documents(self):
+        """Chunk all documents"""
+        logger.info(f"Chunking {len(self.all_documents)} documents...")
         
-        # Save pipeline summary
-        self._save_pipeline_summary()
+        # Create chunks
+        self.all_chunks = self.text_chunker.chunk_documents(self.all_documents)
         
-        # Print final summary
-        self._print_summary()
+        # Get and display stats
+        stats = self.text_chunker.get_chunking_stats(self.all_chunks)
+        logger.info(f"\nChunking Statistics:")
+        logger.info(f"  Total chunks: {stats['total_chunks']}")
+        logger.info(f"  Avg chunk size: {stats['avg_chunk_size']:.0f} characters")
+        logger.info(f"  Min chunk size: {stats['min_chunk_size']} characters")
+        logger.info(f"  Max chunk size: {stats['max_chunk_size']} characters")
         
-        return self.all_documents
+        # Save chunks
+        self.text_chunker.save_chunks(self.all_chunks, self.config.CHUNKS_DIR)
+    
+    def _create_embeddings(self):
+        """Create embeddings and add to vector database"""
+        logger.info("Creating embeddings and populating vector database...")
+        
+        # Add chunks to vector database
+        self.embeddings_handler.add_chunks_to_vectordb(self.all_chunks)
+        
+        # Save embedding metadata
+        metadata_path = self.config.METADATA_DIR / "embeddings_metadata.json"
+        self.embeddings_handler.save_embedding_metadata(metadata_path, self.all_chunks)
     
     def _add_to_documents(self, data_list: List[Dict], source_type: str):
-        """
-        Add processed data to document collection
-        
-        Args:
-            data_list: List of processed documents
-            source_type: Type of source (pdf, website, dataset)
-        """
+        """Add processed data to document collection"""
         for item in data_list:
             if source_type == "pdf":
                 # PDFs have multiple pages
@@ -141,113 +165,54 @@ class DataPipeline:
                 })
     
     def _save_processed_documents(self):
-        """Save all processed documents to JSON file"""
+        """Save all processed documents to file"""
         output_file = self.config.PROCESSED_DIR / "all_documents.json"
         
-        # Create a serializable version (without DataFrame/raw_data objects)
-        serializable_docs = []
-        for doc in self.all_documents:
-            serializable_docs.append({
-                "text": doc["text"],
-                "metadata": {
-                    k: v for k, v in doc["metadata"].items()
-                    if k not in ["dataframe", "raw_data"]
-                }
-            })
-        
-        data_to_save = {
-            "processed_date": datetime.now().isoformat(),
-            "total_documents": len(serializable_docs),
-            "statistics": self.statistics,
-            "documents": serializable_docs
-        }
-        
         with open(output_file, 'w', encoding='utf-8') as f:
-            json.dump(data_to_save, f, indent=2, ensure_ascii=False)
+            json.dump({
+                "processed_date": datetime.now().isoformat(),
+                "total_documents": len(self.all_documents),
+                "documents": self.all_documents
+            }, f, indent=2, ensure_ascii=False)
         
-        logger.info(f"\n✓ Saved all documents to {output_file}")
+        logger.info(f"✓ Saved all documents to {output_file}")
     
     def _save_pipeline_summary(self):
-        """Save pipeline execution summary"""
-        summary_file = self.config.PROCESSED_DIR / "pipeline_summary.json"
-        
+        """Save complete pipeline summary"""
         summary = {
-            "execution_date": datetime.now().isoformat(),
-            "statistics": self.statistics,
-            "sources": {
-                "pdfs": {
-                    "count": self.statistics["pdf_count"],
-                    "directory": str(self.config.PDF_DIR)
-                },
-                "websites": {
-                    "count": self.statistics["website_count"],
-                    "directory": str(self.config.WEBSITE_DIR)
-                },
-                "datasets": {
-                    "count": self.statistics["dataset_count"],
-                    "directory": str(self.config.DATASET_DIR)
+            "pipeline_completed_at": datetime.now().isoformat(),
+            "documents": {
+                "total": len(self.all_documents),
+                "sources": {
+                    "pdfs": sum(1 for d in self.all_documents if d["metadata"]["source_type"] == "pdf"),
+                    "websites": sum(1 for d in self.all_documents if d["metadata"]["source_type"] in ["website", "text"]),
+                    "datasets": sum(1 for d in self.all_documents if "dataset" in d["metadata"]["source_type"])
                 }
             },
-            "output": {
-                "total_documents": self.statistics["total_documents"],
-                "total_characters": self.statistics["total_characters"],
-                "output_directory": str(self.config.PROCESSED_DIR)
+            "chunks": {
+                "total": len(self.all_chunks),
+                "statistics": self.text_chunker.get_chunking_stats(self.all_chunks)
+            },
+            "embeddings": {
+                "model": self.config.EMBEDDING_MODEL,
+                "collection_info": self.embeddings_handler.get_collection_info()
             }
         }
         
+        summary_file = self.config.PROCESSED_DIR / "pipeline_summary.json"
         with open(summary_file, 'w', encoding='utf-8') as f:
             json.dump(summary, f, indent=2, ensure_ascii=False)
         
         logger.info(f"✓ Saved pipeline summary to {summary_file}")
     
-    def _print_summary(self):
-        """Print pipeline execution summary"""
-        logger.info("\n" + "=" * 70)
-        logger.info("PIPELINE EXECUTION COMPLETE")
-        logger.info("=" * 70)
-        logger.info(f"\n📊 Processing Statistics:")
-        logger.info(f"   PDF Files:      {self.statistics['pdf_count']}")
-        logger.info(f"   Website Files:  {self.statistics['website_count']}")
-        logger.info(f"   Dataset Files:  {self.statistics['dataset_count']}")
-        logger.info(f"   " + "-" * 50)
-        logger.info(f"   Total Documents: {self.statistics['total_documents']}")
-        logger.info(f"   Total Characters: {self.statistics['total_characters']:,}")
-        logger.info("\n✅ All data processed successfully!")
-        logger.info("=" * 70 + "\n")
-    
-    def get_documents(self) -> List[Dict]:
-        """
-        Get all processed documents
-        
-        Returns:
-            List of processed documents
-        """
+    def get_documents(self):
+        """Get all processed documents"""
         return self.all_documents
     
-    def get_statistics(self) -> Dict:
-        """
-        Get processing statistics
-        
-        Returns:
-            Dictionary of statistics
-        """
-        return self.statistics
-
-
-if __name__ == "__main__":
-    # Test the pipeline
-    import sys
-    from pathlib import Path
+    def get_chunks(self):
+        """Get all chunks"""
+        return self.all_chunks
     
-    # Add parent directory to path
-    sys.path.append(str(Path(__file__).parent.parent.parent))
-    
-    from config import Config
-    
-    # Initialize and run pipeline
-    config = Config()
-    pipeline = DataPipeline(config)
-    documents = pipeline.run_full_pipeline()
-    
-    print(f"\n✓ Pipeline test completed!")
-    print(f"✓ Processed {len(documents)} documents")
+    def search(self, query: str, n_results: int = 5):
+        """Search the vector database"""
+        return self.embeddings_handler.search(query, n_results)

@@ -6,73 +6,77 @@ This is the main entry point for processing all data sources
 import sys
 from pathlib import Path
 
-# Add src to path for imports
+# Add src to path
 sys.path.append(str(Path(__file__).parent / "src"))
 
 from config import Config
-from src.ingestion.data_pipeline import DataPipeline
+from ingestion.data_pipeline import DataPipeline
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
 
 def main():
-    """Run the data processing pipeline"""
-    
-    print("\n" + "=" * 70)
-    print("  SMART SOLAR ADVISOR - DATA PROCESSING PIPELINE")
-    print("=" * 70)
-    
-    # Initialize configuration
-    print("\n📋 Initializing configuration...")
-    config = Config()
-    
-    print(f"   Data directories:")
-    print(f"   - PDFs:     {config.PDF_DIR}")
-    print(f"   - Websites: {config.WEBSITE_DIR}")
-    print(f"   - Datasets: {config.DATASET_DIR}")
-    print(f"   Output: {config.PROCESSED_DIR}")
-    print(f"\n   Filtering settings:")
-    print(f"   - Solar filtering: {'ENABLED' if config.ENABLE_SOLAR_FILTERING else 'DISABLED'}")
-    print(f"   - Min relevance score: {config.MIN_RELEVANCE_SCORE}")
-    
-    # Create and run pipeline
-    print("\n🚀 Starting data processing pipeline...\n")
-    pipeline = DataPipeline(
-        config,
-        enable_filtering=config.ENABLE_SOLAR_FILTERING,
-        min_relevance_score=config.MIN_RELEVANCE_SCORE
-    )
-    
+    """Run the complete data processing pipeline"""
     try:
-        documents = pipeline.run_full_pipeline()
+        # Initialize configuration
+        print("\n" + "=" * 70)
+        print("SOLAR CHATBOT - DATA PROCESSING PIPELINE")
+        print("=" * 70 + "\n")
+        
+        config = Config()
+        
+        # Validate configuration (if validate method exists)
+        print("Validating configuration...")
+        try:
+            config.validate()
+            print("✓ Configuration valid\n")
+        except AttributeError:
+            print("⚠ Config validation method not found, skipping...\n")
+        
+        # Create and run pipeline
+        pipeline = DataPipeline(config)
+        results = pipeline.run_full_pipeline()
+        
+        # Display final summary
+        print("\n" + "=" * 70)
+        print("PIPELINE SUMMARY")
+        print("=" * 70)
+        print(f"Documents processed: {len(results['documents'])}")
+        print(f"Chunks created: {len(results['chunks'])}")
+        print(f"Vector DB items: {results['collection_info']['total_chunks']}")
+        print(f"Processed data location: {config.PROCESSED_DIR}")
+        print(f"Vector DB location: {config.VECTORDB_DIR}")
+        print("=" * 70)
+        
+        # Test search functionality
+        print("\n" + "=" * 70)
+        print("TESTING SEARCH FUNCTIONALITY")
+        print("=" * 70)
+        
+        test_query = "What are the benefits of solar energy?"
+        print(f"\nTest Query: '{test_query}'")
+        
+        search_results = pipeline.search(test_query, n_results=3)
+        
+        print(f"\nTop {len(search_results['documents'][0])} Results:")
+        for i, doc in enumerate(search_results['documents'][0], 1):
+            print(f"\n{i}. {doc[:200]}...")
+            print(f"   Source: {search_results['metadatas'][0][i-1].get('filename', 'N/A')}")
         
         print("\n" + "=" * 70)
-        print("  NEXT STEPS")
-        print("=" * 70)
-        print("\n✅ Data processing complete!")
-        print(f"✅ {len(documents)} documents ready for embedding")
-        print(f"\n📁 Output files:")
-        print(f"   - All documents: {config.PROCESSED_DIR / 'all_documents.json'}")
-        print(f"   - Summary: {config.PROCESSED_DIR / 'pipeline_summary.json'}")
-        print(f"   - Metadata: {config.METADATA_DIR}")
-        
-        print(f"\n🎯 Next development steps:")
-        print(f"   1. Create text chunking system")
-        print(f"   2. Generate embeddings")
-        print(f"   3. Store in vector database")
-        print(f"   4. Build RAG system")
-        print(f"   5. Add voice capabilities")
-        print(f"   6. Create Streamlit UI")
-        
-        print("\n" + "=" * 70 + "\n")
-        
-        return 0
+        print("✓ Pipeline completed successfully!")
+        print("=" * 70 + "\n")
         
     except Exception as e:
-        print(f"\n❌ Error running pipeline: {str(e)}")
+        print(f"\n✗ Error: {str(e)}")
         import traceback
         traceback.print_exc()
-        return 1
+        sys.exit(1)
 
 
 if __name__ == "__main__":
-    exit_code = main()
-    sys.exit(exit_code)
+    main()
