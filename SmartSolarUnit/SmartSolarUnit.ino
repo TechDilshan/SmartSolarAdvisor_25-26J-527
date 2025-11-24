@@ -1,6 +1,5 @@
 #include "config.h"
-#include "network/WiFiSetup.h"
-#include "network/ApiClient.h"
+#include "network/FirebaseSetup.h"  // Firebase with inline WiFi + time
 #include "sensors/DHT22Pair.h"
 #include "sensors/BH1750Pair.h"
 #include "sensors/RainSensors.h"
@@ -9,6 +8,7 @@
 #include "utils/Diagnostics.h"
 #include <ArduinoJson.h>
 
+// ====== SENSOR OBJECTS ======
 DHT22Pair     dht;
 BH1750Pair    lux;
 RainSensors   rain;
@@ -16,13 +16,17 @@ DustGP2Y1010  dust;
 
 uint32_t nextTick = 0;
 
+// ====== SETUP ======
 void setup() {
   Serial.begin(115200);
   delay(200);
 
-  Net::connectWiFi();
-  TimeKeeper::beginSNTP();
+  Serial.println("\n=== SMART SOLAR ADVISOR - FIREBASE UPLOAD MODE ===");
 
+  // Connect Wi-Fi + Time + Firebase (all inline like friend's setup)
+  connectFirebase();
+
+  // Initialize sensors (after time/Firebase like friend)
   dht.begin();
   lux.begin();
   rain.begin();
@@ -32,8 +36,8 @@ void setup() {
   nextTick = millis(); // start immediately
 }
 
+// ====== BUILD JSON PAYLOAD ======
 StaticJsonDocument<1024> buildPayload() {
-  // Sample sensors
   DhtReading   dr  = dht.readAveraged();
   LuxReading   lr  = lux.readAveraged();
   RainReading  rr  = rain.read();
@@ -67,37 +71,50 @@ StaticJsonDocument<1024> buildPayload() {
   rainj["pct1"]  = rr.pct1;
   rainj["pct2"]  = rr.pct2;
 
-  JsonObject dj = doc.createNestedObject("dust");
-  dj["raw"]      = ds.raw;
-  dj["voltage"]  = ds.voltage;
-  dj["mg_m3"]    = ds.density;
+  JsonObject dustj = doc.createNestedObject("dust");
+  dustj["raw"]      = ds.raw;
+  dustj["voltage"]  = ds.voltage;
+  dustj["mg_m3"]    = ds.density;
 
-  // room for later (battery, rssi, device uptime)
+  // extra info
   doc["rssi"]    = WiFi.RSSI();
-  doc["uptime_s"]= millis()/1000;
+  doc["uptime_s"]= millis() / 1000;
+
   return doc;
 }
 
+// ====== PRINT + UPLOAD ======
+void uploadAndDisplay() {
+  StaticJsonDocument<1024> doc = buildPayload();
+
+  // Print to Serial
+  Serial.println("\n----------------------------------------------");
+  Serial.println("📡 SENSOR DATA");
+  serializeJsonPretty(doc, Serial);
+  Serial.println();
+  Serial.println("----------------------------------------------\n");
+
+  // Firebase path (organized by device & timestamp)
+  String fbPath = "/devices/" + String(DEVICE_ID) + "/" + TimeKeeper::iso8601();
+
+  // Upload to Firebase (with checks like friend's updateFirebase)
+  sendToFirebase(fbPath, doc);
+}
+
+// ====== LOOP ======
 void loop() {
   uint32_t now = millis();
-  if ( (int32_t)(now - nextTick) >= 0 ) {
+  if ((int32_t)(now - nextTick) >= 0) {
     digitalWrite(LED_BUILTIN, HIGH);
 
-    if (Net::ensureWiFi()) {
-      StaticJsonDocument<1024> doc = buildPayload();
-      bool ok = Net::postJson(API_ENDPOINT, doc);
-      logInfo("Upload %s", ok ? "OK" : "FAILED");
-    } else {
-      logWarn("WiFi not available; skipping upload.");
-    }
+    uploadAndDisplay();   // Read + show + upload to Firebase
 
     digitalWrite(LED_BUILTIN, LOW);
-    nextTick += LOOP_PERIOD_MS;              // schedule next 5-min slot
-    // guard against millis() overflow drift
+
+    nextTick += LOOP_PERIOD_MS;   // schedule next cycle (5 min)
     if ((int32_t)(nextTick - now) < 0 || (nextTick - now) > LOOP_PERIOD_MS)
       nextTick = now + LOOP_PERIOD_MS;
   }
 
-  // Light sleep between polls (saves power & heat)
   delay(50);
 }
