@@ -1,26 +1,28 @@
 import numpy as np
 import pandas as pd
 
+DIRECTION_MAP = {
+    "N": 0, "NE": 45, "E": 90,
+    "SE": 135, "S": 180,
+    "SW": 225, "W": 270, "NW": 315
+}
+
 def add_features(df):
-    # Ensure correct datatypes
-    df["direction"] = pd.to_numeric(df["direction"], errors="coerce")
-    df["tilt"] = pd.to_numeric(df["tilt"], errors="coerce")
+    df = df.copy()
 
-    # Replace invalid values with 0 (or choose a default)
-    df["direction"] = df["direction"].fillna(180)   # default south-facing
-    df["tilt"] = df["tilt"].fillna(20)              # default tilt
+    # Convert direction
+    if df["direction"].dtype == object:
+        df["direction"] = df["direction"].map(DIRECTION_MAP)
 
-    # Convert angles to radians
+    df["direction"] = df["direction"].fillna(180)
+    df["tilt"] = df["tilt"].fillna(20)
+
     df["direction_rad"] = np.radians(df["direction"])
     df["tilt_rad"] = np.radians(df["tilt"])
 
-    # Calculate orientation score
     df["orientation_score"] = (
-        np.cos(df["direction_rad"] - np.radians(180)) *   # ideal: 180° (south)
-        np.cos(df["tilt_rad"] - np.radians(20))           # ideal: 20° tilt
-    )
-
-    # Replace NaN values
-    df["orientation_score"] = df["orientation_score"].fillna(0)
+        np.cos(df["direction_rad"] - np.pi) *
+        np.cos(df["tilt_rad"] - np.radians(20))
+    ).clip(0, 1)
 
     return df
