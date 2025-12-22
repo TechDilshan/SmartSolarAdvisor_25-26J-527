@@ -3,3 +3,4 @@ numpy
 joblib
 firebase-admin
 python-dotenv
+xgboost
