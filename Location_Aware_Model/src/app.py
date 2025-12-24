@@ -98,6 +98,11 @@ with col2:
 # Hybrid KNN + XGBOOST Prediction
 st.subheader("🔮 Predict Solar Output")
 
+show_neighbors = st.checkbox(
+    "🗺️ Show similar rooftops used for prediction",
+    value=False
+)
+
 if st.button("Predict Solar Output"):
     if lat is None:
         st.error("Please click a location on the map.")
@@ -151,3 +156,32 @@ if st.button("Predict Solar Output"):
             f"⚡ Estimated Solar Output (Hybrid Model): "
             f"**{final_pred:.2f} kWh/day**"
         )
+
+         # ---------- NEIGHBOR MAP (SAFE) ----------
+        if show_neighbors:
+            st.subheader("🗺️ Nearby Similar Rooftops Used for Prediction")
+
+            neighbor_map = folium.Map(location=[lat, lon], zoom_start=13)
+
+            folium.Marker(
+                [lat, lon],
+                popup="📍 Selected Location",
+                icon=folium.Icon(color="red", icon="home")
+            ).add_to(neighbor_map)
+
+            for _, row_n in neighbors.iterrows():
+                folium.CircleMarker(
+                    location=[row_n["latitude"], row_n["longitude"]],
+                    radius=5 + 15 * row_n["weight"] / neighbors["weight"].max(),
+                    color="blue",
+                    fill=True,
+                    fill_opacity=0.6,
+                    popup=(
+                        f"⚡ Actual: {row_n['actual_generation_kwh']:.2f} kWh/day<br>"
+                        f"📏 Weight: {row_n['weight']:.4f}"
+                    )
+                    ).add_to(neighbor_map)
+
+            st_folium(neighbor_map, height=450)
+
+
