@@ -4,42 +4,36 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Config:
-    # API Configuration
-    SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
-    FLASK_ENV = os.getenv('FLASK_ENV', 'development')
+    # API Keys
+    OPENWEATHER_API_KEY = os.getenv('OPENWEATHER_API_KEY', 'your_api_key_here')
     
     # Model Configuration
-    MODEL_PATH = os.getenv('MODEL_PATH', 'models/saved_models/')
-    HYBRID_MODEL_FILE = 'hybrid_solar_model.pkl'
-    ANOMALY_MODEL_FILE = 'anomaly_detector.pkl'
-    SCALER_FILE = 'feature_scaler.pkl'
+    MODEL_PATH = 'models/trained_model.pkl'
+    SCALER_PATH = 'models/scaler.pkl'
     
     # Data Configuration
     DATA_PATH = 'data/datasets/'
-    CACHE_TIMEOUT = 3600  # 1 hour
     
-    # External APIs
-    OPENWEATHER_API_KEY = os.getenv('OPENWEATHER_API_KEY', '')
-    NASA_POWER_API = 'https://power.larc.nasa.gov/api/temporal/daily/point'
-    
-    # Model Parameters
-    ENSEMBLE_WEIGHTS = {
-        'xgboost': 0.4,
-        'lightgbm': 0.3,
-        'neural_network': 0.3
+    # ML Model Parameters
+    KNN_NEIGHBORS = 5
+    XGBOOST_PARAMS = {
+        'n_estimators': 100,
+        'max_depth': 6,
+        'learning_rate': 0.1,
+        'subsample': 0.8,
+        'colsample_bytree': 0.8,
+        'random_state': 42
     }
     
-    # Feature Engineering
-    FEATURE_COLUMNS = [
-        'solar_irradiance', 'temperature', 'humidity', 'wind_speed',
-        'cloud_cover', 'pressure', 'day_of_year', 'hour_of_day',
-        'panel_efficiency', 'panel_area', 'tilt_angle', 'azimuth_angle',
-        'latitude', 'longitude', 'elevation'
-    ]
-    
     # Anomaly Detection
-    ANOMALY_THRESHOLD = 0.95
+    CONTAMINATION = 0.1
     
-    # Optimization
-    MAX_WORKERS = 4
-    BATCH_SIZE = 32
+    # Location Settings
+    DEFAULT_LATITUDE = 7.2906  # Negombo, Sri Lanka
+    DEFAULT_LONGITUDE = 79.8358
+    
+    # Cost Parameters (LKR)
+    COST_PER_WATT = 200  # Installation cost per watt
+    ELECTRICITY_RATE = 35  # LKR per kWh
+    SYSTEM_LIFETIME_YEARS = 25
+    MAINTENANCE_COST_ANNUAL = 0.01  # 1% of system cost

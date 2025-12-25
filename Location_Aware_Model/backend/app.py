@@ -1,48 +1,31 @@
-from flask import Flask, jsonify
+from flask import Flask
 from flask_cors import CORS
+from api.routes import create_api
 from config import Config
-from api.routes import api_bp
-import logging
-from logging.handlers import RotatingFileHandler
-import os
 
-def create_app(config_class=Config):
+def create_app():
     app = Flask(__name__)
-    app.config.from_object(config_class)
+    app.config.from_object(Config)
     
     # Enable CORS
-    CORS(app, resources={r"/api/*": {"origins": "*"}})
+    CORS(app)
     
-    # Setup logging
-    if not app.debug:
-        if not os.path.exists('logs'):
-            os.mkdir('logs')
-        file_handler = RotatingFileHandler('logs/solar_advisor.log', 
-                                          maxBytes=10240000, backupCount=10)
-        file_handler.setFormatter(logging.Formatter(
-            '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
-        ))
-        file_handler.setLevel(logging.INFO)
-        app.logger.addHandler(file_handler)
-        app.logger.setLevel(logging.INFO)
-        app.logger.info('Solar Advisor startup')
+    # Register API blueprint
+    api = create_api()
+    app.register_blueprint(api, url_prefix='/api')
     
-    # Register blueprints
-    app.register_blueprint(api_bp, url_prefix='/api')
-    
-    # Error handlers
-    @app.errorhandler(404)
-    def not_found_error(error):
-        return jsonify({'error': 'Resource not found'}), 404
-    
-    @app.errorhandler(500)
-    def internal_error(error):
-        app.logger.error(f'Server Error: {error}')
-        return jsonify({'error': 'Internal server error'}), 500
-    
-    @app.route('/health')
-    def health_check():
-        return jsonify({'status': 'healthy', 'service': 'Smart Solar Advisor'}), 200
+    @app.route('/')
+    def index():
+        return {
+            'message': 'Smart Solar Advisor API',
+            'version': '1.0.0',
+            'endpoints': [
+                '/api/predict',
+                '/api/weather',
+                '/api/nearby-installations',
+                '/api/simulate-scenario'
+            ]
+        }
     
     return app
 
