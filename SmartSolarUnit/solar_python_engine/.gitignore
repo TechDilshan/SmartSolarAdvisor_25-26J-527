@@ -26,14 +26,14 @@ Thumbs.db
 # =========================
 # Firebase credentials
 # =========================
-firebase_key.json
-*.json
+#firebase_key.json
+#*.json
 
 # =========================
 # Machine Learning models
 # =========================
-model/*.pkl
-model/*.joblib
+#model/*.pkl
+#model/*.joblib
 
 # =========================
 # Logs & temp files

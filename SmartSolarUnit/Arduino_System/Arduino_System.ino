@@ -85,7 +85,7 @@ void loop() {
 
     if (Net::ensureWiFi()) {
       StaticJsonDocument<1024> doc = buildPayload();
-      bool ok = Net::postJson(API_ENDPOINT, doc);
+      bool ok = Net::postJson("", doc);  // Path is built inside postJson for Firebase
       logInfo("Upload %s", ok ? "OK" : "FAILED");
     } else {
       logWarn("WiFi not available; skipping upload.");
