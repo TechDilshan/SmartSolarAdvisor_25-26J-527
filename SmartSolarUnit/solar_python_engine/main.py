@@ -17,7 +17,7 @@ SITES = [
     {
         "device_id": "SSA_ESP32_01",
         "site_id": "site_001",
-        "customer": "dilshan_home",
+        "customer": "dilshan",
         "panel_area_m2": 25
     }
 ]
