@@ -1,15 +1,18 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Activity as ActivityIcon, AlertCircle, Sun, Zap, TrendingUp } from 'lucide-react-native';
+import { Activity as ActivityIcon, AlertCircle, Sun, Zap, TrendingUp, X } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSolarSites, usePredictionData, useDailyEnergy30Days } from '../hooks/useBackendAPI';
 import { CandleChart } from '../components/Charts';
 import { SolarSystem } from '../types';
 import Colors from '../constants/colors';
+import { useSidebar } from '../contexts/SidebarContext';
+import HamburgerIcon from '../components/HamburgerIcon';
 
 export default function HomeScreen() {  
   const navigation = useNavigation<any>();
+  const { openSidebar, closeSidebar, isOpen } = useSidebar();
   const { sites, loading, error, refetch } = useSolarSites(5000); // Poll every 5 seconds
   
   // Get first site for summary and chart (or aggregate all sites)
@@ -92,6 +95,13 @@ export default function HomeScreen() {
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.header}>
           <Text style={styles.title}>My Solar Systems</Text>
+          <TouchableOpacity onPress={isOpen ? closeSidebar : openSidebar} style={styles.menuButton}>
+            {isOpen ? (
+              <X size={24} color={Colors.white} />
+            ) : (
+              <HamburgerIcon size={24} color={Colors.white} />
+            )}
+          </TouchableOpacity>
         </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.solarOrange} />
@@ -104,8 +114,17 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.title}>My Solar Systems</Text>
-        <Text style={styles.subtitle}>{sites.length} installation{sites.length !== 1 ? 's' : ''}</Text>
+        <View style={styles.headerTextContainer}>
+          <Text style={styles.title}>My Solar Systems</Text>
+          <Text style={styles.subtitle}>{sites.length} installation{sites.length !== 1 ? 's' : ''}</Text>
+        </View>
+        <TouchableOpacity onPress={isOpen ? closeSidebar : openSidebar} style={styles.menuButton}>
+          {isOpen ? (
+            <X size={24} color={Colors.white} />
+          ) : (
+            <HamburgerIcon size={24} color={Colors.white} />
+          )}
+        </TouchableOpacity>
       </View>
       <ScrollView
         style={styles.scrollView}
@@ -186,10 +205,19 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 16,
     backgroundColor: Colors.primary,
+  },
+  headerTextContainer: {
+    flex: 1,
+  },
+  menuButton: {
+    padding: 4,
   },
   title: {
     fontSize: 28,

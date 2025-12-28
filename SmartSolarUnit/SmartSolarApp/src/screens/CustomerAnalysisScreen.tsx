@@ -1,14 +1,17 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, RefreshControl, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { BarChart3, TrendingUp, Zap, Sun, AlertCircle, Activity } from 'lucide-react-native';
+import { BarChart3, TrendingUp, Zap, Sun, AlertCircle, Activity, X } from 'lucide-react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { useSolarSites, usePredictionData, useDailyEnergy30Days } from '../hooks/useBackendAPI';
 import { CandleChart } from '../components/Charts';
 import Colors from '../constants/colors';
+import { useSidebar } from '../contexts/SidebarContext';
+import HamburgerIcon from '../components/HamburgerIcon';
 
 export default function CustomerAnalysisScreen() {
   const { user } = useAuth();
+  const { openSidebar, closeSidebar, isOpen } = useSidebar();
   const { sites, loading, error, refetch } = useSolarSites(10000);
 
   // Calculate aggregated statistics across all sites
@@ -99,6 +102,13 @@ export default function CustomerAnalysisScreen() {
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.header}>
           <Text style={styles.title}>Customer Analysis</Text>
+          <TouchableOpacity onPress={isOpen ? closeSidebar : openSidebar} style={styles.menuButton}>
+            {isOpen ? (
+              <X size={24} color={Colors.white} />
+            ) : (
+              <HamburgerIcon size={24} color={Colors.white} />
+            )}
+          </TouchableOpacity>
         </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.solarOrange} />
@@ -111,8 +121,17 @@ export default function CustomerAnalysisScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.title}>Customer Analysis</Text>
-        <Text style={styles.subtitle}>{user?.customerName || user?.email || 'Customer'}</Text>
+        <View style={styles.headerTextContainer}>
+          <Text style={styles.title}>Customer Analysis</Text>
+          <Text style={styles.subtitle}>{user?.customerName || user?.email || 'Customer'}</Text>
+        </View>
+        <TouchableOpacity onPress={isOpen ? closeSidebar : openSidebar} style={styles.menuButton}>
+          {isOpen ? (
+            <X size={24} color={Colors.white} />
+          ) : (
+            <HamburgerIcon size={24} color={Colors.white} />
+          )}
+        </TouchableOpacity>
       </View>
       <ScrollView
         style={styles.scrollView}
@@ -285,10 +304,19 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 16,
     backgroundColor: Colors.primary,
+  },
+  headerTextContainer: {
+    flex: 1,
+  },
+  menuButton: {
+    padding: 4,
   },
   title: {
     fontSize: 28,

@@ -6,6 +6,7 @@ import Colors from '../constants/colors';
 import AuthStack from './AuthStack';
 import TabNavigator from './TabNavigator';
 import PerformanceStack from './PerformanceStack';
+import Sidebar from '../components/Sidebar';
 
 const Stack = createStackNavigator();
 
@@ -25,21 +26,24 @@ export default function RootNavigator() {
   }
 
   return (
-    <Stack.Navigator
-      screenOptions={{
-        headerBackTitle: "Back",
-        headerStyle: {
-          backgroundColor: Colors.primary,
-        },
-        headerTintColor: Colors.white,
-        headerTitleStyle: {
-          fontWeight: '600' as const,
-        },
-      }}
-    >
-      <Stack.Screen name="Tabs" component={TabNavigator} options={{ headerShown: false }} />
-      <Stack.Screen name="PerformanceStack" component={PerformanceStack} options={{ headerShown: false }} />
-    </Stack.Navigator>
+    <>
+      <Stack.Navigator
+        screenOptions={{
+          headerBackTitle: "Back",
+          headerStyle: {
+            backgroundColor: Colors.primary,
+          },
+          headerTintColor: Colors.white,
+          headerTitleStyle: {
+            fontWeight: '600' as const,
+          },
+        }}
+      >
+        <Stack.Screen name="Tabs" component={TabNavigator} options={{ headerShown: false }} />
+        <Stack.Screen name="PerformanceStack" component={PerformanceStack} options={{ headerShown: false }} />
+      </Stack.Navigator>
+      <Sidebar />
+    </>
   );
 }
 

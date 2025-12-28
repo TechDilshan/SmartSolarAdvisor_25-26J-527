@@ -1,12 +1,15 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User, Mail, MapPin, LogOut } from 'lucide-react-native';
+import { User, Mail, MapPin, LogOut, X } from 'lucide-react-native';
 import { useAuth } from '../contexts/AuthContext';
 import Colors from '../constants/colors';
+import { useSidebar } from '../contexts/SidebarContext';
+import HamburgerIcon from '../components/HamburgerIcon';
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
+  const { openSidebar, closeSidebar, isOpen } = useSidebar();
 
   const handleLogout = () => {
     Alert.alert(
@@ -33,6 +36,13 @@ export default function ProfileScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.title}>Profile</Text>
+        <TouchableOpacity onPress={isOpen ? closeSidebar : openSidebar} style={styles.menuButton}>
+          {isOpen ? (
+            <X size={24} color={Colors.white} />
+          ) : (
+            <HamburgerIcon size={24} color={Colors.white} />
+          )}
+        </TouchableOpacity>
       </View>
       <View style={styles.content}>
         <View style={styles.avatarContainer}>
@@ -82,10 +92,16 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 16,
     backgroundColor: Colors.primary,
+  },
+  menuButton: {
+    padding: 4,
   },
   title: {
     fontSize: 28,
