@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute } from '@react-navigation/native';
 import { TrendingUp, Zap, Calendar, AlertCircle } from 'lucide-react-native';
 import { LineChart } from '../components/Charts';
-import { useMonthlyPerformance } from '../hooks/useBackendAPI';
+import { useSolarSite, useMonthlyPerformance } from '../hooks/useBackendAPI';
 import Colors from '../constants/colors';
 
 export default function MonthlySummaryScreen() {
@@ -15,8 +15,11 @@ export default function MonthlySummaryScreen() {
   const currentMonth = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   const yearMonth = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
 
+  const { site } = useSolarSite(id, 10000);
+  const effectiveCustomerName = customerName || site?.customerName || null;
+
   const { dailyData, totalEnergy, loading, error } = useMonthlyPerformance(
-    customerName,
+    effectiveCustomerName,
     id,
     yearMonth,
     60000 // Poll every minute

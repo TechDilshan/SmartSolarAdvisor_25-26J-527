@@ -187,3 +187,58 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 4,
   },
 });
+
+interface CandleChartProps {
+  data: { label: string; value: number }[];
+  height?: number;
+  color?: string;
+}
+
+export function CandleChart({ data, height = 200, color = Colors.solarOrange }: CandleChartProps) {
+  const width = Dimensions.get('window').width - 40;
+  const padding = { left: 40, right: 20, top: 20, bottom: 60 };
+  const chartWidth = width - padding.left - padding.right;
+  const chartHeight = height - padding.top - padding.bottom;
+
+  if (data.length === 0) return null;
+
+  const maxY = Math.max(...data.map(d => d.value), 1);
+  const barWidth = Math.max(4, chartWidth / data.length - 2);
+
+  return (
+    <View style={[styles.container, { height }]}>
+      <View style={styles.yAxis}>
+        <Text style={styles.axisLabel}>{maxY.toFixed(1)}</Text>
+        <Text style={styles.axisLabel}>{(maxY / 2).toFixed(1)}</Text>
+        <Text style={styles.axisLabel}>0</Text>
+      </View>
+     
+      <View style={{ flex: 1 }}>
+        <View style={[styles.chartArea, { height: chartHeight, marginTop: padding.top, flexDirection: 'row', alignItems: 'flex-end', gap: 2 }]}>
+          {data.map((point, i) => {
+            const barHeight = maxY > 0 ? (point.value / maxY) * chartHeight : 0;
+            return (
+              <View key={i} style={{ alignItems: 'center', gap: 2 }}>
+                <View
+                  style={[
+                    styles.bar,
+                    {
+                      height: barHeight,
+                      width: barWidth,
+                      backgroundColor: color,
+                    },
+                  ]}
+                />
+                {i % Math.ceil(data.length / 6) === 0 && (
+                  <Text style={[styles.axisLabel, { fontSize: 8, width: barWidth + 4 }]} numberOfLines={1}>
+                    {point.label}
+                  </Text>
+                )}
+              </View>
+            );
+          })}
+        </View>
+      </View>
+    </View>
+  );
+}

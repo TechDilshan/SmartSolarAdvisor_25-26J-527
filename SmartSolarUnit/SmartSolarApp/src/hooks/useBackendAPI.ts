@@ -16,9 +16,9 @@ export const useSolarSites = (pollInterval: number = 5000) => {
       const formattedSites: SolarSystem[] = data.map((site: any) => ({
         id: site.id || site._id,
         siteName: site.site_name || site.customer_name || 'Unknown Site',
-        systemCapacity: site.system_capacity || site.capacity || 0,
+        systemCapacity: site.system_kw || site.system_capacity || site.capacity || 0,
         panelCount: site.panel_count || site.panels || 0,
-        inverterCapacity: site.inverter_capacity || site.inverter || 0,
+        inverterCapacity: site.inverter_capacity_kw || site.inverter_capacity || site.inverter || 0,
         status: site.status === 'running' ? 'running' : 'completed',
         lastUpdated: site.last_updated ? new Date(site.last_updated) : new Date(),
         deviceId: site.device_id,
@@ -68,9 +68,9 @@ export const useSolarSite = (siteId: string | null, pollInterval: number = 5000)
       const formattedSite: SolarSystem = {
         id: data.id || data._id,
         siteName: data.site_name || data.customer_name || 'Unknown Site',
-        systemCapacity: data.system_capacity || data.capacity || 0,
+        systemCapacity: data.system_kw || data.system_capacity || data.capacity || 0,
         panelCount: data.panel_count || data.panels || 0,
-        inverterCapacity: data.inverter_capacity || data.inverter || 0,
+        inverterCapacity: data.inverter_capacity_kw || data.inverter_capacity || data.inverter || 0,
         status: data.status === 'running' ? 'running' : 'completed',
         lastUpdated: data.last_updated ? new Date(data.last_updated) : new Date(),
         deviceId: data.device_id,
@@ -256,18 +256,43 @@ export const useDailyPerformance = (
       return;
     }
 
+    let dailyTotalResponse: { date: string; totalKwh: number; readingsCount: number } | null = null;
+
     try {
       const dateStr = date.toISOString().split('T')[0];
-      const startTime = `${dateStr}T00:00:00`;
-      const endTime = `${dateStr}T23:59:59`;
+      // Use the daily total API for better performance
+      const dateStrFormatted = dateStr.replace(/-/g, '');
+      dailyTotalResponse = await predictionsAPI.getDailyTotal(customerName, siteId, dateStrFormatted);
       
-      // Fetch predictions for the day
-      const predictions = await predictionsAPI.getByRange(customerName, siteId, startTime, endTime);
+      // Also fetch predictions for hourly breakdown
+      // Firebase expects format: YYYYMMDD_HHMMSS
+      const startTime = `${dateStrFormatted}_000000`;
+      const endTime = `${dateStrFormatted}_235959`;
+      
+      let predictions: any[] = [];
+      try {
+        predictions = await predictionsAPI.getByRange(customerName, siteId, startTime, endTime);
+      } catch (rangeErr: any) {
+        // If getByRange fails, we'll still use dailyTotalResponse
+        console.warn('Failed to fetch predictions by range, using daily total only:', rangeErr);
+      }
       
       // Group by hour
+      // Parse timestamp format: YYYYMMDD_HHMMSS
       const hourlyMap: Record<number, number> = {};
       predictions.forEach((pred: any) => {
-        const hour = new Date(pred.timestamp || pred.created_at).getHours();
+        let hour = 0;
+        if (pred.timestamp) {
+          // Parse YYYYMMDD_HHMMSS format
+          const timestampStr = pred.timestamp.toString();
+          if (timestampStr.includes('_')) {
+            const timePart = timestampStr.split('_')[1];
+            hour = parseInt(timePart.substring(0, 2), 10);
+          } else {
+            // Fallback to Date parsing if it's ISO format
+            hour = new Date(pred.timestamp).getHours();
+          }
+        }
         const energy = pred.predicted_kwh_5min || pred.predictedEnergy || 0;
         hourlyMap[hour] = (hourlyMap[hour] || 0) + energy;
       });
@@ -278,11 +303,19 @@ export const useDailyPerformance = (
       }));
 
       setHourlyData(hourly);
-      setTotalEnergy(hourly.reduce((sum, h) => sum + h.energy, 0));
+      setTotalEnergy(dailyTotalResponse.totalKwh || hourly.reduce((sum, h) => sum + h.energy, 0));
       setError(null);
     } catch (err: any) {
+      // If getDailyTotal also fails, show error
       setError(err.message || 'Failed to fetch daily data');
       console.error('Error fetching daily data:', err);
+      // Set empty data
+      const hourly = Array.from({ length: 24 }, (_, i) => ({
+        hour: i,
+        energy: 0,
+      }));
+      setHourlyData(hourly);
+      setTotalEnergy(0);
     } finally {
       setLoading(false);
     }
@@ -320,21 +353,47 @@ export const useMonthlyPerformance = (
       return;
     }
 
+    let monthlyTotalResponse: { yearMonth: string; totalKwh: number; readingsCount: number } | null = null;
+
     try {
       const [year, month] = yearMonth.split('-').map(Number);
       const startDate = new Date(year, month - 1, 1);
       const endDate = new Date(year, month, 0);
       
-      const startTime = startDate.toISOString().split('T')[0];
-      const endTime = endDate.toISOString().split('T')[0];
+      // Use monthly total API for better performance
+      // Convert YYYY-MM to YYYYMM format
+      const yearMonthFormatted = yearMonth.replace(/-/g, '');
+      monthlyTotalResponse = await predictionsAPI.getMonthlyTotal(customerName, siteId, yearMonthFormatted);
       
-      // Fetch predictions for the month
-      const predictions = await predictionsAPI.getByRange(customerName, siteId, startTime, endTime);
+      // Also fetch predictions for daily breakdown
+      // Firebase expects format: YYYYMMDD_HHMMSS
+      const startTime = `${yearMonthFormatted}01_000000`;
+      const endTime = `${yearMonthFormatted}${String(endDate.getDate()).padStart(2, '0')}_235959`;
+      
+      let predictions: any[] = [];
+      try {
+        predictions = await predictionsAPI.getByRange(customerName, siteId, startTime, endTime);
+      } catch (rangeErr: any) {
+        // If getByRange fails, we'll still use monthlyTotalResponse
+        console.warn('Failed to fetch predictions by range, using monthly total only:', rangeErr);
+      }
       
       // Group by day
+      // Parse timestamp format: YYYYMMDD_HHMMSS
       const dailyMap: Record<number, number> = {};
       predictions.forEach((pred: any) => {
-        const day = new Date(pred.timestamp || pred.created_at).getDate();
+        let day = 1;
+        if (pred.timestamp) {
+          // Parse YYYYMMDD_HHMMSS format
+          const timestampStr = pred.timestamp.toString();
+          if (timestampStr.includes('_')) {
+            const datePart = timestampStr.split('_')[0];
+            day = parseInt(datePart.substring(6, 8), 10);
+          } else {
+            // Fallback to Date parsing if it's ISO format
+            day = new Date(pred.timestamp).getDate();
+          }
+        }
         const energy = pred.predicted_kwh_5min || pred.predictedEnergy || 0;
         dailyMap[day] = (dailyMap[day] || 0) + energy;
       });
@@ -346,11 +405,21 @@ export const useMonthlyPerformance = (
       }));
 
       setDailyData(daily);
-      setTotalEnergy(daily.reduce((sum, d) => sum + d.energy, 0));
+      setTotalEnergy(monthlyTotalResponse.totalKwh || daily.reduce((sum, d) => sum + d.energy, 0));
       setError(null);
     } catch (err: any) {
+      // If getMonthlyTotal also fails, show error
       setError(err.message || 'Failed to fetch monthly data');
       console.error('Error fetching monthly data:', err);
+      // Set empty data
+      const [year, month] = yearMonth.split('-').map(Number);
+      const daysInMonth = new Date(year, month, 0).getDate();
+      const daily = Array.from({ length: daysInMonth }, (_, i) => ({
+        date: i + 1,
+        energy: 0,
+      }));
+      setDailyData(daily);
+      setTotalEnergy(0);
     } finally {
       setLoading(false);
     }
@@ -367,5 +436,84 @@ export const useMonthlyPerformance = (
   }, [customerName, siteId, yearMonth, pollInterval]);
 
   return { dailyData, totalEnergy, loading, error, refetch: fetchMonthlyData };
+};
+
+// Hook for 30-day daily energy data (for home screen chart)
+export const useDailyEnergy30Days = (
+  customerName: string | null,
+  siteId: string | null,
+  days: number = 30,
+  startDate?: string | null
+) => {
+  const [dailyData, setDailyData] = useState<Array<{ date: string; totalKwh: number; label: string }>>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!customerName || !siteId) {
+      setLoading(false);
+      return;
+    }
+
+    const fetchDailyData = async () => {
+      try {
+        setLoading(true);
+        
+        // Determine start date
+        let start: Date;
+        if (startDate) {
+          const normalizedDate = startDate.replace(/\//g, '-');
+          start = new Date(normalizedDate + 'T00:00:00');
+          if (isNaN(start.getTime())) {
+            start = new Date();
+            start.setHours(0, 0, 0, 0);
+          }
+        } else {
+          start = new Date();
+          start.setHours(0, 0, 0, 0);
+          // Go back 29 days to get 30 days total
+          start.setDate(start.getDate() - (days - 1));
+        }
+        
+        const promises: Promise<{ date: string; totalKwh: number; readingsCount: number }>[] = [];
+
+        // Fetch daily totals for N days
+        for (let i = 0; i < days; i++) {
+          const date = new Date(start.getTime() + i * 24 * 60 * 60 * 1000);
+          const dateStr = date.toISOString().split('T')[0].replace(/-/g, '');
+          
+          promises.push(
+            predictionsAPI.getDailyTotal(customerName, siteId, dateStr)
+          );
+        }
+
+        const results = await Promise.all(promises);
+        
+        // Format data with labels
+        const formatted = results.map((result, index) => {
+          const date = new Date(start.getTime() + index * 24 * 60 * 60 * 1000);
+          const month = date.toLocaleDateString('en-US', { month: 'short' });
+          const day = date.getDate();
+          return {
+            date: result.date,
+            totalKwh: result.totalKwh || 0,
+            label: `${month} ${day}`,
+          };
+        });
+        
+        setDailyData(formatted);
+        setError(null);
+      } catch (err: any) {
+        setError(err.message || 'Failed to fetch 30-day data');
+        console.error('Error fetching 30-day data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDailyData();
+  }, [customerName, siteId, days, startDate]);
+
+  return { dailyData, loading, error };
 };
 

@@ -1,15 +1,37 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Activity as ActivityIcon, AlertCircle, Sun } from 'lucide-react-native';
+import { Activity as ActivityIcon, AlertCircle, Sun, Zap, TrendingUp } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
-import { useSolarSites } from '../hooks/useBackendAPI';
+import { useSolarSites, usePredictionData, useDailyEnergy30Days } from '../hooks/useBackendAPI';
+import { CandleChart } from '../components/Charts';
 import { SolarSystem } from '../types';
 import Colors from '../constants/colors';
 
 export default function HomeScreen() {  
   const navigation = useNavigation<any>();
   const { sites, loading, error, refetch } = useSolarSites(5000); // Poll every 5 seconds
+  
+  // Get first site for summary and chart (or aggregate all sites)
+  const firstSite = sites.length > 0 ? sites[0] : null;
+  const { dailyTotal, monthlyTotal } = usePredictionData(
+    firstSite?.customerName || null,
+    firstSite?.id || null,
+    10000
+  );
+  
+  const { dailyData: dailyEnergy30Days, loading: chartLoading } = useDailyEnergy30Days(
+    firstSite?.customerName || null,
+    firstSite?.id || null,
+    30
+  );
+  
+  const chartData = useMemo(() => {
+    return dailyEnergy30Days.map(item => ({
+      label: item.label,
+      value: item.totalKwh,
+    }));
+  }, [dailyEnergy30Days]);
 
   const renderSystemCard = (system: SolarSystem) => {
     const isOnline = system.status === 'running';
@@ -102,8 +124,44 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
         )}
+        
+        {/* Energy Summary Cards */}
+        {sites.length > 0 && (
+          <View style={styles.summaryContainer}>
+            <View style={styles.summaryCard}>
+              <Zap size={24} color={Colors.solarOrange} />
+              <Text style={styles.summaryLabel}>Today's Predicted Energy</Text>
+              <Text style={styles.summaryValue}>{dailyTotal.toFixed(2)}</Text>
+              <Text style={styles.summaryUnit}>kWh</Text>
+            </View>
+            <View style={styles.summaryCard}>
+              <TrendingUp size={24} color={Colors.success} />
+              <Text style={styles.summaryLabel}>Monthly Predicted Energy</Text>
+              <Text style={styles.summaryValue}>{monthlyTotal.toFixed(2)}</Text>
+              <Text style={styles.summaryUnit}>kWh</Text>
+            </View>
+          </View>
+        )}
+        
+        {/* 30-Day Energy Chart */}
+        {sites.length > 0 && chartData.length > 0 && (
+          <View style={styles.chartSection}>
+            <Text style={styles.chartTitle}>Daily Energy Generation (Last 30 Days)</Text>
+            <View style={styles.chartContainer}>
+              {chartLoading ? (
+                <ActivityIndicator size="large" color={Colors.solarOrange} />
+              ) : (
+                <CandleChart data={chartData} height={250} color={Colors.solarOrange} />
+              )}
+            </View>
+          </View>
+        )}
+        
         {sites.length > 0 ? (
-          sites.map(renderSystemCard)
+          <>
+            <Text style={styles.sitesTitle}>My Solar Systems</Text>
+            {sites.map(renderSystemCard)}
+          </>
         ) : !loading ? (
           <View style={styles.emptyState}>
             <AlertCircle size={48} color={Colors.gray} />
@@ -303,5 +361,68 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: 14,
     fontWeight: '600' as const,
+  },
+  summaryContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  summaryCard: {
+    flex: 1,
+    backgroundColor: Colors.card,
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  summaryLabel: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginTop: 8,
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  summaryValue: {
+    fontSize: 24,
+    fontWeight: '700' as const,
+    color: Colors.text,
+    marginBottom: 2,
+  },
+  summaryUnit: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+  },
+  chartSection: {
+    backgroundColor: Colors.card,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  chartTitle: {
+    fontSize: 18,
+    fontWeight: '700' as const,
+    color: Colors.text,
+    marginBottom: 16,
+  },
+  chartContainer: {
+    backgroundColor: Colors.background,
+    borderRadius: 12,
+    padding: 8,
+  },
+  sitesTitle: {
+    fontSize: 20,
+    fontWeight: '700' as const,
+    color: Colors.text,
+    marginBottom: 12,
+    marginTop: 8,
   },
 });

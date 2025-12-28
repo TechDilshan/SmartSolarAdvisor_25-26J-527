@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute } from '@react-navigation/native';
 import { Calendar, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react-native';
 import { BarChart } from '../components/Charts';
-import { useDailyPerformance } from '../hooks/useBackendAPI';
+import { useSolarSite, useDailyPerformance } from '../hooks/useBackendAPI';
 import Colors from '../constants/colors';
 
 export default function DailyPerformanceScreen() {
@@ -12,8 +12,11 @@ export default function DailyPerformanceScreen() {
   const { id, customerName } = route.params || {};
   const [selectedDate, setSelectedDate] = useState(new Date());
 
+  const { site } = useSolarSite(id, 10000);
+  const effectiveCustomerName = customerName || site?.customerName || null;
+
   const { hourlyData, totalEnergy, loading, error } = useDailyPerformance(
-    customerName,
+    effectiveCustomerName,
     id,
     selectedDate,
     30000 // Poll every 30 seconds
