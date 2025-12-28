@@ -49,7 +49,7 @@ export default function LoginScreen() {
             <View style={styles.inputGroup}>
               <Text style={[styles.label, { color: colors.white }]}>Email</Text>
               <TextInput
-                style={[styles.input, { backgroundColor: colors.white, color: colors.text }]}
+                style={[styles.input, { backgroundColor: colors.white, color: '#000000' }]}
                 placeholder="owner@solar.com"
                 placeholderTextColor={colors.gray}
                 value={email}
@@ -62,7 +62,7 @@ export default function LoginScreen() {
             <View style={styles.inputGroup}>
               <Text style={[styles.label, { color: colors.white }]}>Password</Text>
               <TextInput
-                style={[styles.input, { backgroundColor: colors.white, color: colors.text }]}
+                style={[styles.input, { backgroundColor: colors.white, color: '#000000' }]}
                 placeholder="Enter your password"
                 placeholderTextColor={colors.gray}
                 value={password}
