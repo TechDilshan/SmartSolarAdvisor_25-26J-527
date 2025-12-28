@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute } from '@react-navigation/native';
-import { Calendar, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react-native';
-import { BarChart } from '../components/Charts';
-import { useSolarSite, useDailyPerformance } from '../hooks/useBackendAPI';
+import { Calendar, ChevronLeft, ChevronRight, AlertCircle, Sun, Thermometer, Droplets, Wind, CloudRain, Zap } from 'lucide-react-native';
+import { BarChart, LineChart } from '../components/Charts';
+import { useSolarSite, useDailyPerformance, useDaily5MinuteIntervals, useDailySensorData } from '../hooks/useBackendAPI';
 import Colors from '../constants/colors';
 
 export default function DailyPerformanceScreen() {
@@ -22,6 +22,21 @@ export default function DailyPerformanceScreen() {
     30000 // Poll every 30 seconds
   );
 
+  // Fetch 5-minute interval predictions with sensor data
+  const { intervals: fiveMinIntervals, loading: intervalsLoading } = useDaily5MinuteIntervals(
+    effectiveCustomerName,
+    id,
+    selectedDate,
+    60000
+  );
+
+  // Fetch sensor data for the selected date
+  const { sensorData: dailySensorData, loading: sensorLoading } = useDailySensorData(
+    site?.deviceId || null,
+    selectedDate,
+    60000
+  );
+
   const changeDate = (days: number) => {
     const newDate = new Date(selectedDate);
     newDate.setDate(newDate.getDate() + days);
@@ -32,6 +47,62 @@ export default function DailyPerformanceScreen() {
     x: item.hour,
     y: item.energy,
   }));
+
+  // Prepare sensor chart data
+  const irradianceChartData = useMemo(() => {
+    return dailySensorData.map((data: { timestamp: Date; irradiance: number }, index: number) => ({
+      x: index,
+      y: data.irradiance,
+      timestamp: data.timestamp,
+    }));
+  }, [dailySensorData]);
+
+  const tempHumidityChartData = useMemo(() => {
+    return dailySensorData.map((data: { timestamp: Date; temperature: number }, index: number) => ({
+      x: index,
+      y: data.temperature,
+      timestamp: data.timestamp,
+    }));
+  }, [dailySensorData]);
+
+  const humidityChartData = useMemo(() => {
+    return dailySensorData.map((data: { timestamp: Date; humidity: number }, index: number) => ({
+      x: index,
+      y: data.humidity,
+      timestamp: data.timestamp,
+    }));
+  }, [dailySensorData]);
+
+  const dustRainChartData = useMemo(() => {
+    return dailySensorData.map((data: { timestamp: Date; dustLevel: number }, index: number) => ({
+      x: index,
+      y: data.dustLevel,
+      timestamp: data.timestamp,
+    }));
+  }, [dailySensorData]);
+
+  const rainChartData = useMemo(() => {
+    return dailySensorData.map((data: { timestamp: Date; rainLevel: number }, index: number) => ({
+      x: index,
+      y: data.rainLevel,
+      timestamp: data.timestamp,
+    }));
+  }, [dailySensorData]);
+
+  // Prepare predictions chart data
+  const predictionsChartData = useMemo(() => {
+    return fiveMinIntervals.map((interval: { timestamp: string; predicted: number }, index: number) => ({
+      x: index,
+      y: interval.predicted * 1000, // Convert to Wh for better visualization
+      timestamp: interval.timestamp,
+    }));
+  }, [fiveMinIntervals]);
+
+  // Format time from timestamp (YYYYMMDD_HHMMSS)
+  const formatTime = (timestamp: string) => {
+    if (!timestamp || timestamp.length < 13) return '';
+    return `${timestamp.substring(9, 11)}:${timestamp.substring(11, 13)}`;
+  };
 
   const peakHour = hourlyData.length > 0
     ? hourlyData.reduce((max, item) => item.energy > max.energy ? item : max).hour
@@ -111,6 +182,127 @@ export default function DailyPerformanceScreen() {
                 </View>
               </View>
             </View>
+
+            {/* Sensor Charts */}
+            {dailySensorData.length > 0 && (
+              <>
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>Sensor Charts</Text>
+                  
+                  {/* Irradiance Chart */}
+                  <View style={styles.chartContainer}>
+                    <View style={styles.chartHeader}>
+                      <Sun size={20} color={Colors.solarOrange} />
+                      <Text style={styles.chartTitle}>Solar Irradiance</Text>
+                    </View>
+                    <LineChart data={irradianceChartData} color={Colors.solarOrange} unit=" lux" height={200} />
+                  </View>
+
+                  {/* Temperature Chart */}
+                  <View style={styles.chartContainer}>
+                    <View style={styles.chartHeader}>
+                      <Thermometer size={20} color={Colors.danger} />
+                      <Text style={styles.chartTitle}>Temperature</Text>
+                    </View>
+                    <LineChart data={tempHumidityChartData} color={Colors.danger} unit=" °C" height={200} />
+                  </View>
+
+                  {/* Humidity Chart */}
+                  <View style={styles.chartContainer}>
+                    <View style={styles.chartHeader}>
+                      <Droplets size={20} color={Colors.success} />
+                      <Text style={styles.chartTitle}>Humidity</Text>
+                    </View>
+                    <LineChart data={humidityChartData} color={Colors.success} unit=" %" height={200} />
+                  </View>
+
+                  {/* Dust Level Chart */}
+                  <View style={styles.chartContainer}>
+                    <View style={styles.chartHeader}>
+                      <Wind size={20} color={Colors.warning} />
+                      <Text style={styles.chartTitle}>Dust Level</Text>
+                    </View>
+                    <LineChart data={dustRainChartData} color={Colors.warning} unit=" mg/m³" height={200} />
+                  </View>
+
+                  {/* Rain Level Chart */}
+                  <View style={styles.chartContainer}>
+                    <View style={styles.chartHeader}>
+                      <CloudRain size={20} color={Colors.primary} />
+                      <Text style={styles.chartTitle}>Rain Level</Text>
+                    </View>
+                    <LineChart data={rainChartData} color={Colors.primary} unit=" %" height={200} />
+                  </View>
+                </View>
+              </>
+            )}
+
+            {/* Predictions Chart */}
+            {predictionsChartData.length > 0 && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>5-Minute Energy Predictions</Text>
+                <View style={styles.chartContainer}>
+                  <View style={styles.chartHeader}>
+                    <Zap size={20} color={Colors.success} />
+                    <Text style={styles.chartTitle}>Predicted Energy (Wh)</Text>
+                  </View>
+                  <LineChart data={predictionsChartData} color={Colors.success} unit=" Wh" height={200} />
+                </View>
+              </View>
+            )}
+
+            {/* 5-Minute Interval Details Table */}
+            {fiveMinIntervals.length > 0 && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>
+                  5-Minute Interval Details ({fiveMinIntervals.length} readings)
+                </Text>
+                <View style={styles.tableContainer}>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+                    <View>
+                      {/* Table Header */}
+                      <View style={styles.tableHeader}>
+                        <Text style={[styles.tableHeaderText, { width: 70 }]}>Time</Text>
+                        <Text style={[styles.tableHeaderText, { width: 100 }]}>Predicted (kWh)</Text>
+                        <Text style={[styles.tableHeaderText, { width: 90 }]}>Irradiance</Text>
+                        <Text style={[styles.tableHeaderText, { width: 100 }]}>Temperature</Text>
+                        <Text style={[styles.tableHeaderText, { width: 80 }]}>Humidity</Text>
+                        <Text style={[styles.tableHeaderText, { width: 90 }]}>Dust Level</Text>
+                        <Text style={[styles.tableHeaderText, { width: 80 }]}>Rainfall</Text>
+                      </View>
+                      {/* Table Rows */}
+                      <ScrollView style={styles.tableBody} nestedScrollEnabled>
+                        {fiveMinIntervals.map((interval: { timestamp: string; predicted: number; irradiance?: number; temperature?: number; humidity?: number; dustLevel?: number; rainLevel?: number }, idx: number) => (
+                          <View key={idx} style={styles.tableRow}>
+                            <Text style={[styles.tableCell, { width: 70 }]}>
+                              {formatTime(interval.timestamp)}
+                            </Text>
+                            <Text style={[styles.tableCell, { width: 100 }]}>
+                              {interval.predicted.toFixed(4)}
+                            </Text>
+                            <Text style={[styles.tableCell, { width: 90 }]}>
+                              {interval.irradiance !== undefined ? interval.irradiance.toFixed(2) : 'N/A'}
+                            </Text>
+                            <Text style={[styles.tableCell, { width: 100 }]}>
+                              {interval.temperature !== undefined ? `${interval.temperature.toFixed(1)}°C` : 'N/A'}
+                            </Text>
+                            <Text style={[styles.tableCell, { width: 80 }]}>
+                              {interval.humidity !== undefined ? `${interval.humidity.toFixed(1)}%` : 'N/A'}
+                            </Text>
+                            <Text style={[styles.tableCell, { width: 90 }]}>
+                              {interval.dustLevel !== undefined ? interval.dustLevel.toFixed(3) : 'N/A'}
+                            </Text>
+                            <Text style={[styles.tableCell, { width: 80 }]}>
+                              {interval.rainLevel !== undefined ? interval.rainLevel.toFixed(2) : 'N/A'}
+                            </Text>
+                          </View>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  </ScrollView>
+                </View>
+              </View>
+            )}
           </>
         )}
       </ScrollView>
@@ -248,5 +440,58 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700' as const,
     color: Colors.text,
+  },
+  chartHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+    paddingHorizontal: 4,
+  },
+  chartTitle: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: Colors.text,
+  },
+  tableContainer: {
+    backgroundColor: Colors.card,
+    borderRadius: 12,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  tableHeader: {
+    flexDirection: 'row',
+    backgroundColor: Colors.background,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    marginBottom: 4,
+    borderBottomWidth: 2,
+    borderBottomColor: Colors.border,
+  },
+  tableHeaderText: {
+    fontSize: 11,
+    fontWeight: '700' as const,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+  },
+  tableBody: {
+    maxHeight: 400,
+  },
+  tableRow: {
+    flexDirection: 'row',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  tableCell: {
+    fontSize: 11,
+    color: Colors.text,
+    textAlign: 'center',
   },
 });

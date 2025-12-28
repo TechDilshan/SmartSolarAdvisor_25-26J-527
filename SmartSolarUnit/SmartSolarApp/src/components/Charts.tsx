@@ -4,7 +4,7 @@ import { Svg, Path, Circle, G, Line as SvgLine } from 'react-native-svg';
 import Colors from '../constants/colors';
 
 interface LineChartProps {
-  data: { x: number; y: number; timestamp?: Date }[];
+  data: { x: number; y: number; timestamp?: Date | string }[];
   height?: number;
   color?: string;
   showLabels?: boolean;

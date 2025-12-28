@@ -519,3 +519,148 @@ export const useDailyEnergy30Days = (
   return { dailyData, loading, error };
 };
 
+// Hook for 5-minute interval predictions for a specific date
+export const useDaily5MinuteIntervals = (
+  customerName: string | null,
+  siteId: string | null,
+  date: Date,
+  pollInterval: number = 60000 // Poll every minute
+) => {
+  const [intervals, setIntervals] = useState<Array<{
+    timestamp: string;
+    predicted: number;
+    irradiance?: number;
+    temperature?: number;
+    humidity?: number;
+    dustLevel?: number;
+    rainLevel?: number;
+  }>>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const fetchIntervals = async () => {
+    if (!customerName || !siteId) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const dateStr = date.toISOString().split('T')[0];
+      const dateStrFormatted = dateStr.replace(/-/g, '');
+      
+      // Firebase expects format: YYYYMMDD_HHMMSS
+      const startTime = `${dateStrFormatted}_000000`;
+      const endTime = `${dateStrFormatted}_235959`;
+      
+      const predictions = await predictionsAPI.getByRange(customerName, siteId, startTime, endTime);
+      
+      // Sort by timestamp
+      const sorted = predictions.sort((a: any, b: any) => {
+        const tsA = a.timestamp || '';
+        const tsB = b.timestamp || '';
+        return tsA.localeCompare(tsB);
+      });
+      
+      // Format intervals with sensor data from features_used
+      const formatted = sorted.map((pred: any) => ({
+        timestamp: pred.timestamp || '',
+        predicted: pred.predicted_kwh_5min || 0,
+        irradiance: pred.features_used?.irradiance,
+        temperature: pred.features_used?.temperature,
+        humidity: pred.features_used?.humidity,
+        dustLevel: pred.features_used?.dust_level,
+        rainLevel: pred.features_used?.rainfall,
+      }));
+      
+      setIntervals(formatted);
+      setError(null);
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch 5-minute intervals');
+      console.error('Error fetching 5-minute intervals:', err);
+      setIntervals([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchIntervals();
+    intervalRef.current = setInterval(fetchIntervals, pollInterval);
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [customerName, siteId, date.toISOString().split('T')[0], pollInterval]);
+
+  return { intervals, loading, error, refetch: fetchIntervals };
+};
+
+// Hook for sensor data for a specific date
+export const useDailySensorData = (
+  deviceId: string | null,
+  date: Date,
+  pollInterval: number = 60000 // Poll every minute
+) => {
+  const [sensorData, setSensorData] = useState<Array<{
+    timestamp: Date;
+    irradiance: number;
+    temperature: number;
+    humidity: number;
+    dustLevel: number;
+    rainLevel: number;
+  }>>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const fetchSensorData = async () => {
+    if (!deviceId) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const dateStr = date.toISOString().split('T')[0];
+      const startTime = `${dateStr}T00:00:00.000Z`;
+      const endTime = `${dateStr}T23:59:59.999Z`;
+      
+      const readings = await sensorsAPI.getByRange(deviceId, startTime, endTime);
+      
+      // Transform and sort by timestamp
+      const formatted = readings
+        .map((reading: any) => ({
+          timestamp: new Date(reading.timestamp || reading.created_at),
+          irradiance: reading.bh1750?.lux_avg || reading.irradiance || 0,
+          temperature: reading.dht_avg?.temp_c || reading.temperature || 0,
+          humidity: reading.dht_avg?.['hum_%'] || reading.humidity || 0,
+          dustLevel: reading.dust_sensor?.dust_density || reading.dustLevel || 0,
+          rainLevel: reading.rain_sensor?.rain_level || reading.rainLevel || 0,
+        }))
+        .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+      
+      setSensorData(formatted);
+      setError(null);
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch sensor data');
+      console.error('Error fetching sensor data:', err);
+      setSensorData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSensorData();
+    intervalRef.current = setInterval(fetchSensorData, pollInterval);
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [deviceId, date.toISOString().split('T')[0], pollInterval]);
+
+  return { sensorData, loading, error, refetch: fetchSensorData };
+};
+
