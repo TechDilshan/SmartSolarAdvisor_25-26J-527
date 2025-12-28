@@ -1,38 +1,29 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute } from '@react-navigation/native';
-import { TrendingUp, Zap, Calendar } from 'lucide-react-native';
+import { TrendingUp, Zap, Calendar, AlertCircle } from 'lucide-react-native';
 import { LineChart } from '../components/Charts';
-import { mockSolarSystems } from '../mocks/solarSystems';
+import { useMonthlyPerformance } from '../hooks/useBackendAPI';
 import Colors from '../constants/colors';
 
 export default function MonthlySummaryScreen() {
   const route = useRoute<any>();
-  const { id } = route.params;
-  const system = mockSolarSystems.find(s => s.id === id);
+  const { id, customerName } = route.params || {};
  
   const currentDate = new Date();
   const currentMonth = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-  const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
+  const yearMonth = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
 
-  const dailyData = useMemo(() => {
-    return Array.from({ length: daysInMonth }, (_, i) => {
-      const day = i + 1;
-      const energy = Math.random() * 30 + 40;
-      return {
-        date: day,
-        energy: parseFloat(energy.toFixed(2)),
-      };
-    });
-  }, [daysInMonth]);
-
-  const totalEnergy = useMemo(() => {
-    return dailyData.reduce((sum, item) => sum + item.energy, 0);
-  }, [dailyData]);
+  const { dailyData, totalEnergy, loading, error } = useMonthlyPerformance(
+    customerName,
+    id,
+    yearMonth,
+    60000 // Poll every minute
+  );
 
   const averageDaily = useMemo(() => {
-    return totalEnergy / dailyData.length;
+    return dailyData.length > 0 ? totalEnergy / dailyData.length : 0;
   }, [totalEnergy, dailyData.length]);
 
   const chartData = dailyData.map(item => ({
@@ -40,13 +31,9 @@ export default function MonthlySummaryScreen() {
     y: item.energy,
   }));
 
-  if (!system) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <Text>System not found</Text>
-      </SafeAreaView>
-    );
-  }
+  const bestDayEnergy = dailyData.length > 0
+    ? Math.max(...dailyData.map(d => d.energy))
+    : 0;
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
@@ -57,47 +44,61 @@ export default function MonthlySummaryScreen() {
             <Text style={styles.monthText}>{currentMonth}</Text>
           </View>
         </View>
-        <View style={styles.totalCard}>
-          <TrendingUp size={32} color={Colors.success} />
-          <Text style={styles.totalLabel}>Total Energy This Month</Text>
-          <Text style={styles.totalValue}>{totalEnergy.toFixed(2)}</Text>
-          <Text style={styles.totalUnit}>kWh</Text>
-        </View>
-        <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <Zap size={24} color={Colors.solarOrange} />
-            <Text style={styles.statLabel}>Daily Average</Text>
-            <Text style={styles.statValue}>{averageDaily.toFixed(2)} kWh</Text>
+        {loading && dailyData.length === 0 ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={Colors.solarOrange} />
+            <Text style={styles.loadingText}>Loading monthly summary...</Text>
           </View>
-          <View style={styles.statCard}>
-            <TrendingUp size={24} color={Colors.success} />
-            <Text style={styles.statLabel}>Best Day</Text>
-            <Text style={styles.statValue}>
-              {Math.max(...dailyData.map(d => d.energy)).toFixed(2)} kWh
-            </Text>
+        ) : error ? (
+          <View style={styles.errorContainer}>
+            <AlertCircle size={48} color={Colors.danger} />
+            <Text style={styles.errorText}>{error}</Text>
           </View>
-        </View>
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Daily Performance Trend</Text>
-          <View style={styles.chartContainer}>
-            <LineChart data={chartData} height={300} color={Colors.solarOrange} />
-          </View>
-        </View>
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Performance Insights</Text>
-          <View style={styles.insightCard}>
-            <Text style={styles.insightTitle}>Consistent Production</Text>
-            <Text style={styles.insightText}>
-              Your solar system is performing well with an average of {averageDaily.toFixed(1)} kWh per day.
-            </Text>
-          </View>
-          <View style={styles.insightCard}>
-            <Text style={styles.insightTitle}>Monthly Projection</Text>
-            <Text style={styles.insightText}>
-              Based on current trends, you're on track to generate approximately {(totalEnergy / currentDate.getDate() * daysInMonth).toFixed(0)} kWh this month.
-            </Text>
-          </View>
-        </View>
+        ) : (
+          <>
+            <View style={styles.totalCard}>
+              <TrendingUp size={32} color={Colors.success} />
+              <Text style={styles.totalLabel}>Total Energy This Month</Text>
+              <Text style={styles.totalValue}>{totalEnergy.toFixed(2)}</Text>
+              <Text style={styles.totalUnit}>kWh</Text>
+            </View>
+            <View style={styles.statsContainer}>
+              <View style={styles.statCard}>
+                <Zap size={24} color={Colors.solarOrange} />
+                <Text style={styles.statLabel}>Daily Average</Text>
+                <Text style={styles.statValue}>{averageDaily.toFixed(2)} kWh</Text>
+              </View>
+              <View style={styles.statCard}>
+                <TrendingUp size={24} color={Colors.success} />
+                <Text style={styles.statLabel}>Best Day</Text>
+                <Text style={styles.statValue}>
+                  {bestDayEnergy.toFixed(2)} kWh
+                </Text>
+              </View>
+            </View>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Daily Performance Trend</Text>
+              <View style={styles.chartContainer}>
+                <LineChart data={chartData} height={300} color={Colors.solarOrange} />
+              </View>
+            </View>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Performance Insights</Text>
+              <View style={styles.insightCard}>
+                <Text style={styles.insightTitle}>Consistent Production</Text>
+                <Text style={styles.insightText}>
+                  Your solar system is performing well with an average of {averageDaily.toFixed(1)} kWh per day.
+                </Text>
+              </View>
+              <View style={styles.insightCard}>
+                <Text style={styles.insightTitle}>Monthly Projection</Text>
+                <Text style={styles.insightText}>
+                  Based on current trends, you're on track to generate approximately {totalEnergy.toFixed(0)} kWh this month.
+                </Text>
+              </View>
+            </View>
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -126,6 +127,29 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600' as const,
     color: Colors.white,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+    gap: 16,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: Colors.textSecondary,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+    gap: 16,
+  },
+  errorText: {
+    fontSize: 16,
+    color: Colors.danger,
+    textAlign: 'center',
   },
   totalCard: {
     margin: 20,

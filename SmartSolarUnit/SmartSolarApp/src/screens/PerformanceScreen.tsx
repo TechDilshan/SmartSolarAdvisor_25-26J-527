@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, useNavigation } from '@react-navigation/native';
-import { Thermometer, Droplets, Wind, CloudRain, Sun, TrendingUp, Zap, Calendar } from 'lucide-react-native';
+import { Thermometer, Droplets, Wind, CloudRain, Sun, TrendingUp, Zap, Calendar, AlertCircle } from 'lucide-react-native';
 import { LineChart } from '../components/Charts';
-import { mockSolarSystems, generateMockSensorData, generateMockPredictionData } from '../mocks/solarSystems';
+import { useSolarSite, useSensorData, usePredictionData } from '../hooks/useBackendAPI';
 import { SensorData, PredictionData } from '../types';
 import Colors from '../constants/colors';
 
@@ -13,15 +13,17 @@ type SensorType = 'irradiance' | 'temperature' | 'humidity' | 'dustLevel' | 'rai
 export default function PerformanceScreen() {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
-  const { id, title } = route.params;
+  const { id, title, customerName } = route.params || {};
 
-  const system = mockSolarSystems.find(s => s.id === id);
- 
-  const [sensorData, setSensorData] = useState<SensorData[]>([]);
-  const [predictions, setPredictions] = useState<PredictionData[]>([]);
+  const { site, loading: siteLoading } = useSolarSite(id, 10000); // Poll every 10 seconds
+  const { data: sensorData, loading: sensorLoading } = useSensorData(site?.deviceId || null, 5000); // Poll every 5 seconds
+  const { data: predictions, dailyTotal, monthlyTotal, loading: predictionLoading } = usePredictionData(
+    customerName || site?.customerName || null,
+    id,
+    10000 // Poll every 10 seconds
+  );
+
   const [selectedSensor, setSelectedSensor] = useState<SensorType>('irradiance');
-  const [todayEnergy, setTodayEnergy] = useState(0);
-  const [monthEnergy, setMonthEnergy] = useState(0);
   const [pulseAnim] = useState(() => new Animated.Value(1));
 
   useEffect(() => {
@@ -35,32 +37,9 @@ export default function PerformanceScreen() {
     return () => animation.stop();
   }, [pulseAnim]);
 
-  const addDataPoint = useCallback(() => {
-    const newSensor = generateMockSensorData();
-    const newPrediction = generateMockPredictionData();
-   
-    setSensorData(prev => [...prev.slice(-20), newSensor]);
-    setPredictions(prev => [...prev.slice(-20), newPrediction]);
-    setTodayEnergy(prev => prev + newPrediction.predictedEnergy);
-    setMonthEnergy(prev => prev + newPrediction.predictedEnergy);
-  }, []);
-
-  useEffect(() => {
-    addDataPoint();
-    const interval = setInterval(addDataPoint, 5000);
-    return () => clearInterval(interval);
-  }, [addDataPoint]);
-
-  if (!system) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <Text>System not found</Text>
-      </SafeAreaView>
-    );
-  }
-
-  const isOnline = system.status === 'running';
-  const latestSensor = sensorData[sensorData.length - 1];
+  const isLoading = siteLoading || sensorLoading || predictionLoading;
+  const isOnline = site?.status === 'running';
+  const latestSensor = sensorData.length > 0 ? sensorData[sensorData.length - 1] : null;
 
   const getSensorValue = (sensor: SensorData, type: SensorType) => {
     switch (type) {
@@ -69,15 +48,16 @@ export default function PerformanceScreen() {
       case 'humidity': return sensor.humidity;
       case 'dustLevel': return sensor.dustLevel;
       case 'rainLevel': return sensor.rainLevel;
+      default: return 0;
     }
   };
 
-  const chartData = sensorData.map((data, index) => ({
+  const chartData = sensorData.slice(-20).map((data, index) => ({
     x: index,
     y: getSensorValue(data, selectedSensor),
   }));
 
-  const predictionChartData = predictions.map((data, index) => ({
+  const predictionChartData = predictions.slice(-20).map((data, index) => ({
     x: index,
     y: data.predictedEnergy,
   }));
@@ -99,14 +79,36 @@ export default function PerformanceScreen() {
     </View>
   );
 
+  if (isLoading && !site) {
+    return (
+      <SafeAreaView style={styles.container} edges={['bottom']}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.solarOrange} />
+          <Text style={styles.loadingText}>Loading performance data...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!site) {
+    return (
+      <SafeAreaView style={styles.container} edges={['bottom']}>
+        <View style={styles.errorContainer}>
+          <AlertCircle size={48} color={Colors.danger} />
+          <Text style={styles.errorText}>System not found</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <View style={styles.headerTop}>
             <View>
-              <Text style={styles.systemName}>{system.siteName}</Text>
-              <Text style={styles.systemCapacity}>{system.systemCapacity} kW System</Text>
+              <Text style={styles.systemName}>{site.siteName || title}</Text>
+              <Text style={styles.systemCapacity}>{site.systemCapacity} kW System</Text>
             </View>
             <View style={[styles.statusBadge, isOnline ? styles.statusOnline : styles.statusOffline]}>
               {isOnline && <Animated.View style={[styles.statusDot, { transform: [{ scale: pulseAnim }] }]} />}
@@ -188,13 +190,13 @@ export default function PerformanceScreen() {
               <View style={styles.energyCard}>
                 <Zap size={24} color={Colors.solarOrange} />
                 <Text style={styles.energyLabel}>Today</Text>
-                <Text style={styles.energyValue}>{todayEnergy.toFixed(2)}</Text>
+                <Text style={styles.energyValue}>{dailyTotal.toFixed(2)}</Text>
                 <Text style={styles.energyUnit}>kWh</Text>
               </View>
               <View style={styles.energyCard}>
                 <TrendingUp size={24} color={Colors.success} />
                 <Text style={styles.energyLabel}>This Month</Text>
-                <Text style={styles.energyValue}>{monthEnergy.toFixed(2)}</Text>
+                <Text style={styles.energyValue}>{monthlyTotal.toFixed(2)}</Text>
                 <Text style={styles.energyUnit}>kWh</Text>
               </View>
             </View>
@@ -206,14 +208,14 @@ export default function PerformanceScreen() {
         <View style={styles.navigationButtons}>
           <TouchableOpacity
             style={styles.navButton}
-            onPress={() => navigation.navigate('Daily', { id })}
+            onPress={() => navigation.navigate('Daily', { id, customerName: customerName || site.customerName })}
           >
             <Calendar size={20} color={Colors.white} />
             <Text style={styles.navButtonText}>Daily Performance</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.navButton}
-            onPress={() => navigation.navigate('Monthly', { id })}
+            onPress={() => navigation.navigate('Monthly', { id, customerName: customerName || site.customerName })}
           >
             <TrendingUp size={20} color={Colors.white} />
             <Text style={styles.navButtonText}>Monthly Summary</Text>
@@ -228,6 +230,27 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: Colors.textSecondary,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+  },
+  errorText: {
+    fontSize: 18,
+    color: Colors.danger,
+    fontWeight: '600' as const,
   },
   header: {
     backgroundColor: Colors.primary,

@@ -1,14 +1,15 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Activity, AlertCircle, Sun } from 'lucide-react-native';
+import { Activity as ActivityIcon, AlertCircle, Sun } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
-import { mockSolarSystems } from '../mocks/solarSystems';
+import { useSolarSites } from '../hooks/useBackendAPI';
 import { SolarSystem } from '../types';
 import Colors from '../constants/colors';
 
 export default function HomeScreen() {  
   const navigation = useNavigation<any>();
+  const { sites, loading, error, refetch } = useSolarSites(5000); // Poll every 5 seconds
 
   const renderSystemCard = (system: SolarSystem) => {
     const isOnline = system.status === 'running';
@@ -16,7 +17,7 @@ export default function HomeScreen() {
       <TouchableOpacity
         key={system.id}
         style={styles.card}
-        onPress={() => navigation.navigate('PerformanceStack', { screen: 'Performance', params: { id: system.id, title: system.siteName } })}
+        onPress={() => navigation.navigate('PerformanceStack', { screen: 'Performance', params: { id: system.id, title: system.siteName, customerName: system.customerName } })}
       >
         <View style={styles.cardHeader}>
           <View style={styles.cardTitleRow}>
@@ -45,14 +46,14 @@ export default function HomeScreen() {
           </View>
         </View>
         <View style={styles.cardFooter}>
-          <Activity size={14} color={Colors.textSecondary} />
+          <ActivityIcon size={14} color={Colors.textSecondary} />
           <Text style={styles.lastUpdated}>
             Updated {system.lastUpdated.toLocaleTimeString()}
           </Text>
         </View>
         <TouchableOpacity
           style={styles.viewButton}
-          onPress={() => navigation.navigate('PerformanceStack', { screen: 'Performance', params: { id: system.id, title: system.siteName } })}
+          onPress={() => navigation.navigate('PerformanceStack', { screen: 'Performance', params: { id: system.id, title: system.siteName, customerName: system.customerName } })}
         >
           <Text style={styles.viewButtonText}>View Live Performance</Text>
         </TouchableOpacity>
@@ -60,20 +61,50 @@ export default function HomeScreen() {
     );
   };
 
+  if (loading && sites.length === 0) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.header}>
+          <Text style={styles.title}>My Solar Systems</Text>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.solarOrange} />
+          <Text style={styles.loadingText}>Loading your solar systems...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.title}>My Solar Systems</Text>
-        <Text style={styles.subtitle}>{mockSolarSystems.length} installations</Text>
+        <Text style={styles.subtitle}>{sites.length} installation{sites.length !== 1 ? 's' : ''}</Text>
       </View>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={loading && sites.length > 0}
+            onRefresh={refetch}
+            tintColor={Colors.solarOrange}
+          />
+        }
       >
-        {mockSolarSystems.length > 0 ? (
-          mockSolarSystems.map(renderSystemCard)
-        ) : (
+        {error && (
+          <View style={styles.errorContainer}>
+            <AlertCircle size={24} color={Colors.danger} />
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={refetch}>
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        {sites.length > 0 ? (
+          sites.map(renderSystemCard)
+        ) : !loading ? (
           <View style={styles.emptyState}>
             <AlertCircle size={48} color={Colors.gray} />
             <Text style={styles.emptyTitle}>No solar systems found</Text>
@@ -81,7 +112,7 @@ export default function HomeScreen() {
               Your assigned solar installations will appear here
             </Text>
           </View>
-        )}
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -107,6 +138,16 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14,
     color: Colors.gray,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: Colors.textSecondary,
   },
   scrollView: {
     flex: 1,
@@ -238,5 +279,29 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textSecondary,
     textAlign: 'center',
+  },
+  errorContainer: {
+    backgroundColor: Colors.card,
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 16,
+  },
+  errorText: {
+    fontSize: 14,
+    color: Colors.danger,
+    textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: Colors.solarOrange,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: Colors.white,
+    fontSize: 14,
+    fontWeight: '600' as const,
   },
 });

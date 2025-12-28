@@ -39,7 +39,7 @@ export default function ProfileScreen() {
           <View style={styles.avatar}>
             <User size={48} color={Colors.white} />
           </View>
-          <Text style={styles.name}>{user.customerName}</Text>
+          <Text style={styles.name}>{user.customerName || user.email}</Text>
           <Text style={styles.role}>Solar System Owner</Text>
         </View>
         <View style={styles.infoCard}>
@@ -52,16 +52,20 @@ export default function ProfileScreen() {
               <Text style={styles.infoValue}>{user.email}</Text>
             </View>
           </View>
-          <View style={styles.divider} />
-          <View style={styles.infoRow}>
-            <View style={styles.iconContainer}>
-              <MapPin size={20} color={Colors.solarOrange} />
-            </View>
-            <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Assigned Sites</Text>
-              <Text style={styles.infoValue}>{user.assignedSites} installations</Text>
-            </View>
-          </View>
+          {user.customerName && (
+            <>
+              <View style={styles.divider} />
+              <View style={styles.infoRow}>
+                <View style={styles.iconContainer}>
+                  <MapPin size={20} color={Colors.solarOrange} />
+                </View>
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Customer Name</Text>
+                  <Text style={styles.infoValue}>{user.customerName}</Text>
+                </View>
+              </View>
+            </>
+          )}
         </View>
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <LogOut size={20} color={Colors.danger} />

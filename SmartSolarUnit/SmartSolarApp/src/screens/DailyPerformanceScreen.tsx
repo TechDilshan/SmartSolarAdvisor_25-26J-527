@@ -1,40 +1,23 @@
-import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute } from '@react-navigation/native';
-import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { Calendar, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react-native';
 import { BarChart } from '../components/Charts';
-import { mockSolarSystems } from '../mocks/solarSystems';
+import { useDailyPerformance } from '../hooks/useBackendAPI';
 import Colors from '../constants/colors';
 
 export default function DailyPerformanceScreen() {
   const route = useRoute<any>();
-  const { id } = route.params;
-  const system = mockSolarSystems.find(s => s.id === id);
-
+  const { id, customerName } = route.params || {};
   const [selectedDate, setSelectedDate] = useState(new Date());
 
-  const hourlyData = useMemo(() => {
-    return Array.from({ length: 24 }, (_, i) => {
-      const hour = i;
-      const baseEnergy = hour >= 6 && hour <= 18
-        ? Math.sin((hour - 6) * Math.PI / 12) * (Math.random() * 2 + 3)
-        : 0;
-      return {
-        hour,
-        energy: parseFloat(baseEnergy.toFixed(2)),
-      };
-    });
-  }, []);
-
-  const totalEnergy = useMemo(() => {
-    return hourlyData.reduce((sum, item) => sum + item.energy, 0);
-  }, [hourlyData]);
-
-  const chartData = hourlyData.map(item => ({
-    x: item.hour,
-    y: item.energy,
-  }));
+  const { hourlyData, totalEnergy, loading, error } = useDailyPerformance(
+    customerName,
+    id,
+    selectedDate,
+    30000 // Poll every 30 seconds
+  );
 
   const changeDate = (days: number) => {
     const newDate = new Date(selectedDate);
@@ -42,13 +25,17 @@ export default function DailyPerformanceScreen() {
     setSelectedDate(newDate);
   };
 
-  if (!system) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <Text>System not found</Text>
-      </SafeAreaView>
-    );
-  }
+  const chartData = hourlyData.map(item => ({
+    x: item.hour,
+    y: item.energy,
+  }));
+
+  const peakHour = hourlyData.length > 0
+    ? hourlyData.reduce((max, item) => item.energy > max.energy ? item : max).hour
+    : 0;
+  const peakOutput = hourlyData.length > 0
+    ? Math.max(...hourlyData.map(h => h.energy))
+    : 0;
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
@@ -81,36 +68,48 @@ export default function DailyPerformanceScreen() {
             </TouchableOpacity>
           </View>
         </View>
-        <View style={styles.totalCard}>
-          <Text style={styles.totalLabel}>Total Energy Generated</Text>
-          <Text style={styles.totalValue}>{totalEnergy.toFixed(2)}</Text>
-          <Text style={styles.totalUnit}>kWh</Text>
-        </View>
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Hourly Breakdown</Text>
-          <View style={styles.chartContainer}>
-            <BarChart data={chartData} height={300} color={Colors.solarOrange} />
+        {loading && hourlyData.length === 0 ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={Colors.solarOrange} />
+            <Text style={styles.loadingText}>Loading daily performance...</Text>
           </View>
-        </View>
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Peak Performance</Text>
-          <View style={styles.statsGrid}>
-            <View style={styles.statCard}>
-              <Text style={styles.statLabel}>Peak Hour</Text>
-              <Text style={styles.statValue}>
-                {hourlyData.reduce((max, item) =>
-                  item.energy > max.energy ? item : max
-                ).hour}:00
-              </Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statLabel}>Peak Output</Text>
-              <Text style={styles.statValue}>
-                {Math.max(...hourlyData.map(h => h.energy)).toFixed(2)} kWh
-              </Text>
-            </View>
+        ) : error ? (
+          <View style={styles.errorContainer}>
+            <AlertCircle size={48} color={Colors.danger} />
+            <Text style={styles.errorText}>{error}</Text>
           </View>
-        </View>
+        ) : (
+          <>
+            <View style={styles.totalCard}>
+              <Text style={styles.totalLabel}>Total Energy Generated</Text>
+              <Text style={styles.totalValue}>{totalEnergy.toFixed(2)}</Text>
+              <Text style={styles.totalUnit}>kWh</Text>
+            </View>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Hourly Breakdown</Text>
+              <View style={styles.chartContainer}>
+                <BarChart data={chartData} height={300} color={Colors.solarOrange} />
+              </View>
+            </View>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Peak Performance</Text>
+              <View style={styles.statsGrid}>
+                <View style={styles.statCard}>
+                  <Text style={styles.statLabel}>Peak Hour</Text>
+                  <Text style={styles.statValue}>
+                    {peakHour}:00
+                  </Text>
+                </View>
+                <View style={styles.statCard}>
+                  <Text style={styles.statLabel}>Peak Output</Text>
+                  <Text style={styles.statValue}>
+                    {peakOutput.toFixed(2)} kWh
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -151,6 +150,29 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600' as const,
     color: Colors.text,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+    gap: 16,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: Colors.textSecondary,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+    gap: 16,
+  },
+  errorText: {
+    fontSize: 16,
+    color: Colors.danger,
+    textAlign: 'center',
   },
   totalCard: {
     margin: 20,

@@ -6,6 +6,8 @@ export interface SolarSystem {
     inverterCapacity: number;
     status: 'running' | 'completed';
     lastUpdated: Date;
+    deviceId?: string;
+    customerName?: string;
   }
   
   export interface SensorData {
@@ -41,7 +43,14 @@ export interface SolarSystem {
   }
   
   export interface User {
+    id: string;
     email: string;
-    customerName: string;
-    assignedSites: number;
+    role: string;
+    customerName?: string;
+    assignedSites?: number;
+  }
+  
+  export interface LoginResponse {
+    token: string;
+    user: User;
   }

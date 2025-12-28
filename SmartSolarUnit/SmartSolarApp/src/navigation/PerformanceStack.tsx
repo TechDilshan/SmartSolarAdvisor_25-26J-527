@@ -6,9 +6,9 @@ import MonthlySummaryScreen from '../screens/MonthlySummaryScreen';
 import Colors from '../constants/colors';
 
 export type PerformanceStackParamList = {
-  Performance: { id: string; title: string };
-  Daily: undefined;
-  Monthly: undefined;
+  Performance: { id: string; title: string; customerName?: string };
+  Daily: { id: string; customerName?: string };
+  Monthly: { id: string; customerName?: string };
 };
 
 const Stack = createStackNavigator<PerformanceStackParamList>();
