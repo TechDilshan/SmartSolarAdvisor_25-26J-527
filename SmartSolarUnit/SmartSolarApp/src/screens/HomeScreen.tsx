@@ -20,10 +20,14 @@ export default function HomeScreen() {
     10000
   );
   
+  // Use site creation date as start date for the 30-day chart (like web app)
+  const startDate = firstSite?.created_at || null;
+  
   const { dailyData: dailyEnergy30Days, loading: chartLoading } = useDailyEnergy30Days(
     firstSite?.customerName || null,
     firstSite?.id || null,
-    30
+    30,
+    startDate
   );
   
   const chartData = useMemo(() => {
@@ -416,7 +420,8 @@ const styles = StyleSheet.create({
   chartContainer: {
     backgroundColor: Colors.background,
     borderRadius: 12,
-    padding: 8,
+    padding: 0,
+    overflow: 'hidden',
   },
   sitesTitle: {
     fontSize: 20,

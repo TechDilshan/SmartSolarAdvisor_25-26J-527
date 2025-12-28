@@ -23,6 +23,7 @@ export const useSolarSites = (pollInterval: number = 5000) => {
         lastUpdated: site.last_updated ? new Date(site.last_updated) : new Date(),
         deviceId: site.device_id,
         customerName: site.customer_name,
+        created_at: site.created_at || null,
       }));
       setSites(formattedSites);
       setError(null);
@@ -75,6 +76,7 @@ export const useSolarSite = (siteId: string | null, pollInterval: number = 5000)
         lastUpdated: data.last_updated ? new Date(data.last_updated) : new Date(),
         deviceId: data.device_id,
         customerName: data.customer_name,
+        created_at: data.created_at || null,
       };
       setSite(formattedSite);
       setError(null);

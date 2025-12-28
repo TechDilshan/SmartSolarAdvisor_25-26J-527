@@ -8,6 +8,7 @@ export interface SolarSystem {
     lastUpdated: Date;
     deviceId?: string;
     customerName?: string;
+    created_at?: string; // Site creation date (YYYY-MM-DD format)
   }
   
   export interface SensorData {

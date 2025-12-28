@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, ScrollView } from 'react-native';
 import Colors from '../constants/colors';
 
 interface LineChartProps {
@@ -185,6 +185,60 @@ const styles = StyleSheet.create({
   bar: {
     borderTopLeftRadius: 4,
     borderTopRightRadius: 4,
+    position: 'absolute',
+  },
+  scrollableChartContainer: {
+    flexDirection: 'row',
+    padding: 10,
+  },
+  yAxisContainer: {
+    width: 50,
+    position: 'relative',
+  },
+  yAxisLabel: {
+    fontSize: 10,
+    color: Colors.textSecondary,
+    textAlign: 'right',
+    width: 40,
+  },
+  scrollableChartArea: {
+    position: 'relative',
+    borderLeftWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: Colors.border,
+  },
+  gridLine: {
+    position: 'absolute',
+    height: 1,
+    backgroundColor: Colors.border,
+    opacity: 0.3,
+  },
+  barContainer: {
+    position: 'absolute',
+    bottom: 0,
+    alignItems: 'center',
+  },
+  xAxisLabel: {
+    fontSize: 8,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+  },
+  barValueLabel: {
+    fontSize: 8,
+    color: Colors.text,
+    textAlign: 'center',
+    fontWeight: '600' as const,
+  },
+  xAxisTitleContainer: {
+    height: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 5,
+  },
+  xAxisTitle: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    fontWeight: '600' as const,
   },
 });
 
@@ -194,49 +248,132 @@ interface CandleChartProps {
   color?: string;
 }
 
-export function CandleChart({ data, height = 200, color = Colors.solarOrange }: CandleChartProps) {
-  const width = Dimensions.get('window').width - 40;
-  const padding = { left: 40, right: 20, top: 20, bottom: 60 };
-  const chartWidth = width - padding.left - padding.right;
+export function CandleChart({ data, height = 250, color = Colors.solarOrange }: CandleChartProps) {
+  const screenWidth = Dimensions.get('window').width;
+  const padding = { left: 50, right: 20, top: 20, bottom: 90 };
   const chartHeight = height - padding.top - padding.bottom;
+  
+  // Calculate minimum width for scrollable chart (each bar needs space)
+  const minBarWidth = 20;
+  const barGap = 4;
+  const chartContentWidth = Math.max(screenWidth - padding.left - padding.right, data.length * (minBarWidth + barGap));
+  const barWidth = Math.max(minBarWidth, (chartContentWidth / data.length) - barGap);
 
   if (data.length === 0) return null;
 
   const maxY = Math.max(...data.map(d => d.value), 1);
-  const barWidth = Math.max(4, chartWidth / data.length - 2);
+  const yAxisSteps = 5;
+  const yStep = maxY / yAxisSteps;
 
   return (
-    <View style={[styles.container, { height }]}>
-      <View style={styles.yAxis}>
-        <Text style={styles.axisLabel}>{maxY.toFixed(1)}</Text>
-        <Text style={styles.axisLabel}>{(maxY / 2).toFixed(1)}</Text>
-        <Text style={styles.axisLabel}>0</Text>
+    <View style={[styles.scrollableChartContainer, { height }]}>
+      {/* Y-Axis Labels */}
+      <View style={[styles.yAxisContainer, { height: chartHeight, marginTop: padding.top }]}>
+        {Array.from({ length: yAxisSteps + 1 }, (_, i) => {
+          const value = maxY - (i * yStep);
+          return (
+            <Text key={i} style={[styles.yAxisLabel, { position: 'absolute', top: (i * chartHeight / yAxisSteps) - 8 }]}>
+              {value.toFixed(1)}
+            </Text>
+          );
+        })}
+        <Text style={[styles.yAxisLabel, { position: 'absolute', bottom: -20, left: -40 }]}>
+          Energy (kWh)
+        </Text>
       </View>
      
+      {/* Scrollable Chart Area */}
       <View style={{ flex: 1 }}>
-        <View style={[styles.chartArea, { height: chartHeight, marginTop: padding.top, flexDirection: 'row', alignItems: 'flex-end', gap: 2 }]}>
-          {data.map((point, i) => {
-            const barHeight = maxY > 0 ? (point.value / maxY) * chartHeight : 0;
-            return (
-              <View key={i} style={{ alignItems: 'center', gap: 2 }}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={true}
+          contentContainerStyle={{ paddingRight: padding.right }}
+          style={{ flex: 1 }}
+        >
+          <View style={[styles.scrollableChartArea, { width: chartContentWidth, height: chartHeight, marginTop: padding.top }]}>
+            {/* Grid Lines */}
+            {Array.from({ length: yAxisSteps + 1 }, (_, i) => (
+              <View
+                key={`grid-${i}`}
+                style={[
+                  styles.gridLine,
+                  {
+                    position: 'absolute',
+                    top: (i * chartHeight / yAxisSteps),
+                    width: chartContentWidth,
+                  }
+                ]}
+              />
+            ))}
+            
+            {/* Bars */}
+            {data.map((point, i) => {
+              const barHeight = maxY > 0 ? (point.value / maxY) * chartHeight : 0;
+              const xPosition = i * (barWidth + barGap);
+              
+              return (
                 <View
+                  key={i}
                   style={[
-                    styles.bar,
+                    styles.barContainer,
                     {
-                      height: barHeight,
+                      left: xPosition,
                       width: barWidth,
-                      backgroundColor: color,
-                    },
+                    }
                   ]}
-                />
-                {i % Math.ceil(data.length / 6) === 0 && (
-                  <Text style={[styles.axisLabel, { fontSize: 8, width: barWidth + 4 }]} numberOfLines={1}>
+                >
+                  <View
+                    style={[
+                      styles.bar,
+                      {
+                        height: barHeight,
+                        width: barWidth,
+                        backgroundColor: color,
+                        bottom: 0,
+                      },
+                    ]}
+                  />
+                  {/* X-Axis Labels - Show date for every bar, rotate for better fit */}
+                  <Text 
+                    style={[
+                      styles.xAxisLabel,
+                      {
+                        position: 'absolute',
+                        bottom: -35,
+                        width: 50,
+                        left: -(25 - barWidth / 2),
+                        textAlign: 'center',
+                      }
+                    ]}
+                    numberOfLines={1}
+                  >
                     {point.label}
                   </Text>
-                )}
-              </View>
-            );
-          })}
+                  {/* Value label on top of bar */}
+                  {barHeight > 20 && (
+                    <Text
+                      style={[
+                        styles.barValueLabel,
+                        {
+                          position: 'absolute',
+                          bottom: barHeight + 4,
+                          width: barWidth,
+                        }
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {point.value.toFixed(1)}
+                    </Text>
+                  )}
+                </View>
+              );
+            })}
+          </View>
+        </ScrollView>
+        
+        {/* X-Axis Title */}
+        <View style={styles.xAxisTitleContainer}>
+          <Text style={styles.xAxisTitle}>Date</Text>
         </View>
       </View>
     </View>
