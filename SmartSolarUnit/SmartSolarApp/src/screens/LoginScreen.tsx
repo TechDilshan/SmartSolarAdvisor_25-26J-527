@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Zap } from 'lucide-react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+
+const logoImage = require('../assets/Logo.png');
 
 export default function LoginScreen() {
   const { login } = useAuth();
@@ -34,8 +35,12 @@ export default function LoginScreen() {
       >
         <View style={styles.content}>
           <View style={styles.header}>
-            <View style={[styles.logoContainer, { backgroundColor: colors.white }]}>
-              <Zap size={48} color={colors.solarOrange} fill={colors.solarOrange} />
+            <View style={styles.logoContainer}>
+              <Image 
+                source={logoImage} 
+                style={styles.logo}
+                resizeMode="cover"
+              />
             </View>
             <Text style={[styles.title, { color: colors.white }]}>Solar Monitor</Text>
             <Text style={[styles.subtitle, { color: colors.gray }]}>Monitor your solar installation</Text>
@@ -107,12 +112,16 @@ const styles = StyleSheet.create({
     marginBottom: 48,
   },
   logoContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     marginBottom: 24,
+    overflow: 'hidden',
+    backgroundColor: 'transparent',
+  },
+  logo: {
+    width: '100%',
+    height: '100%',
   },
   title: {
     fontSize: 32,
