@@ -113,9 +113,9 @@ export default function DailyPerformanceScreen() {
     : 0;
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom']}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
+        <View style={[styles.header, { backgroundColor: colors.primary }]}>
           <View style={styles.dateSelector}>
             <TouchableOpacity
               style={styles.dateButton}
@@ -124,9 +124,9 @@ export default function DailyPerformanceScreen() {
               <ChevronLeft size={24} color={colors.white} />
             </TouchableOpacity>
            
-            <View style={styles.dateInfo}>
+            <View style={[styles.dateInfo, { backgroundColor: colors.card }]}>
               <Calendar size={20} color={colors.solarOrange} />
-              <Text style={styles.dateText}>
+              <Text style={[styles.dateText, { color: colors.text }]}>
                 {selectedDate.toLocaleDateString('en-US', {
                   weekday: 'short',
                   year: 'numeric',
@@ -146,38 +146,38 @@ export default function DailyPerformanceScreen() {
         {loading && hourlyData.length === 0 ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={colors.solarOrange} />
-            <Text style={styles.loadingText}>Loading daily performance...</Text>
+            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading daily performance...</Text>
           </View>
         ) : error ? (
           <View style={styles.errorContainer}>
             <AlertCircle size={48} color={colors.danger} />
-            <Text style={styles.errorText}>{error}</Text>
+            <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text>
           </View>
         ) : (
           <>
-            <View style={styles.totalCard}>
-              <Text style={styles.totalLabel}>Total Energy Generated</Text>
-              <Text style={styles.totalValue}>{totalEnergy.toFixed(2)}</Text>
-              <Text style={styles.totalUnit}>kWh</Text>
+            <View style={[styles.totalCard, { backgroundColor: colors.card }]}>
+              <Text style={[styles.totalLabel, { color: colors.textSecondary }]}>Total Energy Generated</Text>
+              <Text style={[styles.totalValue, { color: colors.solarOrange }]}>{totalEnergy.toFixed(2)}</Text>
+              <Text style={[styles.totalUnit, { color: colors.textSecondary }]}>kWh</Text>
             </View>
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Hourly Breakdown</Text>
-              <View style={styles.chartContainer}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Hourly Breakdown</Text>
+              <View style={[styles.chartContainer, { backgroundColor: colors.card }]}>
                 <BarChart data={chartData} height={300} color={colors.solarOrange} />
               </View>
             </View>
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Peak Performance</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Peak Performance</Text>
               <View style={styles.statsGrid}>
-                <View style={styles.statCard}>
-                  <Text style={styles.statLabel}>Peak Hour</Text>
-                  <Text style={styles.statValue}>
+                <View style={[styles.statCard, { backgroundColor: colors.card }]}>
+                  <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Peak Hour</Text>
+                  <Text style={[styles.statValue, { color: colors.text }]}>
                     {peakHour}:00
                   </Text>
                 </View>
-                <View style={styles.statCard}>
-                  <Text style={styles.statLabel}>Peak Output</Text>
-                  <Text style={styles.statValue}>
+                <View style={[styles.statCard, { backgroundColor: colors.card }]}>
+                  <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Peak Output</Text>
+                  <Text style={[styles.statValue, { color: colors.text }]}>
                     {peakOutput.toFixed(2)} kWh
                   </Text>
                 </View>
@@ -188,49 +188,49 @@ export default function DailyPerformanceScreen() {
             {dailySensorData.length > 0 && (
               <>
                 <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>Sensor Charts</Text>
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>Sensor Charts</Text>
                   
                   {/* Irradiance Chart */}
-                  <View style={styles.chartContainer}>
+                  <View style={[styles.chartContainer, { backgroundColor: colors.card }]}>
                     <View style={styles.chartHeader}>
                       <Sun size={20} color={colors.solarOrange} />
-                      <Text style={styles.chartTitle}>Solar Irradiance</Text>
+                      <Text style={[styles.chartTitle, { color: colors.text }]}>Solar Irradiance</Text>
                     </View>
                     <LineChart data={irradianceChartData} color={colors.solarOrange} unit=" lux" height={200} />
                   </View>
 
                   {/* Temperature Chart */}
-                  <View style={styles.chartContainer}>
+                  <View style={[styles.chartContainer, { backgroundColor: colors.card }]}>
                     <View style={styles.chartHeader}>
                       <Thermometer size={20} color={colors.danger} />
-                      <Text style={styles.chartTitle}>Temperature</Text>
+                      <Text style={[styles.chartTitle, { color: colors.text }]}>Temperature</Text>
                     </View>
                     <LineChart data={tempHumidityChartData} color={colors.danger} unit=" °C" height={200} />
                   </View>
 
                   {/* Humidity Chart */}
-                  <View style={styles.chartContainer}>
+                  <View style={[styles.chartContainer, { backgroundColor: colors.card }]}>
                     <View style={styles.chartHeader}>
                       <Droplets size={20} color={colors.success} />
-                      <Text style={styles.chartTitle}>Humidity</Text>
+                      <Text style={[styles.chartTitle, { color: colors.text }]}>Humidity</Text>
                     </View>
                     <LineChart data={humidityChartData} color={colors.success} unit=" %" height={200} />
                   </View>
 
                   {/* Dust Level Chart */}
-                  <View style={styles.chartContainer}>
+                  <View style={[styles.chartContainer, { backgroundColor: colors.card }]}>
                     <View style={styles.chartHeader}>
                       <Wind size={20} color={colors.warning} />
-                      <Text style={styles.chartTitle}>Dust Level</Text>
+                      <Text style={[styles.chartTitle, { color: colors.text }]}>Dust Level</Text>
                     </View>
                     <LineChart data={dustRainChartData} color={colors.warning} unit=" mg/m³" height={200} />
                   </View>
 
                   {/* Rain Level Chart */}
-                  <View style={styles.chartContainer}>
+                  <View style={[styles.chartContainer, { backgroundColor: colors.card }]}>
                     <View style={styles.chartHeader}>
                       <CloudRain size={20} color={colors.primary} />
-                      <Text style={styles.chartTitle}>Rain Level</Text>
+                      <Text style={[styles.chartTitle, { color: colors.text }]}>Rain Level</Text>
                     </View>
                     <LineChart data={rainChartData} color={colors.primary} unit=" %" height={200} />
                   </View>
@@ -241,11 +241,11 @@ export default function DailyPerformanceScreen() {
             {/* Predictions Chart */}
             {predictionsChartData.length > 0 && (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>5-Minute Energy Predictions</Text>
-                <View style={styles.chartContainer}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>5-Minute Energy Predictions</Text>
+                <View style={[styles.chartContainer, { backgroundColor: colors.card }]}>
                   <View style={styles.chartHeader}>
                     <Zap size={20} color={colors.success} />
-                    <Text style={styles.chartTitle}>Predicted Energy (Wh)</Text>
+                    <Text style={[styles.chartTitle, { color: colors.text }]}>Predicted Energy (Wh)</Text>
                   </View>
                   <LineChart data={predictionsChartData} color={colors.success} unit=" Wh" height={200} />
                 </View>
@@ -255,45 +255,45 @@ export default function DailyPerformanceScreen() {
             {/* 5-Minute Interval Details Table */}
             {fiveMinIntervals.length > 0 && (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>
                   5-Minute Interval Details ({fiveMinIntervals.length} readings)
                 </Text>
-                <View style={styles.tableContainer}>
+                <View style={[styles.tableContainer, { backgroundColor: colors.card }]}>
                   <ScrollView horizontal showsHorizontalScrollIndicator={true}>
                     <View>
                       {/* Table Header */}
-                      <View style={styles.tableHeader}>
-                        <Text style={[styles.tableHeaderText, { width: 70 }]}>Time</Text>
-                        <Text style={[styles.tableHeaderText, { width: 100 }]}>Predicted (kWh)</Text>
-                        <Text style={[styles.tableHeaderText, { width: 90 }]}>Irradiance</Text>
-                        <Text style={[styles.tableHeaderText, { width: 100 }]}>Temperature</Text>
-                        <Text style={[styles.tableHeaderText, { width: 80 }]}>Humidity</Text>
-                        <Text style={[styles.tableHeaderText, { width: 90 }]}>Dust Level</Text>
-                        <Text style={[styles.tableHeaderText, { width: 80 }]}>Rainfall</Text>
+                      <View style={[styles.tableHeader, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+                        <Text style={[styles.tableHeaderText, { width: 70, color: colors.textSecondary }]}>Time</Text>
+                        <Text style={[styles.tableHeaderText, { width: 100, color: colors.textSecondary }]}>Predicted (kWh)</Text>
+                        <Text style={[styles.tableHeaderText, { width: 90, color: colors.textSecondary }]}>Irradiance</Text>
+                        <Text style={[styles.tableHeaderText, { width: 100, color: colors.textSecondary }]}>Temperature</Text>
+                        <Text style={[styles.tableHeaderText, { width: 80, color: colors.textSecondary }]}>Humidity</Text>
+                        <Text style={[styles.tableHeaderText, { width: 90, color: colors.textSecondary }]}>Dust Level</Text>
+                        <Text style={[styles.tableHeaderText, { width: 80, color: colors.textSecondary }]}>Rainfall</Text>
                       </View>
                       {/* Table Rows */}
                       <ScrollView style={styles.tableBody} nestedScrollEnabled>
                         {fiveMinIntervals.map((interval: { timestamp: string; predicted: number; irradiance?: number; temperature?: number; humidity?: number; dustLevel?: number; rainLevel?: number }, idx: number) => (
-                          <View key={idx} style={styles.tableRow}>
-                            <Text style={[styles.tableCell, { width: 70 }]}>
+                          <View key={idx} style={[styles.tableRow, { borderBottomColor: colors.border }]}>
+                            <Text style={[styles.tableCell, { width: 70, color: colors.text }]}>
                               {formatTime(interval.timestamp)}
                             </Text>
-                            <Text style={[styles.tableCell, { width: 100 }]}>
+                            <Text style={[styles.tableCell, { width: 100, color: colors.text }]}>
                               {interval.predicted.toFixed(4)}
                             </Text>
-                            <Text style={[styles.tableCell, { width: 90 }]}>
+                            <Text style={[styles.tableCell, { width: 90, color: colors.text }]}>
                               {interval.irradiance !== undefined ? interval.irradiance.toFixed(2) : 'N/A'}
                             </Text>
-                            <Text style={[styles.tableCell, { width: 100 }]}>
+                            <Text style={[styles.tableCell, { width: 100, color: colors.text }]}>
                               {interval.temperature !== undefined ? `${interval.temperature.toFixed(1)}°C` : 'N/A'}
                             </Text>
-                            <Text style={[styles.tableCell, { width: 80 }]}>
+                            <Text style={[styles.tableCell, { width: 80, color: colors.text }]}>
                               {interval.humidity !== undefined ? `${interval.humidity.toFixed(1)}%` : 'N/A'}
                             </Text>
-                            <Text style={[styles.tableCell, { width: 90 }]}>
+                            <Text style={[styles.tableCell, { width: 90, color: colors.text }]}>
                               {interval.dustLevel !== undefined ? interval.dustLevel.toFixed(3) : 'N/A'}
                             </Text>
-                            <Text style={[styles.tableCell, { width: 80 }]}>
+                            <Text style={[styles.tableCell, { width: 80, color: colors.text }]}>
                               {interval.rainLevel !== undefined ? interval.rainLevel.toFixed(2) : 'N/A'}
                             </Text>
                           </View>

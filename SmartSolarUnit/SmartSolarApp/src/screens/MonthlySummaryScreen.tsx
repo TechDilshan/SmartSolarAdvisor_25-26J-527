@@ -40,63 +40,63 @@ export default function MonthlySummaryScreen() {
     : 0;
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom']}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
+        <View style={[styles.header, { backgroundColor: colors.primary }]}>
           <View style={styles.monthBadge}>
             <Calendar size={20} color={colors.white} />
-            <Text style={styles.monthText}>{currentMonth}</Text>
+            <Text style={[styles.monthText, { color: colors.white }]}>{currentMonth}</Text>
           </View>
         </View>
         {loading && dailyData.length === 0 ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={colors.solarOrange} />
-            <Text style={styles.loadingText}>Loading monthly summary...</Text>
+            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading monthly summary...</Text>
           </View>
         ) : error ? (
           <View style={styles.errorContainer}>
             <AlertCircle size={48} color={colors.danger} />
-            <Text style={styles.errorText}>{error}</Text>
+            <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text>
           </View>
         ) : (
           <>
-            <View style={styles.totalCard}>
+            <View style={[styles.totalCard, { backgroundColor: colors.card }]}>
               <TrendingUp size={32} color={colors.success} />
-              <Text style={styles.totalLabel}>Total Energy This Month</Text>
-              <Text style={styles.totalValue}>{totalEnergy.toFixed(2)}</Text>
-              <Text style={styles.totalUnit}>kWh</Text>
+              <Text style={[styles.totalLabel, { color: colors.textSecondary }]}>Total Energy This Month</Text>
+              <Text style={[styles.totalValue, { color: colors.solarOrange }]}>{totalEnergy.toFixed(2)}</Text>
+              <Text style={[styles.totalUnit, { color: colors.textSecondary }]}>kWh</Text>
             </View>
             <View style={styles.statsContainer}>
-              <View style={styles.statCard}>
+              <View style={[styles.statCard, { backgroundColor: colors.card }]}>
                 <Zap size={24} color={colors.solarOrange} />
-                <Text style={styles.statLabel}>Daily Average</Text>
-                <Text style={styles.statValue}>{averageDaily.toFixed(2)} kWh</Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Daily Average</Text>
+                <Text style={[styles.statValue, { color: colors.text }]}>{averageDaily.toFixed(2)} kWh</Text>
               </View>
-              <View style={styles.statCard}>
+              <View style={[styles.statCard, { backgroundColor: colors.card }]}>
                 <TrendingUp size={24} color={colors.success} />
-                <Text style={styles.statLabel}>Best Day</Text>
-                <Text style={styles.statValue}>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Best Day</Text>
+                <Text style={[styles.statValue, { color: colors.text }]}>
                   {bestDayEnergy.toFixed(2)} kWh
                 </Text>
               </View>
             </View>
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Daily Performance Trend</Text>
-              <View style={styles.chartContainer}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Daily Performance Trend</Text>
+              <View style={[styles.chartContainer, { backgroundColor: colors.card }]}>
                 <LineChart data={chartData} height={300} color={colors.solarOrange} />
               </View>
             </View>
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Performance Insights</Text>
-              <View style={styles.insightCard}>
-                <Text style={styles.insightTitle}>Consistent Production</Text>
-                <Text style={styles.insightText}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Performance Insights</Text>
+              <View style={[styles.insightCard, { backgroundColor: colors.card }]}>
+                <Text style={[styles.insightTitle, { color: colors.text }]}>Consistent Production</Text>
+                <Text style={[styles.insightText, { color: colors.textSecondary }]}>
                   Your solar system is performing well with an average of {averageDaily.toFixed(1)} kWh per day.
                 </Text>
               </View>
-              <View style={styles.insightCard}>
-                <Text style={styles.insightTitle}>Monthly Projection</Text>
-                <Text style={styles.insightText}>
+              <View style={[styles.insightCard, { backgroundColor: colors.card }]}>
+                <Text style={[styles.insightTitle, { color: colors.text }]}>Monthly Projection</Text>
+                <Text style={[styles.insightText, { color: colors.textSecondary }]}>
                   Based on current trends, you're on track to generate approximately {totalEnergy.toFixed(0)} kWh this month.
                 </Text>
               </View>
