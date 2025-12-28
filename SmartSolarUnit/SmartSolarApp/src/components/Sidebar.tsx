@@ -5,12 +5,13 @@ import { Home, BarChart3, User, LogOut, X } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSidebar } from '../contexts/SidebarContext';
 import { useAuth } from '../contexts/AuthContext';
-import Colors from '../constants/colors';
+import { useTheme } from '../contexts/ThemeContext';
 
 export default function Sidebar() {
   const { isOpen, closeSidebar } = useSidebar();
   const navigation = useNavigation<any>();
   const { user, logout } = useAuth();
+  const { colors } = useTheme();
   const slideAnim = useRef(new Animated.Value(280)).current;
 
   useEffect(() => {
@@ -67,31 +68,31 @@ export default function Sidebar() {
         />
         
         {/* Sidebar */}
-        <Animated.View style={[styles.sidebar, { transform: [{ translateX: slideAnim }] }]}>
+        <Animated.View style={[styles.sidebar, { backgroundColor: colors.primary }, { transform: [{ translateX: slideAnim }] }]}>
           <SafeAreaView style={styles.safeArea} edges={['top', 'right', 'bottom']}>
             {/* Header */}
             <View style={styles.header}>
               <View style={styles.headerContent}>
                 <Text style={styles.logo}>☀️</Text>
                 <View style={styles.headerText}>
-                  <Text style={styles.appName}>Solar Advisor</Text>
-                  <Text style={styles.appSubtitle}>IoT Platform</Text>
+                  <Text style={[styles.appName, { color: colors.white }]}>Solar Advisor</Text>
+                  <Text style={[styles.appSubtitle, { color: colors.gray }]}>IoT Platform</Text>
                 </View>
               </View>
               <TouchableOpacity onPress={closeSidebar} style={styles.closeButton}>
-                <X size={24} color={Colors.white} />
+                <X size={24} color={colors.white} />
               </TouchableOpacity>
             </View>
 
             {/* User Info */}
             <View style={styles.userSection}>
-              <View style={styles.userAvatar}>
-                <User size={32} color={Colors.white} />
+              <View style={[styles.userAvatar, { backgroundColor: `rgba(255, 255, 255, 0.2)` }]}>
+                <User size={32} color={colors.white} />
               </View>
-              <Text style={styles.userName} numberOfLines={1}>
+              <Text style={[styles.userName, { color: colors.white }]} numberOfLines={1}>
                 {user?.customerName || user?.email || 'User'}
               </Text>
-              <Text style={styles.userEmail} numberOfLines={1}>
+              <Text style={[styles.userEmail, { color: colors.gray }]} numberOfLines={1}>
                 {user?.email || ''}
               </Text>
             </View>
@@ -106,8 +107,8 @@ export default function Sidebar() {
                     style={styles.menuItem}
                     onPress={() => handleNavigate(item.screen)}
                   >
-                    <Icon size={24} color={Colors.white} />
-                    <Text style={styles.menuItemText}>{item.label}</Text>
+                    <Icon size={24} color={colors.white} />
+                    <Text style={[styles.menuItemText, { color: colors.white }]}>{item.label}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -116,11 +117,11 @@ export default function Sidebar() {
             {/* Logout Button */}
             <View style={styles.footer}>
               <TouchableOpacity
-                style={styles.logoutButton}
+                style={[styles.logoutButton, { backgroundColor: `rgba(239, 68, 68, 0.1)` }]}
                 onPress={handleLogout}
               >
-                <LogOut size={24} color={Colors.danger} />
-                <Text style={styles.logoutText}>Logout</Text>
+                <LogOut size={24} color={colors.danger} />
+                <Text style={[styles.logoutText, { color: colors.danger }]}>Logout</Text>
               </TouchableOpacity>
             </View>
           </SafeAreaView>
@@ -141,7 +142,6 @@ const styles = StyleSheet.create({
   },
   sidebar: {
     width: 280,
-    backgroundColor: Colors.primary,
     shadowColor: '#000',
     shadowOffset: { width: -2, height: 0 },
     shadowOpacity: 0.3,
@@ -179,11 +179,9 @@ const styles = StyleSheet.create({
   appName: {
     fontSize: 20,
     fontWeight: '700' as const,
-    color: Colors.white,
   },
   appSubtitle: {
     fontSize: 12,
-    color: Colors.gray,
     marginTop: 2,
   },
   closeButton: {
@@ -200,7 +198,6 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
@@ -208,12 +205,10 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 18,
     fontWeight: '600' as const,
-    color: Colors.white,
     marginBottom: 4,
   },
   userEmail: {
     fontSize: 14,
-    color: Colors.gray,
   },
   menu: {
     flex: 1,
@@ -229,7 +224,6 @@ const styles = StyleSheet.create({
   menuItemText: {
     fontSize: 16,
     fontWeight: '500' as const,
-    color: Colors.white,
   },
   footer: {
     paddingHorizontal: 20,
@@ -245,12 +239,10 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 8,
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
   },
   logoutText: {
     fontSize: 16,
     fontWeight: '600' as const,
-    color: Colors.danger,
   },
 });
 

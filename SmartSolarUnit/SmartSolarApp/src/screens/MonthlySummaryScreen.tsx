@@ -1,14 +1,15 @@
 import React, { useMemo } from 'react';
+import { useTheme } from '../contexts/ThemeContext';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute } from '@react-navigation/native';
 import { TrendingUp, Zap, Calendar, AlertCircle } from 'lucide-react-native';
 import { LineChart } from '../components/Charts';
 import { useSolarSite, useMonthlyPerformance } from '../hooks/useBackendAPI';
-import Colors from '../constants/colors';
 
 export default function MonthlySummaryScreen() {
   const route = useRoute<any>();
+  const { colors } = useTheme();
   const { id, customerName } = route.params || {};
  
   const currentDate = new Date();
@@ -43,36 +44,36 @@ export default function MonthlySummaryScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <View style={styles.monthBadge}>
-            <Calendar size={20} color={Colors.white} />
+            <Calendar size={20} color={colors.white} />
             <Text style={styles.monthText}>{currentMonth}</Text>
           </View>
         </View>
         {loading && dailyData.length === 0 ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={Colors.solarOrange} />
+            <ActivityIndicator size="large" color={colors.solarOrange} />
             <Text style={styles.loadingText}>Loading monthly summary...</Text>
           </View>
         ) : error ? (
           <View style={styles.errorContainer}>
-            <AlertCircle size={48} color={Colors.danger} />
+            <AlertCircle size={48} color={colors.danger} />
             <Text style={styles.errorText}>{error}</Text>
           </View>
         ) : (
           <>
             <View style={styles.totalCard}>
-              <TrendingUp size={32} color={Colors.success} />
+              <TrendingUp size={32} color={colors.success} />
               <Text style={styles.totalLabel}>Total Energy This Month</Text>
               <Text style={styles.totalValue}>{totalEnergy.toFixed(2)}</Text>
               <Text style={styles.totalUnit}>kWh</Text>
             </View>
             <View style={styles.statsContainer}>
               <View style={styles.statCard}>
-                <Zap size={24} color={Colors.solarOrange} />
+                <Zap size={24} color={colors.solarOrange} />
                 <Text style={styles.statLabel}>Daily Average</Text>
                 <Text style={styles.statValue}>{averageDaily.toFixed(2)} kWh</Text>
               </View>
               <View style={styles.statCard}>
-                <TrendingUp size={24} color={Colors.success} />
+                <TrendingUp size={24} color={colors.success} />
                 <Text style={styles.statLabel}>Best Day</Text>
                 <Text style={styles.statValue}>
                   {bestDayEnergy.toFixed(2)} kWh
@@ -82,7 +83,7 @@ export default function MonthlySummaryScreen() {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Daily Performance Trend</Text>
               <View style={styles.chartContainer}>
-                <LineChart data={chartData} height={300} color={Colors.solarOrange} />
+                <LineChart data={chartData} height={300} color={colors.solarOrange} />
               </View>
             </View>
             <View style={styles.section}>
@@ -110,10 +111,9 @@ export default function MonthlySummaryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    
   },
   header: {
-    backgroundColor: Colors.primary,
     padding: 20,
     alignItems: 'center',
   },
@@ -129,7 +129,6 @@ const styles = StyleSheet.create({
   monthText: {
     fontSize: 18,
     fontWeight: '600' as const,
-    color: Colors.white,
   },
   loadingContainer: {
     flex: 1,
@@ -140,7 +139,6 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: Colors.textSecondary,
   },
   errorContainer: {
     flex: 1,
@@ -151,12 +149,10 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 16,
-    color: Colors.danger,
     textAlign: 'center',
   },
   totalCard: {
     margin: 20,
-    backgroundColor: Colors.card,
     borderRadius: 16,
     padding: 32,
     alignItems: 'center',
@@ -168,19 +164,16 @@ const styles = StyleSheet.create({
   },
   totalLabel: {
     fontSize: 14,
-    color: Colors.textSecondary,
     marginTop: 12,
     marginBottom: 12,
   },
   totalValue: {
     fontSize: 48,
     fontWeight: '700' as const,
-    color: Colors.solarOrange,
     marginBottom: 4,
   },
   totalUnit: {
     fontSize: 18,
-    color: Colors.textSecondary,
   },
   statsContainer: {
     flexDirection: 'row',
@@ -190,7 +183,6 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: Colors.card,
     borderRadius: 12,
     padding: 20,
     alignItems: 'center',
@@ -202,7 +194,6 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 12,
-    color: Colors.textSecondary,
     marginTop: 8,
     marginBottom: 4,
     textAlign: 'center',
@@ -210,7 +201,6 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 16,
     fontWeight: '600' as const,
-    color: Colors.text,
     textAlign: 'center',
   },
   section: {
@@ -219,11 +209,9 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700' as const,
-    color: Colors.text,
     marginBottom: 16,
   },
   chartContainer: {
-    backgroundColor: Colors.card,
     borderRadius: 12,
     padding: 8,
     shadowColor: '#000',
@@ -233,7 +221,6 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   insightCard: {
-    backgroundColor: Colors.card,
     borderRadius: 12,
     padding: 20,
     marginBottom: 12,
@@ -246,12 +233,10 @@ const styles = StyleSheet.create({
   insightTitle: {
     fontSize: 16,
     fontWeight: '600' as const,
-    color: Colors.text,
     marginBottom: 8,
   },
   insightText: {
     fontSize: 14,
-    color: Colors.textSecondary,
     lineHeight: 20,
   },
 });

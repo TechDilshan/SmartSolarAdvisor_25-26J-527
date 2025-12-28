@@ -2,7 +2,7 @@ import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
-import Colors from '../constants/colors';
+import { useTheme } from '../contexts/ThemeContext';
 import AuthStack from './AuthStack';
 import TabNavigator from './TabNavigator';
 import PerformanceStack from './PerformanceStack';
@@ -12,11 +12,12 @@ const Stack = createStackNavigator();
 
 export default function RootNavigator() {
   const { isAuthenticated, isLoading } = useAuth();
+  const { colors } = useTheme();
 
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.solarOrange} />
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.solarOrange} />
       </View>
     );
   }
@@ -31,9 +32,9 @@ export default function RootNavigator() {
         screenOptions={{
           headerBackTitle: "Back",
           headerStyle: {
-            backgroundColor: Colors.primary,
+            backgroundColor: colors.primary,
           },
-          headerTintColor: Colors.white,
+          headerTintColor: colors.white,
           headerTitleStyle: {
             fontWeight: '600' as const,
           },
@@ -52,6 +53,5 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: Colors.background,
   },
 });

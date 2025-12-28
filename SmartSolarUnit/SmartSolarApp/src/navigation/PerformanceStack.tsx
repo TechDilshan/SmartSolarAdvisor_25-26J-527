@@ -3,7 +3,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import PerformanceScreen from '../screens/PerformanceScreen';
 import DailyPerformanceScreen from '../screens/DailyPerformanceScreen';
 import MonthlySummaryScreen from '../screens/MonthlySummaryScreen';
-import Colors from '../constants/colors';
+import { useTheme } from '../contexts/ThemeContext';
 
 export type PerformanceStackParamList = {
   Performance: { id: string; title: string; customerName?: string };
@@ -14,13 +14,14 @@ export type PerformanceStackParamList = {
 const Stack = createStackNavigator<PerformanceStackParamList>();
 
 export default function PerformanceStack() {
+  const { colors } = useTheme();
   return (
     <Stack.Navigator 
       screenOptions={{
         headerStyle: {
-          backgroundColor: Colors.primary,
+          backgroundColor: colors.primary,
         },
-        headerTintColor: Colors.white,
+        headerTintColor: colors.white,
         headerTitleStyle: {
           fontWeight: '600' as const,
         },

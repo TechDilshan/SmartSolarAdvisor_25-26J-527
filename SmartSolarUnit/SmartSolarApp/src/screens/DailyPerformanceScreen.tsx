@@ -5,11 +5,12 @@ import { useRoute } from '@react-navigation/native';
 import { Calendar, ChevronLeft, ChevronRight, AlertCircle, Sun, Thermometer, Droplets, Wind, CloudRain, Zap } from 'lucide-react-native';
 import { BarChart, LineChart } from '../components/Charts';
 import { useSolarSite, useDailyPerformance, useDaily5MinuteIntervals, useDailySensorData } from '../hooks/useBackendAPI';
-import Colors from '../constants/colors';
+import { useTheme } from '../contexts/ThemeContext';
 
 export default function DailyPerformanceScreen() {
   const route = useRoute<any>();
   const { id, customerName } = route.params || {};
+  const { colors } = useTheme();
   const [selectedDate, setSelectedDate] = useState(new Date());
 
   const { site } = useSolarSite(id, 10000);
@@ -120,11 +121,11 @@ export default function DailyPerformanceScreen() {
               style={styles.dateButton}
               onPress={() => changeDate(-1)}
             >
-              <ChevronLeft size={24} color={Colors.white} />
+              <ChevronLeft size={24} color={colors.white} />
             </TouchableOpacity>
            
             <View style={styles.dateInfo}>
-              <Calendar size={20} color={Colors.solarOrange} />
+              <Calendar size={20} color={colors.solarOrange} />
               <Text style={styles.dateText}>
                 {selectedDate.toLocaleDateString('en-US', {
                   weekday: 'short',
@@ -138,18 +139,18 @@ export default function DailyPerformanceScreen() {
               style={styles.dateButton}
               onPress={() => changeDate(1)}
             >
-              <ChevronRight size={24} color={Colors.white} />
+              <ChevronRight size={24} color={colors.white} />
             </TouchableOpacity>
           </View>
         </View>
         {loading && hourlyData.length === 0 ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={Colors.solarOrange} />
+            <ActivityIndicator size="large" color={colors.solarOrange} />
             <Text style={styles.loadingText}>Loading daily performance...</Text>
           </View>
         ) : error ? (
           <View style={styles.errorContainer}>
-            <AlertCircle size={48} color={Colors.danger} />
+            <AlertCircle size={48} color={colors.danger} />
             <Text style={styles.errorText}>{error}</Text>
           </View>
         ) : (
@@ -162,7 +163,7 @@ export default function DailyPerformanceScreen() {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Hourly Breakdown</Text>
               <View style={styles.chartContainer}>
-                <BarChart data={chartData} height={300} color={Colors.solarOrange} />
+                <BarChart data={chartData} height={300} color={colors.solarOrange} />
               </View>
             </View>
             <View style={styles.section}>
@@ -192,46 +193,46 @@ export default function DailyPerformanceScreen() {
                   {/* Irradiance Chart */}
                   <View style={styles.chartContainer}>
                     <View style={styles.chartHeader}>
-                      <Sun size={20} color={Colors.solarOrange} />
+                      <Sun size={20} color={colors.solarOrange} />
                       <Text style={styles.chartTitle}>Solar Irradiance</Text>
                     </View>
-                    <LineChart data={irradianceChartData} color={Colors.solarOrange} unit=" lux" height={200} />
+                    <LineChart data={irradianceChartData} color={colors.solarOrange} unit=" lux" height={200} />
                   </View>
 
                   {/* Temperature Chart */}
                   <View style={styles.chartContainer}>
                     <View style={styles.chartHeader}>
-                      <Thermometer size={20} color={Colors.danger} />
+                      <Thermometer size={20} color={colors.danger} />
                       <Text style={styles.chartTitle}>Temperature</Text>
                     </View>
-                    <LineChart data={tempHumidityChartData} color={Colors.danger} unit=" °C" height={200} />
+                    <LineChart data={tempHumidityChartData} color={colors.danger} unit=" °C" height={200} />
                   </View>
 
                   {/* Humidity Chart */}
                   <View style={styles.chartContainer}>
                     <View style={styles.chartHeader}>
-                      <Droplets size={20} color={Colors.success} />
+                      <Droplets size={20} color={colors.success} />
                       <Text style={styles.chartTitle}>Humidity</Text>
                     </View>
-                    <LineChart data={humidityChartData} color={Colors.success} unit=" %" height={200} />
+                    <LineChart data={humidityChartData} color={colors.success} unit=" %" height={200} />
                   </View>
 
                   {/* Dust Level Chart */}
                   <View style={styles.chartContainer}>
                     <View style={styles.chartHeader}>
-                      <Wind size={20} color={Colors.warning} />
+                      <Wind size={20} color={colors.warning} />
                       <Text style={styles.chartTitle}>Dust Level</Text>
                     </View>
-                    <LineChart data={dustRainChartData} color={Colors.warning} unit=" mg/m³" height={200} />
+                    <LineChart data={dustRainChartData} color={colors.warning} unit=" mg/m³" height={200} />
                   </View>
 
                   {/* Rain Level Chart */}
                   <View style={styles.chartContainer}>
                     <View style={styles.chartHeader}>
-                      <CloudRain size={20} color={Colors.primary} />
+                      <CloudRain size={20} color={colors.primary} />
                       <Text style={styles.chartTitle}>Rain Level</Text>
                     </View>
-                    <LineChart data={rainChartData} color={Colors.primary} unit=" %" height={200} />
+                    <LineChart data={rainChartData} color={colors.primary} unit=" %" height={200} />
                   </View>
                 </View>
               </>
@@ -243,10 +244,10 @@ export default function DailyPerformanceScreen() {
                 <Text style={styles.sectionTitle}>5-Minute Energy Predictions</Text>
                 <View style={styles.chartContainer}>
                   <View style={styles.chartHeader}>
-                    <Zap size={20} color={Colors.success} />
+                    <Zap size={20} color={colors.success} />
                     <Text style={styles.chartTitle}>Predicted Energy (Wh)</Text>
                   </View>
-                  <LineChart data={predictionsChartData} color={Colors.success} unit=" Wh" height={200} />
+                  <LineChart data={predictionsChartData} color={colors.success} unit=" Wh" height={200} />
                 </View>
               </View>
             )}
@@ -313,10 +314,8 @@ export default function DailyPerformanceScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
   },
   header: {
-    backgroundColor: Colors.primary,
     padding: 20,
   },
   dateSelector: {
@@ -336,7 +335,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: Colors.card,
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 12,
@@ -344,7 +342,6 @@ const styles = StyleSheet.create({
   dateText: {
     fontSize: 16,
     fontWeight: '600' as const,
-    color: Colors.text,
   },
   loadingContainer: {
     flex: 1,
@@ -355,7 +352,6 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: Colors.textSecondary,
   },
   errorContainer: {
     flex: 1,
@@ -366,12 +362,10 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 16,
-    color: Colors.danger,
     textAlign: 'center',
   },
   totalCard: {
     margin: 20,
-    backgroundColor: Colors.card,
     borderRadius: 16,
     padding: 32,
     alignItems: 'center',
@@ -383,18 +377,15 @@ const styles = StyleSheet.create({
   },
   totalLabel: {
     fontSize: 14,
-    color: Colors.textSecondary,
     marginBottom: 12,
   },
   totalValue: {
     fontSize: 48,
     fontWeight: '700' as const,
-    color: Colors.solarOrange,
     marginBottom: 4,
   },
   totalUnit: {
     fontSize: 18,
-    color: Colors.textSecondary,
   },
   section: {
     padding: 20,
@@ -402,11 +393,9 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700' as const,
-    color: Colors.text,
     marginBottom: 16,
   },
   chartContainer: {
-    backgroundColor: Colors.card,
     borderRadius: 12,
     padding: 8,
     shadowColor: '#000',
@@ -421,7 +410,6 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: Colors.card,
     borderRadius: 12,
     padding: 20,
     alignItems: 'center',
@@ -433,13 +421,11 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 12,
-    color: Colors.textSecondary,
     marginBottom: 8,
   },
   statValue: {
     fontSize: 20,
     fontWeight: '700' as const,
-    color: Colors.text,
   },
   chartHeader: {
     flexDirection: 'row',
@@ -451,10 +437,8 @@ const styles = StyleSheet.create({
   chartTitle: {
     fontSize: 14,
     fontWeight: '600' as const,
-    color: Colors.text,
   },
   tableContainer: {
-    backgroundColor: Colors.card,
     borderRadius: 12,
     padding: 12,
     shadowColor: '#000',
@@ -465,18 +449,15 @@ const styles = StyleSheet.create({
   },
   tableHeader: {
     flexDirection: 'row',
-    backgroundColor: Colors.background,
     paddingVertical: 12,
     paddingHorizontal: 8,
     borderRadius: 8,
     marginBottom: 4,
     borderBottomWidth: 2,
-    borderBottomColor: Colors.border,
   },
   tableHeaderText: {
     fontSize: 11,
     fontWeight: '700' as const,
-    color: Colors.textSecondary,
     textAlign: 'center',
   },
   tableBody: {
@@ -487,11 +468,9 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 8,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
   },
   tableCell: {
     fontSize: 11,
-    color: Colors.text,
     textAlign: 'center',
   },
 });

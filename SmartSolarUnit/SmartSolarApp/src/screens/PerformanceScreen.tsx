@@ -6,7 +6,7 @@ import { Thermometer, Droplets, Wind, CloudRain, Sun, TrendingUp, Zap, Calendar,
 import { LineChart } from '../components/Charts';
 import { useSolarSite, useSensorData, usePredictionData } from '../hooks/useBackendAPI';
 import { SensorData, PredictionData } from '../types';
-import Colors from '../constants/colors';
+import { useTheme } from '../contexts/ThemeContext';
 
 type SensorType = 'irradiance' | 'temperature' | 'humidity' | 'dustLevel' | 'rainLevel';
 
@@ -14,6 +14,7 @@ export default function PerformanceScreen() {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
   const { id, title, customerName } = route.params || {};
+  const { colors } = useTheme();
 
   const { site, loading: siteLoading } = useSolarSite(id, 10000); // Poll every 10 seconds
   const { data: sensorData, loading: sensorLoading } = useSensorData(site?.deviceId || null, 5000); // Poll every 5 seconds
@@ -72,22 +73,22 @@ export default function PerformanceScreen() {
     unit: string,
     status: 'normal' | 'warning' = 'normal'
   ) => (
-    <View style={[styles.metricCard, status === 'warning' && styles.metricWarning]}>
+    <View style={[styles.metricCard, { backgroundColor: colors.card }, status === 'warning' && { borderWidth: 2, borderColor: colors.warning }]}>
       <View style={styles.metricIcon}>{icon}</View>
-      <Text style={styles.metricLabel}>{label}</Text>
+      <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>{label}</Text>
       <View style={styles.metricValueRow}>
-        <Text style={styles.metricValue}>{value}</Text>
-        <Text style={styles.metricUnit}>{unit}</Text>
+        <Text style={[styles.metricValue, { color: colors.text }]}>{value}</Text>
+        <Text style={[styles.metricUnit, { color: colors.textSecondary }]}>{unit}</Text>
       </View>
     </View>
   );
 
   if (isLoading && !site) {
     return (
-      <SafeAreaView style={styles.container} edges={['bottom']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom']}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.solarOrange} />
-          <Text style={styles.loadingText}>Loading performance data...</Text>
+          <ActivityIndicator size="large" color={colors.solarOrange} />
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading performance data...</Text>
         </View>
       </SafeAreaView>
     );
@@ -95,66 +96,66 @@ export default function PerformanceScreen() {
 
   if (!site) {
     return (
-      <SafeAreaView style={styles.container} edges={['bottom']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom']}>
         <View style={styles.errorContainer}>
-          <AlertCircle size={48} color={Colors.danger} />
-          <Text style={styles.errorText}>System not found</Text>
+          <AlertCircle size={48} color={colors.danger} />
+          <Text style={[styles.errorText, { color: colors.danger }]}>System not found</Text>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom']}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
+        <View style={[styles.header, { backgroundColor: colors.primary }]}>
           <View style={styles.headerTop}>
             <View>
-              <Text style={styles.systemName}>{site.siteName || title}</Text>
-              <Text style={styles.systemCapacity}>{site.systemCapacity} kW System</Text>
+              <Text style={[styles.systemName, { color: colors.white }]}>{site.siteName || title}</Text>
+              <Text style={[styles.systemCapacity, { color: colors.gray }]}>{site.systemCapacity} kW System</Text>
             </View>
-            <View style={[styles.statusBadge, isOnline ? styles.statusOnline : styles.statusOffline]}>
-              {isOnline && <Animated.View style={[styles.statusDot, { transform: [{ scale: pulseAnim }] }]} />}
-              <Text style={styles.statusText}>{isOnline ? 'Online' : 'Offline'}</Text>
+            <View style={[styles.statusBadge, { backgroundColor: isOnline ? colors.success : colors.gray }]}>
+              {isOnline && <Animated.View style={[styles.statusDot, { backgroundColor: colors.white }, { transform: [{ scale: pulseAnim }] }]} />}
+              <Text style={[styles.statusText, { color: colors.white }]}>{isOnline ? 'Online' : 'Offline'}</Text>
             </View>
           </View>
           {latestSensor && (
-            <Text style={styles.lastUpdated}>
+            <Text style={[styles.lastUpdated, { color: colors.gray }]}>
               Last updated: {latestSensor.timestamp.toLocaleTimeString()}
             </Text>
           )}
         </View>
         {latestSensor && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Real-Time Sensors</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Real-Time Sensors</Text>
             <View style={styles.metricsGrid}>
               {renderMetricCard(
-                <Sun size={20} color={Colors.solarOrange} />,
+                <Sun size={20} color={colors.solarOrange} />,
                 'Irradiance',
                 latestSensor.irradiance.toFixed(0),
                 'lux'
               )}
               {renderMetricCard(
-                <Thermometer size={20} color={Colors.danger} />,
+                <Thermometer size={20} color={colors.danger} />,
                 'Temperature',
                 latestSensor.temperature.toFixed(1),
                 '°C'
               )}
               {renderMetricCard(
-                <Droplets size={20} color={Colors.success} />,
+                <Droplets size={20} color={colors.success} />,
                 'Humidity',
                 latestSensor.humidity.toFixed(0),
                 '%'
               )}
               {renderMetricCard(
-                <Wind size={20} color={Colors.warning} />,
+                <Wind size={20} color={colors.warning} />,
                 'Dust Level',
                 latestSensor.dustLevel.toFixed(1),
                 'mg/m³',
                 latestSensor.dustLevel > 4 ? 'warning' : 'normal'
               )}
               {renderMetricCard(
-                <CloudRain size={20} color={Colors.primary} />,
+                <CloudRain size={20} color={colors.primary} />,
                 'Rain Level',
                 latestSensor.rainLevel.toFixed(1),
                 '%'
@@ -164,15 +165,15 @@ export default function PerformanceScreen() {
         )}
         {sensorData.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Sensor Chart</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Sensor Chart</Text>
             <View style={styles.chartControls}>
               {(['irradiance', 'temperature', 'humidity', 'dustLevel', 'rainLevel'] as SensorType[]).map(type => (
                 <TouchableOpacity
                   key={type}
-                  style={[styles.chartButton, selectedSensor === type && styles.chartButtonActive]}
+                  style={[styles.chartButton, { backgroundColor: selectedSensor === type ? colors.solarOrange : colors.lightGray }]}
                   onPress={() => setSelectedSensor(type)}
                 >
-                  <Text style={[styles.chartButtonText, selectedSensor === type && styles.chartButtonTextActive]}>
+                  <Text style={[styles.chartButtonText, { color: selectedSensor === type ? colors.white : colors.text }]}>
                     {type === 'irradiance' ? 'Sun' :
                      type === 'temperature' ? 'Temp' :
                      type === 'humidity' ? 'Humid' :
@@ -181,10 +182,10 @@ export default function PerformanceScreen() {
                 </TouchableOpacity>
               ))}
             </View>
-            <View style={styles.chartContainer}>
+            <View style={[styles.chartContainer, { backgroundColor: colors.card }]}>
               <LineChart 
                 data={chartData} 
-                color={Colors.solarOrange}
+                color={colors.solarOrange}
                 unit={selectedSensor === 'irradiance' ? ' lux' : 
                       selectedSensor === 'temperature' ? ' °C' :
                       selectedSensor === 'humidity' ? ' %' :
@@ -195,25 +196,25 @@ export default function PerformanceScreen() {
         )}
         {predictions.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>ML Predicted Energy Output</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>ML Predicted Energy Output</Text>
             <View style={styles.energyCards}>
-              <View style={styles.energyCard}>
-                <Zap size={24} color={Colors.solarOrange} />
-                <Text style={styles.energyLabel}>Today</Text>
-                <Text style={styles.energyValue}>{dailyTotal.toFixed(2)}</Text>
-                <Text style={styles.energyUnit}>kWh</Text>
+              <View style={[styles.energyCard, { backgroundColor: colors.card }]}>
+                <Zap size={24} color={colors.solarOrange} />
+                <Text style={[styles.energyLabel, { color: colors.textSecondary }]}>Today</Text>
+                <Text style={[styles.energyValue, { color: colors.text }]}>{dailyTotal.toFixed(2)}</Text>
+                <Text style={[styles.energyUnit, { color: colors.textSecondary }]}>kWh</Text>
               </View>
-              <View style={styles.energyCard}>
-                <TrendingUp size={24} color={Colors.success} />
-                <Text style={styles.energyLabel}>This Month</Text>
-                <Text style={styles.energyValue}>{monthlyTotal.toFixed(2)}</Text>
-                <Text style={styles.energyUnit}>kWh</Text>
+              <View style={[styles.energyCard, { backgroundColor: colors.card }]}>
+                <TrendingUp size={24} color={colors.success} />
+                <Text style={[styles.energyLabel, { color: colors.textSecondary }]}>This Month</Text>
+                <Text style={[styles.energyValue, { color: colors.text }]}>{monthlyTotal.toFixed(2)}</Text>
+                <Text style={[styles.energyUnit, { color: colors.textSecondary }]}>kWh</Text>
               </View>
             </View>
-            <View style={styles.chartContainer}>
+            <View style={[styles.chartContainer, { backgroundColor: colors.card }]}>
               <LineChart 
                 data={predictionChartData} 
-                color={Colors.success}
+                color={colors.success}
                 unit=" kWh"
               />
             </View>
@@ -221,18 +222,18 @@ export default function PerformanceScreen() {
         )}
         <View style={styles.navigationButtons}>
           <TouchableOpacity
-            style={styles.navButton}
+            style={[styles.navButton, { backgroundColor: colors.primary }]}
             onPress={() => navigation.navigate('Daily', { id, customerName: customerName || site.customerName })}
           >
-            <Calendar size={20} color={Colors.white} />
-            <Text style={styles.navButtonText}>Daily Performance</Text>
+            <Calendar size={20} color={colors.white} />
+            <Text style={[styles.navButtonText, { color: colors.white }]}>Daily Performance</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.navButton}
+            style={[styles.navButton, { backgroundColor: colors.primary }]}
             onPress={() => navigation.navigate('Monthly', { id, customerName: customerName || site.customerName })}
           >
-            <TrendingUp size={20} color={Colors.white} />
-            <Text style={styles.navButtonText}>Monthly Summary</Text>
+            <TrendingUp size={20} color={colors.white} />
+            <Text style={[styles.navButtonText, { color: colors.white }]}>Monthly Summary</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -243,7 +244,6 @@ export default function PerformanceScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
   },
   loadingContainer: {
     flex: 1,
@@ -253,7 +253,6 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: Colors.textSecondary,
   },
   errorContainer: {
     flex: 1,
@@ -263,11 +262,9 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 18,
-    color: Colors.danger,
     fontWeight: '600' as const,
   },
   header: {
-    backgroundColor: Colors.primary,
     padding: 20,
     paddingTop: 0,
   },
@@ -280,12 +277,10 @@ const styles = StyleSheet.create({
   systemName: {
     fontSize: 24,
     fontWeight: '700' as const,
-    color: Colors.white,
     marginBottom: 4,
   },
   systemCapacity: {
     fontSize: 14,
-    color: Colors.gray,
   },
   statusBadge: {
     flexDirection: 'row',
@@ -296,25 +291,20 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   statusOnline: {
-    backgroundColor: Colors.success,
   },
   statusOffline: {
-    backgroundColor: Colors.gray,
   },
   statusDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: Colors.white,
   },
   statusText: {
     fontSize: 12,
     fontWeight: '600' as const,
-    color: Colors.white,
   },
   lastUpdated: {
     fontSize: 12,
-    color: Colors.gray,
   },
   section: {
     padding: 20,
@@ -322,7 +312,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700' as const,
-    color: Colors.text,
     marginBottom: 16,
   },
   metricsGrid: {
@@ -332,7 +321,6 @@ const styles = StyleSheet.create({
   },
   metricCard: {
     width: '48%',
-    backgroundColor: Colors.card,
     borderRadius: 12,
     padding: 16,
     shadowColor: '#000',
@@ -343,14 +331,12 @@ const styles = StyleSheet.create({
   },
   metricWarning: {
     borderWidth: 2,
-    borderColor: Colors.warning,
   },
   metricIcon: {
     marginBottom: 8,
   },
   metricLabel: {
     fontSize: 12,
-    color: Colors.textSecondary,
     marginBottom: 8,
   },
   metricValueRow: {
@@ -361,11 +347,9 @@ const styles = StyleSheet.create({
   metricValue: {
     fontSize: 24,
     fontWeight: '700' as const,
-    color: Colors.text,
   },
   metricUnit: {
     fontSize: 14,
-    color: Colors.textSecondary,
   },
   chartControls: {
     flexDirection: 'row',
@@ -376,21 +360,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
-    backgroundColor: Colors.lightGray,
   },
   chartButtonActive: {
-    backgroundColor: Colors.solarOrange,
   },
   chartButtonText: {
     fontSize: 12,
     fontWeight: '600' as const,
-    color: Colors.text,
   },
   chartButtonTextActive: {
-    color: Colors.white,
   },
   chartContainer: {
-    backgroundColor: Colors.card,
     borderRadius: 12,
     padding: 0,
     shadowColor: '#000',
@@ -407,7 +386,6 @@ const styles = StyleSheet.create({
   },
   energyCard: {
     flex: 1,
-    backgroundColor: Colors.card,
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -419,18 +397,15 @@ const styles = StyleSheet.create({
   },
   energyLabel: {
     fontSize: 12,
-    color: Colors.textSecondary,
     marginTop: 8,
     marginBottom: 4,
   },
   energyValue: {
     fontSize: 28,
     fontWeight: '700' as const,
-    color: Colors.text,
   },
   energyUnit: {
     fontSize: 14,
-    color: Colors.textSecondary,
   },
   navigationButtons: {
     padding: 20,
@@ -442,13 +417,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 12,
-    backgroundColor: Colors.primary,
     borderRadius: 12,
     paddingVertical: 16,
   },
   navButtonText: {
     fontSize: 16,
     fontWeight: '600' as const,
-    color: Colors.white,
   },
 });

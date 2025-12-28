@@ -1,13 +1,11 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import Colors from '../constants/colors';
-
 interface HamburgerIconProps {
   size?: number;
   color?: string;
 }
 
-export default function HamburgerIcon({ size = 24, color = Colors.white }: HamburgerIconProps) {
+export default function HamburgerIcon({ size = 24, color = '#FFFFFF' }: HamburgerIconProps) {
   const lineWidth = size * 0.7;
   const lineHeight = 2;
   const lineSpacing = size * 0.25;

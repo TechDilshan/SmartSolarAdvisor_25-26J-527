@@ -5,13 +5,14 @@ import { BarChart3, TrendingUp, Zap, Sun, AlertCircle, Activity, X } from 'lucid
 import { useAuth } from '../contexts/AuthContext';
 import { useSolarSites, usePredictionData, useDailyEnergy30Days } from '../hooks/useBackendAPI';
 import { CandleChart } from '../components/Charts';
-import Colors from '../constants/colors';
 import { useSidebar } from '../contexts/SidebarContext';
 import HamburgerIcon from '../components/HamburgerIcon';
+import { useTheme } from '../contexts/ThemeContext';
 
 export default function CustomerAnalysisScreen() {
   const { user } = useAuth();
   const { openSidebar, closeSidebar, isOpen } = useSidebar();
+  const { colors } = useTheme();
   const { sites, loading, error, refetch } = useSolarSites(10000);
 
   // Calculate aggregated statistics across all sites
@@ -99,37 +100,37 @@ export default function CustomerAnalysisScreen() {
 
   if (loading && sites.length === 0) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Customer Analysis</Text>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+        <View style={[styles.header, { backgroundColor: colors.primary }]}>
+          <Text style={[styles.title, { color: colors.white }]}>Customer Analysis</Text>
           <TouchableOpacity onPress={isOpen ? closeSidebar : openSidebar} style={styles.menuButton}>
             {isOpen ? (
-              <X size={24} color={Colors.white} />
+              <X size={24} color={colors.white} />
             ) : (
-              <HamburgerIcon size={24} color={Colors.white} />
+              <HamburgerIcon size={24} color={colors.white} />
             )}
           </TouchableOpacity>
         </View>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.solarOrange} />
-          <Text style={styles.loadingText}>Loading analysis data...</Text>
+          <ActivityIndicator size="large" color={colors.solarOrange} />
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading analysis data...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+      <View style={[styles.header, { backgroundColor: colors.primary }]}>
         <View style={styles.headerTextContainer}>
-          <Text style={styles.title}>Customer Analysis</Text>
-          <Text style={styles.subtitle}>{user?.customerName || user?.email || 'Customer'}</Text>
+          <Text style={[styles.title, { color: colors.white }]}>Customer Analysis</Text>
+          <Text style={[styles.subtitle, { color: colors.gray }]}>{user?.customerName || user?.email || 'Customer'}</Text>
         </View>
         <TouchableOpacity onPress={isOpen ? closeSidebar : openSidebar} style={styles.menuButton}>
           {isOpen ? (
-            <X size={24} color={Colors.white} />
+            <X size={24} color={colors.white} />
           ) : (
-            <HamburgerIcon size={24} color={Colors.white} />
+            <HamburgerIcon size={24} color={colors.white} />
           )}
         </TouchableOpacity>
       </View>
@@ -141,41 +142,41 @@ export default function CustomerAnalysisScreen() {
           <RefreshControl
             refreshing={loading && sites.length > 0}
             onRefresh={refetch}
-            tintColor={Colors.solarOrange}
+            tintColor={colors.solarOrange}
           />
         }
       >
         {error && (
-          <View style={styles.errorContainer}>
-            <AlertCircle size={24} color={Colors.danger} />
-            <Text style={styles.errorText}>{error}</Text>
+          <View style={[styles.errorContainer, { backgroundColor: colors.card }]}>
+            <AlertCircle size={24} color={colors.danger} />
+            <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text>
           </View>
         )}
 
         {/* Customer Overview Card */}
-        <View style={styles.card}>
+        <View style={[styles.card, { backgroundColor: colors.card }]}>
           <View style={styles.cardHeader}>
             <View style={styles.cardTitleRow}>
-              <Activity size={24} color={Colors.solarOrange} />
-              <Text style={styles.cardTitle}>Overview</Text>
+              <Activity size={24} color={colors.solarOrange} />
+              <Text style={[styles.cardTitle, { color: colors.text }]}>Overview</Text>
             </View>
           </View>
           <View style={styles.overviewGrid}>
-            <View style={styles.overviewItem}>
-              <Text style={styles.overviewLabel}>Total Systems</Text>
-              <Text style={styles.overviewValue}>{aggregatedStats.totalSites}</Text>
+            <View style={[styles.overviewItem, { backgroundColor: colors.lightGray }]}>
+              <Text style={[styles.overviewLabel, { color: colors.textSecondary }]}>Total Systems</Text>
+              <Text style={[styles.overviewValue, { color: colors.text }]}>{aggregatedStats.totalSites}</Text>
             </View>
-            <View style={styles.overviewItem}>
-              <Text style={styles.overviewLabel}>Active Systems</Text>
-              <Text style={[styles.overviewValue, styles.activeValue]}>{aggregatedStats.activeSites}</Text>
+            <View style={[styles.overviewItem, { backgroundColor: colors.lightGray }]}>
+              <Text style={[styles.overviewLabel, { color: colors.textSecondary }]}>Active Systems</Text>
+              <Text style={[styles.overviewValue, { color: colors.success }]}>{aggregatedStats.activeSites}</Text>
             </View>
-            <View style={styles.overviewItem}>
-              <Text style={styles.overviewLabel}>Total Capacity</Text>
-              <Text style={styles.overviewValue}>{aggregatedStats.totalCapacity.toFixed(1)} kW</Text>
+            <View style={[styles.overviewItem, { backgroundColor: colors.lightGray }]}>
+              <Text style={[styles.overviewLabel, { color: colors.textSecondary }]}>Total Capacity</Text>
+              <Text style={[styles.overviewValue, { color: colors.text }]}>{aggregatedStats.totalCapacity.toFixed(1)} kW</Text>
             </View>
-            <View style={styles.overviewItem}>
-              <Text style={styles.overviewLabel}>Total Panels</Text>
-              <Text style={styles.overviewValue}>{aggregatedStats.totalPanels}</Text>
+            <View style={[styles.overviewItem, { backgroundColor: colors.lightGray }]}>
+              <Text style={[styles.overviewLabel, { color: colors.textSecondary }]}>Total Panels</Text>
+              <Text style={[styles.overviewValue, { color: colors.text }]}>{aggregatedStats.totalPanels}</Text>
             </View>
           </View>
         </View>
@@ -183,50 +184,50 @@ export default function CustomerAnalysisScreen() {
         {/* Energy Statistics */}
         {sites.length > 0 && (
           <View style={styles.statsContainer}>
-            <View style={styles.statCard}>
-              <Zap size={28} color={Colors.solarOrange} />
-              <Text style={styles.statLabel}>Today's Energy</Text>
-              <Text style={styles.statValue}>{dailyTotal.toFixed(2)}</Text>
-              <Text style={styles.statUnit}>kWh</Text>
+            <View style={[styles.statCard, { backgroundColor: colors.card }]}>
+              <Zap size={28} color={colors.solarOrange} />
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Today's Energy</Text>
+              <Text style={[styles.statValue, { color: colors.text }]}>{dailyTotal.toFixed(2)}</Text>
+              <Text style={[styles.statUnit, { color: colors.textSecondary }]}>kWh</Text>
             </View>
-            <View style={styles.statCard}>
-              <TrendingUp size={28} color={Colors.success} />
-              <Text style={styles.statLabel}>Monthly Energy</Text>
-              <Text style={styles.statValue}>{monthlyTotal.toFixed(2)}</Text>
-              <Text style={styles.statUnit}>kWh</Text>
+            <View style={[styles.statCard, { backgroundColor: colors.card }]}>
+              <TrendingUp size={28} color={colors.success} />
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Monthly Energy</Text>
+              <Text style={[styles.statValue, { color: colors.text }]}>{monthlyTotal.toFixed(2)}</Text>
+              <Text style={[styles.statUnit, { color: colors.textSecondary }]}>kWh</Text>
             </View>
           </View>
         )}
 
         {/* Performance Metrics */}
         {sites.length > 0 && (
-          <View style={styles.card}>
+          <View style={[styles.card, { backgroundColor: colors.card }]}>
             <View style={styles.cardHeader}>
               <View style={styles.cardTitleRow}>
-                <BarChart3 size={24} color={Colors.solarOrange} />
-                <Text style={styles.cardTitle}>Performance Metrics</Text>
+                <BarChart3 size={24} color={colors.solarOrange} />
+                <Text style={[styles.cardTitle, { color: colors.text }]}>Performance Metrics</Text>
               </View>
             </View>
             <View style={styles.metricsGrid}>
-              <View style={styles.metricItem}>
-                <Text style={styles.metricLabel}>Avg Daily Energy</Text>
-                <Text style={styles.metricValue}>{averageDailyEnergy.toFixed(2)}</Text>
-                <Text style={styles.metricUnit}>kWh/day</Text>
+              <View style={[styles.metricItem, { backgroundColor: colors.lightGray }]}>
+                <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Avg Daily Energy</Text>
+                <Text style={[styles.metricValue, { color: colors.text }]}>{averageDailyEnergy.toFixed(2)}</Text>
+                <Text style={[styles.metricUnit, { color: colors.textSecondary }]}>kWh/day</Text>
               </View>
-              <View style={styles.metricItem}>
-                <Text style={styles.metricLabel}>Peak Day</Text>
-                <Text style={styles.metricValue}>{performanceMetrics.peakDay.toFixed(2)}</Text>
-                <Text style={styles.metricUnit}>kWh</Text>
+              <View style={[styles.metricItem, { backgroundColor: colors.lightGray }]}>
+                <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Peak Day</Text>
+                <Text style={[styles.metricValue, { color: colors.text }]}>{performanceMetrics.peakDay.toFixed(2)}</Text>
+                <Text style={[styles.metricUnit, { color: colors.textSecondary }]}>kWh</Text>
               </View>
-              <View style={styles.metricItem}>
-                <Text style={styles.metricLabel}>System Efficiency</Text>
-                <Text style={styles.metricValue}>{performanceMetrics.avgEfficiency.toFixed(2)}</Text>
-                <Text style={styles.metricUnit}>kWh/kW</Text>
+              <View style={[styles.metricItem, { backgroundColor: colors.lightGray }]}>
+                <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>System Efficiency</Text>
+                <Text style={[styles.metricValue, { color: colors.text }]}>{performanceMetrics.avgEfficiency.toFixed(2)}</Text>
+                <Text style={[styles.metricUnit, { color: colors.textSecondary }]}>kWh/kW</Text>
               </View>
-              <View style={styles.metricItem}>
-                <Text style={styles.metricLabel}>Monthly Projection</Text>
-                <Text style={styles.metricValue}>{performanceMetrics.avgMonthlyProjection.toFixed(0)}</Text>
-                <Text style={styles.metricUnit}>kWh</Text>
+              <View style={[styles.metricItem, { backgroundColor: colors.lightGray }]}>
+                <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Monthly Projection</Text>
+                <Text style={[styles.metricValue, { color: colors.text }]}>{performanceMetrics.avgMonthlyProjection.toFixed(0)}</Text>
+                <Text style={[styles.metricUnit, { color: colors.textSecondary }]}>kWh</Text>
               </View>
             </View>
           </View>
@@ -234,18 +235,18 @@ export default function CustomerAnalysisScreen() {
 
         {/* 30-Day Energy Chart */}
         {sites.length > 0 && chartData.length > 0 && (
-          <View style={styles.chartSection}>
+          <View style={[styles.chartSection, { backgroundColor: colors.card }]}>
             <View style={styles.chartHeader}>
-              <Sun size={24} color={Colors.solarOrange} />
-              <Text style={styles.chartTitle}>Energy Generation Trend (30 Days)</Text>
+              <Sun size={24} color={colors.solarOrange} />
+              <Text style={[styles.chartTitle, { color: colors.text }]}>Energy Generation Trend (30 Days)</Text>
             </View>
-            <View style={styles.chartContainer}>
+            <View style={[styles.chartContainer, { backgroundColor: colors.background }]}>
               {chartLoading ? (
                 <View style={styles.chartLoading}>
-                  <ActivityIndicator size="large" color={Colors.solarOrange} />
+                  <ActivityIndicator size="large" color={colors.solarOrange} />
                 </View>
               ) : (
-                <CandleChart data={chartData} height={250} color={Colors.solarOrange} />
+                <CandleChart data={chartData} height={250} color={colors.solarOrange} />
               )}
             </View>
           </View>
@@ -253,31 +254,31 @@ export default function CustomerAnalysisScreen() {
 
         {/* System Status Summary */}
         {sites.length > 0 && (
-          <View style={styles.card}>
+          <View style={[styles.card, { backgroundColor: colors.card }]}>
             <View style={styles.cardHeader}>
               <View style={styles.cardTitleRow}>
-                <Sun size={24} color={Colors.solarOrange} />
-                <Text style={styles.cardTitle}>System Status</Text>
+                <Sun size={24} color={colors.solarOrange} />
+                <Text style={[styles.cardTitle, { color: colors.text }]}>System Status</Text>
               </View>
             </View>
             <View style={styles.statusContainer}>
               <View style={styles.statusRow}>
                 <View style={styles.statusItem}>
-                  <View style={[styles.statusIndicator, styles.statusOnline]} />
-                  <Text style={styles.statusLabel}>Active Systems</Text>
-                  <Text style={styles.statusValue}>{aggregatedStats.activeSites}</Text>
+                  <View style={[styles.statusIndicator, { backgroundColor: colors.success }]} />
+                  <Text style={[styles.statusLabel, { color: colors.textSecondary }]}>Active Systems</Text>
+                  <Text style={[styles.statusValue, { color: colors.text }]}>{aggregatedStats.activeSites}</Text>
                 </View>
                 <View style={styles.statusItem}>
-                  <View style={[styles.statusIndicator, styles.statusOffline]} />
-                  <Text style={styles.statusLabel}>Completed Systems</Text>
-                  <Text style={styles.statusValue}>{aggregatedStats.completedSites}</Text>
+                  <View style={[styles.statusIndicator, { backgroundColor: colors.gray }]} />
+                  <Text style={[styles.statusLabel, { color: colors.textSecondary }]}>Completed Systems</Text>
+                  <Text style={[styles.statusValue, { color: colors.text }]}>{aggregatedStats.completedSites}</Text>
                 </View>
               </View>
-              <View style={styles.divider} />
+              <View style={[styles.divider, { backgroundColor: colors.border }]} />
               <View style={styles.statusRow}>
                 <View style={styles.statusItem}>
-                  <Text style={styles.statusLabel}>Total Inverter Capacity</Text>
-                  <Text style={styles.statusValue}>{aggregatedStats.totalInverters.toFixed(1)} kW</Text>
+                  <Text style={[styles.statusLabel, { color: colors.textSecondary }]}>Total Inverter Capacity</Text>
+                  <Text style={[styles.statusValue, { color: colors.text }]}>{aggregatedStats.totalInverters.toFixed(1)} kW</Text>
                 </View>
               </View>
             </View>
@@ -286,9 +287,9 @@ export default function CustomerAnalysisScreen() {
 
         {sites.length === 0 && !loading && (
           <View style={styles.emptyState}>
-            <AlertCircle size={48} color={Colors.gray} />
-            <Text style={styles.emptyTitle}>No data available</Text>
-            <Text style={styles.emptyText}>
+            <AlertCircle size={48} color={colors.gray} />
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>No data available</Text>
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
               Customer analysis will appear here once solar systems are configured
             </Text>
           </View>
@@ -301,7 +302,6 @@ export default function CustomerAnalysisScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -310,7 +310,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 16,
-    backgroundColor: Colors.primary,
   },
   headerTextContainer: {
     flex: 1,
@@ -321,12 +320,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '700' as const,
-    color: Colors.white,
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 14,
-    color: Colors.gray,
   },
   loadingContainer: {
     flex: 1,
@@ -336,7 +333,6 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: Colors.textSecondary,
   },
   scrollView: {
     flex: 1,
@@ -346,7 +342,6 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   card: {
-    backgroundColor: Colors.card,
     borderRadius: 16,
     padding: 20,
     shadowColor: '#000',
@@ -366,7 +361,6 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 20,
     fontWeight: '700' as const,
-    color: Colors.text,
   },
   overviewGrid: {
     flexDirection: 'row',
@@ -377,23 +371,19 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: '45%',
     padding: 16,
-    backgroundColor: Colors.lightGray,
     borderRadius: 12,
     alignItems: 'center',
   },
   overviewLabel: {
     fontSize: 12,
-    color: Colors.textSecondary,
     marginBottom: 8,
     textAlign: 'center',
   },
   overviewValue: {
     fontSize: 24,
     fontWeight: '700' as const,
-    color: Colors.text,
   },
   activeValue: {
-    color: Colors.success,
   },
   statsContainer: {
     flexDirection: 'row',
@@ -401,7 +391,6 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: Colors.card,
     borderRadius: 16,
     padding: 20,
     alignItems: 'center',
@@ -413,7 +402,6 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 12,
-    color: Colors.textSecondary,
     marginTop: 12,
     marginBottom: 8,
     textAlign: 'center',
@@ -421,12 +409,10 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 28,
     fontWeight: '700' as const,
-    color: Colors.text,
     marginBottom: 4,
   },
   statUnit: {
     fontSize: 14,
-    color: Colors.textSecondary,
   },
   metricsGrid: {
     flexDirection: 'row',
@@ -437,28 +423,23 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: '45%',
     padding: 16,
-    backgroundColor: Colors.lightGray,
     borderRadius: 12,
     alignItems: 'center',
   },
   metricLabel: {
     fontSize: 12,
-    color: Colors.textSecondary,
     marginBottom: 8,
     textAlign: 'center',
   },
   metricValue: {
     fontSize: 22,
     fontWeight: '700' as const,
-    color: Colors.text,
     marginBottom: 4,
   },
   metricUnit: {
     fontSize: 11,
-    color: Colors.textSecondary,
   },
   chartSection: {
-    backgroundColor: Colors.card,
     borderRadius: 16,
     padding: 20,
     shadowColor: '#000',
@@ -476,10 +457,8 @@ const styles = StyleSheet.create({
   chartTitle: {
     fontSize: 18,
     fontWeight: '700' as const,
-    color: Colors.text,
   },
   chartContainer: {
-    backgroundColor: Colors.background,
     borderRadius: 12,
     padding: 0,
     overflow: 'hidden',
@@ -508,29 +487,23 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   statusOnline: {
-    backgroundColor: Colors.success,
   },
   statusOffline: {
-    backgroundColor: Colors.gray,
   },
   statusLabel: {
     fontSize: 12,
-    color: Colors.textSecondary,
     marginBottom: 4,
     textAlign: 'center',
   },
   statusValue: {
     fontSize: 18,
     fontWeight: '700' as const,
-    color: Colors.text,
   },
   divider: {
     height: 1,
-    backgroundColor: Colors.border,
     marginVertical: 8,
   },
   errorContainer: {
-    backgroundColor: Colors.card,
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -539,7 +512,6 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 14,
-    color: Colors.danger,
     textAlign: 'center',
   },
   emptyState: {
@@ -550,13 +522,11 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: '600' as const,
-    color: Colors.text,
     marginTop: 16,
     marginBottom: 8,
   },
   emptyText: {
     fontSize: 14,
-    color: Colors.textSecondary,
     textAlign: 'center',
   },
 });

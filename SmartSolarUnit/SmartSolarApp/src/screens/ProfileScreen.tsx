@@ -1,15 +1,16 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User, Mail, MapPin, LogOut, X } from 'lucide-react-native';
+import { User, Mail, MapPin, LogOut, X, Sun, Moon } from 'lucide-react-native';
 import { useAuth } from '../contexts/AuthContext';
-import Colors from '../constants/colors';
 import { useSidebar } from '../contexts/SidebarContext';
 import HamburgerIcon from '../components/HamburgerIcon';
+import { useTheme } from '../contexts/ThemeContext';
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
   const { openSidebar, closeSidebar, isOpen } = useSidebar();
+  const { theme, toggleTheme, isDark } = useTheme();
 
   const handleLogout = () => {
     Alert.alert(
@@ -33,53 +34,83 @@ export default function ProfileScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Profile</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['top']}>
+      <View style={[styles.header, { backgroundColor: theme.colors.primary }]}>
+        <Text style={[styles.title, { color: theme.colors.white }]}>Profile</Text>
         <TouchableOpacity onPress={isOpen ? closeSidebar : openSidebar} style={styles.menuButton}>
           {isOpen ? (
-            <X size={24} color={Colors.white} />
+            <X size={24} color={theme.colors.white} />
           ) : (
-            <HamburgerIcon size={24} color={Colors.white} />
+            <HamburgerIcon size={24} color={theme.colors.white} />
           )}
         </TouchableOpacity>
       </View>
       <View style={styles.content}>
         <View style={styles.avatarContainer}>
-          <View style={styles.avatar}>
-            <User size={48} color={Colors.white} />
+          <View style={[styles.avatar, { backgroundColor: theme.colors.primary }]}>
+            <User size={48} color={theme.colors.white} />
           </View>
-          <Text style={styles.name}>{user.customerName || user.email}</Text>
-          <Text style={styles.role}>Solar System Owner</Text>
+          <Text style={[styles.name, { color: theme.colors.text }]}>{user.customerName || user.email}</Text>
+          <Text style={[styles.role, { color: theme.colors.textSecondary }]}>Solar System Owner</Text>
         </View>
-        <View style={styles.infoCard}>
+        <View style={[styles.infoCard, { backgroundColor: theme.colors.card }]}>
           <View style={styles.infoRow}>
-            <View style={styles.iconContainer}>
-              <Mail size={20} color={Colors.solarOrange} />
+            <View style={[styles.iconContainer, { backgroundColor: theme.colors.lightGray }]}>
+              <Mail size={20} color={theme.colors.solarOrange} />
             </View>
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Email</Text>
-              <Text style={styles.infoValue}>{user.email}</Text>
+              <Text style={[styles.infoLabel, { color: theme.colors.textSecondary }]}>Email</Text>
+              <Text style={[styles.infoValue, { color: theme.colors.text }]}>{user.email}</Text>
             </View>
           </View>
           {user.customerName && (
             <>
-              <View style={styles.divider} />
+              <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
               <View style={styles.infoRow}>
-                <View style={styles.iconContainer}>
-                  <MapPin size={20} color={Colors.solarOrange} />
+                <View style={[styles.iconContainer, { backgroundColor: theme.colors.lightGray }]}>
+                  <MapPin size={20} color={theme.colors.solarOrange} />
                 </View>
                 <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>Customer Name</Text>
-                  <Text style={styles.infoValue}>{user.customerName}</Text>
+                  <Text style={[styles.infoLabel, { color: theme.colors.textSecondary }]}>Customer Name</Text>
+                  <Text style={[styles.infoValue, { color: theme.colors.text }]}>{user.customerName}</Text>
                 </View>
               </View>
             </>
           )}
         </View>
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <LogOut size={20} color={Colors.danger} />
-          <Text style={styles.logoutText}>Logout</Text>
+
+        {/* Theme Toggle Section */}
+        <View style={[styles.infoCard, { backgroundColor: theme.colors.card }]}>
+          <View style={styles.infoRow}>
+            <View style={[styles.iconContainer, { backgroundColor: theme.colors.lightGray }]}>
+              {isDark ? (
+                <Moon size={20} color={theme.colors.primary} />
+              ) : (
+                <Sun size={20} color={theme.colors.solarOrange} />
+              )}
+            </View>
+            <View style={styles.infoContent}>
+              <Text style={[styles.infoLabel, { color: theme.colors.textSecondary }]}>Theme</Text>
+              <Text style={[styles.infoValue, { color: theme.colors.text }]}>
+                {isDark ? 'Dark Mode' : 'Light Mode'}
+              </Text>
+            </View>
+            <Switch
+              value={isDark}
+              onValueChange={toggleTheme}
+              trackColor={{ false: theme.colors.border, true: theme.colors.solarOrange }}
+              thumbColor={theme.colors.white}
+              ios_backgroundColor={theme.colors.border}
+            />
+          </View>
+        </View>
+
+        <TouchableOpacity 
+          style={[styles.logoutButton, { backgroundColor: theme.colors.card, borderColor: theme.colors.danger }]} 
+          onPress={handleLogout}
+        >
+          <LogOut size={20} color={theme.colors.danger} />
+          <Text style={[styles.logoutText, { color: theme.colors.danger }]}>Logout</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -89,7 +120,6 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -98,7 +128,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 16,
-    backgroundColor: Colors.primary,
   },
   menuButton: {
     padding: 4,
@@ -106,7 +135,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '700' as const,
-    color: Colors.white,
   },
   content: {
     flex: 1,
@@ -120,7 +148,6 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
@@ -128,15 +155,12 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 24,
     fontWeight: '700' as const,
-    color: Colors.text,
     marginBottom: 4,
   },
   role: {
     fontSize: 14,
-    color: Colors.textSecondary,
   },
   infoCard: {
-    backgroundColor: Colors.card,
     borderRadius: 16,
     padding: 20,
     marginBottom: 24,
@@ -155,7 +179,6 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: Colors.lightGray,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -164,17 +187,14 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontSize: 12,
-    color: Colors.textSecondary,
     marginBottom: 4,
   },
   infoValue: {
     fontSize: 16,
     fontWeight: '600' as const,
-    color: Colors.text,
   },
   divider: {
     height: 1,
-    backgroundColor: Colors.border,
     marginVertical: 16,
   },
   logoutButton: {
@@ -182,15 +202,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 12,
-    backgroundColor: Colors.card,
     borderRadius: 12,
     paddingVertical: 16,
     borderWidth: 1,
-    borderColor: Colors.danger,
   },
   logoutText: {
     fontSize: 16,
     fontWeight: '600' as const,
-    color: Colors.danger,
   },
 });

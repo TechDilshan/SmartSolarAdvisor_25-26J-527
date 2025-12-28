@@ -6,14 +6,15 @@ import { useNavigation } from '@react-navigation/native';
 import { useSolarSites, usePredictionData, useDailyEnergy30Days } from '../hooks/useBackendAPI';
 import { CandleChart } from '../components/Charts';
 import { SolarSystem } from '../types';
-import Colors from '../constants/colors';
 import { useSidebar } from '../contexts/SidebarContext';
 import HamburgerIcon from '../components/HamburgerIcon';
+import { useTheme } from '../contexts/ThemeContext';
 
 export default function HomeScreen() {  
   const navigation = useNavigation<any>();
   const { openSidebar, closeSidebar, isOpen } = useSidebar();
-  const { sites, loading, error, refetch } = useSolarSites(5000); // Poll every 5 seconds
+  const { colors } = useTheme();
+  const { sites, loading, error, refetch } = useSolarSites(5000);
   
   // Get first site for summary and chart (or aggregate all sites)
   const firstSite = sites.length > 0 ? sites[0] : null;
@@ -45,46 +46,46 @@ export default function HomeScreen() {
     return (
       <TouchableOpacity
         key={system.id}
-        style={styles.card}
+        style={[styles.card, { backgroundColor: colors.card }]}
         onPress={() => navigation.navigate('PerformanceStack', { screen: 'Performance', params: { id: system.id, title: system.siteName, customerName: system.customerName } })}
       >
         <View style={styles.cardHeader}>
           <View style={styles.cardTitleRow}>
-            <Sun size={24} color={Colors.solarOrange} />
-            <Text style={styles.cardTitle}>{system.siteName}</Text>
+            <Sun size={24} color={colors.solarOrange} />
+            <Text style={[styles.cardTitle, { color: colors.text }]}>{system.siteName}</Text>
           </View>
           <View style={[styles.statusBadge, isOnline ? styles.statusOnline : styles.statusOffline]}>
             <View style={[styles.statusDot, isOnline ? styles.dotOnline : styles.dotOffline]} />
-            <Text style={styles.statusText}>{isOnline ? 'Running' : 'Completed'}</Text>
+            <Text style={[styles.statusText, { color: colors.text }]}>{isOnline ? 'Running' : 'Completed'}</Text>
           </View>
         </View>
-        <View style={styles.cardStats}>
+        <View style={[styles.cardStats, { borderColor: colors.border }]}>
           <View style={styles.stat}>
-            <Text style={styles.statLabel}>Capacity</Text>
-            <Text style={styles.statValue}>{system.systemCapacity} kW</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Capacity</Text>
+            <Text style={[styles.statValue, { color: colors.text }]}>{system.systemCapacity} kW</Text>
           </View>
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
           <View style={styles.stat}>
-            <Text style={styles.statLabel}>Panels</Text>
-            <Text style={styles.statValue}>{system.panelCount}</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Panels</Text>
+            <Text style={[styles.statValue, { color: colors.text }]}>{system.panelCount}</Text>
           </View>
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
           <View style={styles.stat}>
-            <Text style={styles.statLabel}>Inverter</Text>
-            <Text style={styles.statValue}>{system.inverterCapacity} kW</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Inverter</Text>
+            <Text style={[styles.statValue, { color: colors.text }]}>{system.inverterCapacity} kW</Text>
           </View>
         </View>
         <View style={styles.cardFooter}>
-          <ActivityIcon size={14} color={Colors.textSecondary} />
-          <Text style={styles.lastUpdated}>
+          <ActivityIcon size={14} color={colors.textSecondary} />
+          <Text style={[styles.lastUpdated, { color: colors.textSecondary }]}>
             Updated {system.lastUpdated.toLocaleTimeString()}
           </Text>
         </View>
         <TouchableOpacity
-          style={styles.viewButton}
+          style={[styles.viewButton, { backgroundColor: colors.solarOrange }]}
           onPress={() => navigation.navigate('PerformanceStack', { screen: 'Performance', params: { id: system.id, title: system.siteName, customerName: system.customerName } })}
         >
-          <Text style={styles.viewButtonText}>View Live Performance</Text>
+          <Text style={[styles.viewButtonText, { color: colors.white }]}>View Live Performance</Text>
         </TouchableOpacity>
       </TouchableOpacity>
     );
@@ -92,37 +93,37 @@ export default function HomeScreen() {
 
   if (loading && sites.length === 0) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.header}>
-          <Text style={styles.title}>My Solar Systems</Text>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+        <View style={[styles.header, { backgroundColor: colors.primary }]}>
+          <Text style={[styles.title, { color: colors.white }]}>My Solar Systems</Text>
           <TouchableOpacity onPress={isOpen ? closeSidebar : openSidebar} style={styles.menuButton}>
             {isOpen ? (
-              <X size={24} color={Colors.white} />
+              <X size={24} color={colors.white} />
             ) : (
-              <HamburgerIcon size={24} color={Colors.white} />
+              <HamburgerIcon size={24} color={colors.white} />
             )}
           </TouchableOpacity>
         </View>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.solarOrange} />
-          <Text style={styles.loadingText}>Loading your solar systems...</Text>
+          <ActivityIndicator size="large" color={colors.solarOrange} />
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading your solar systems...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+      <View style={[styles.header, { backgroundColor: colors.primary }]}>
         <View style={styles.headerTextContainer}>
-          <Text style={styles.title}>My Solar Systems</Text>
-          <Text style={styles.subtitle}>{sites.length} installation{sites.length !== 1 ? 's' : ''}</Text>
+          <Text style={[styles.title, { color: colors.white }]}>My Solar Systems</Text>
+          <Text style={[styles.subtitle, { color: colors.gray }]}>{sites.length} installation{sites.length !== 1 ? 's' : ''}</Text>
         </View>
         <TouchableOpacity onPress={isOpen ? closeSidebar : openSidebar} style={styles.menuButton}>
           {isOpen ? (
-            <X size={24} color={Colors.white} />
+            <X size={24} color={colors.white} />
           ) : (
-            <HamburgerIcon size={24} color={Colors.white} />
+            <HamburgerIcon size={24} color={colors.white} />
           )}
         </TouchableOpacity>
       </View>
@@ -134,16 +135,16 @@ export default function HomeScreen() {
           <RefreshControl
             refreshing={loading && sites.length > 0}
             onRefresh={refetch}
-            tintColor={Colors.solarOrange}
+            tintColor={colors.solarOrange}
           />
         }
       >
         {error && (
-          <View style={styles.errorContainer}>
-            <AlertCircle size={24} color={Colors.danger} />
-            <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity style={styles.retryButton} onPress={refetch}>
-              <Text style={styles.retryButtonText}>Retry</Text>
+          <View style={[styles.errorContainer, { backgroundColor: colors.card }]}>
+            <AlertCircle size={24} color={colors.danger} />
+            <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text>
+            <TouchableOpacity style={[styles.retryButton, { backgroundColor: colors.solarOrange }]} onPress={refetch}>
+              <Text style={[styles.retryButtonText, { color: colors.white }]}>Retry</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -151,30 +152,30 @@ export default function HomeScreen() {
         {/* Energy Summary Cards */}
         {sites.length > 0 && (
           <View style={styles.summaryContainer}>
-            <View style={styles.summaryCard}>
-              <Zap size={24} color={Colors.solarOrange} />
-              <Text style={styles.summaryLabel}>Today's Predicted Energy</Text>
-              <Text style={styles.summaryValue}>{dailyTotal.toFixed(2)}</Text>
-              <Text style={styles.summaryUnit}>kWh</Text>
+            <View style={[styles.summaryCard, { backgroundColor: colors.card }]}>
+              <Zap size={24} color={colors.solarOrange} />
+              <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Today's Predicted Energy</Text>
+              <Text style={[styles.summaryValue, { color: colors.text }]}>{dailyTotal.toFixed(2)}</Text>
+              <Text style={[styles.summaryUnit, { color: colors.textSecondary }]}>kWh</Text>
             </View>
-            <View style={styles.summaryCard}>
-              <TrendingUp size={24} color={Colors.success} />
-              <Text style={styles.summaryLabel}>Monthly Predicted Energy</Text>
-              <Text style={styles.summaryValue}>{monthlyTotal.toFixed(2)}</Text>
-              <Text style={styles.summaryUnit}>kWh</Text>
+            <View style={[styles.summaryCard, { backgroundColor: colors.card }]}>
+              <TrendingUp size={24} color={colors.success} />
+              <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Monthly Predicted Energy</Text>
+              <Text style={[styles.summaryValue, { color: colors.text }]}>{monthlyTotal.toFixed(2)}</Text>
+              <Text style={[styles.summaryUnit, { color: colors.textSecondary }]}>kWh</Text>
             </View>
           </View>
         )}
         
         {/* 30-Day Energy Chart */}
         {sites.length > 0 && chartData.length > 0 && (
-          <View style={styles.chartSection}>
-            <Text style={styles.chartTitle}>Daily Energy Generation (Last 30 Days)</Text>
-            <View style={styles.chartContainer}>
+          <View style={[styles.chartSection, { backgroundColor: colors.card }]}>
+            <Text style={[styles.chartTitle, { color: colors.text }]}>Daily Energy Generation (Last 30 Days)</Text>
+            <View style={[styles.chartContainer, { backgroundColor: colors.background }]}>
               {chartLoading ? (
-                <ActivityIndicator size="large" color={Colors.solarOrange} />
+                <ActivityIndicator size="large" color={colors.solarOrange} />
               ) : (
-                <CandleChart data={chartData} height={250} color={Colors.solarOrange} />
+                <CandleChart data={chartData} height={250} color={colors.solarOrange} />
               )}
             </View>
           </View>
@@ -182,14 +183,14 @@ export default function HomeScreen() {
         
         {sites.length > 0 ? (
           <>
-            <Text style={styles.sitesTitle}>My Solar Systems</Text>
+            <Text style={[styles.sitesTitle, { color: colors.text }]}>My Solar Systems</Text>
             {sites.map(renderSystemCard)}
           </>
         ) : !loading ? (
           <View style={styles.emptyState}>
-            <AlertCircle size={48} color={Colors.gray} />
-            <Text style={styles.emptyTitle}>No solar systems found</Text>
-            <Text style={styles.emptyText}>
+            <AlertCircle size={48} color={colors.gray} />
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>No solar systems found</Text>
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
               Your assigned solar installations will appear here
             </Text>
           </View>
@@ -202,7 +203,6 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -211,7 +211,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 16,
-    backgroundColor: Colors.primary,
   },
   headerTextContainer: {
     flex: 1,
@@ -222,12 +221,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '700' as const,
-    color: Colors.white,
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 14,
-    color: Colors.gray,
   },
   loadingContainer: {
     flex: 1,
@@ -237,7 +234,6 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: Colors.textSecondary,
   },
   scrollView: {
     flex: 1,
@@ -247,7 +243,6 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   card: {
-    backgroundColor: Colors.card,
     borderRadius: 16,
     padding: 20,
     shadowColor: '#000',
@@ -271,7 +266,6 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 18,
     fontWeight: '600' as const,
-    color: Colors.text,
     flex: 1,
   },
   statusBadge: {
@@ -286,7 +280,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#DCFCE7',
   },
   statusOffline: {
-    backgroundColor: Colors.lightGray,
   },
   statusDot: {
     width: 6,
@@ -294,15 +287,12 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   dotOnline: {
-    backgroundColor: Colors.success,
   },
   dotOffline: {
-    backgroundColor: Colors.gray,
   },
   statusText: {
     fontSize: 12,
     fontWeight: '600' as const,
-    color: Colors.text,
   },
   cardStats: {
     flexDirection: 'row',
@@ -310,7 +300,6 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: Colors.border,
     marginBottom: 16,
   },
   stat: {
@@ -319,18 +308,15 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 12,
-    color: Colors.textSecondary,
     marginBottom: 4,
   },
   statValue: {
     fontSize: 16,
     fontWeight: '600' as const,
-    color: Colors.text,
   },
   divider: {
     width: 1,
     height: 32,
-    backgroundColor: Colors.border,
   },
   cardFooter: {
     flexDirection: 'row',
@@ -340,16 +326,13 @@ const styles = StyleSheet.create({
   },
   lastUpdated: {
     fontSize: 12,
-    color: Colors.textSecondary,
   },
   viewButton: {
-    backgroundColor: Colors.solarOrange,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
   },
   viewButtonText: {
-    color: Colors.white,
     fontSize: 15,
     fontWeight: '600' as const,
   },
@@ -361,17 +344,14 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: '600' as const,
-    color: Colors.text,
     marginTop: 16,
     marginBottom: 8,
   },
   emptyText: {
     fontSize: 14,
-    color: Colors.textSecondary,
     textAlign: 'center',
   },
   errorContainer: {
-    backgroundColor: Colors.card,
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -380,17 +360,14 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 14,
-    color: Colors.danger,
     textAlign: 'center',
   },
   retryButton: {
-    backgroundColor: Colors.solarOrange,
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,
   },
   retryButtonText: {
-    color: Colors.white,
     fontSize: 14,
     fontWeight: '600' as const,
   },
@@ -401,7 +378,6 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     flex: 1,
-    backgroundColor: Colors.card,
     borderRadius: 16,
     padding: 20,
     alignItems: 'center',
@@ -413,7 +389,6 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontSize: 12,
-    color: Colors.textSecondary,
     marginTop: 8,
     marginBottom: 4,
     textAlign: 'center',
@@ -421,15 +396,12 @@ const styles = StyleSheet.create({
   summaryValue: {
     fontSize: 24,
     fontWeight: '700' as const,
-    color: Colors.text,
     marginBottom: 2,
   },
   summaryUnit: {
     fontSize: 14,
-    color: Colors.textSecondary,
   },
   chartSection: {
-    backgroundColor: Colors.card,
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
@@ -442,11 +414,9 @@ const styles = StyleSheet.create({
   chartTitle: {
     fontSize: 18,
     fontWeight: '700' as const,
-    color: Colors.text,
     marginBottom: 16,
   },
   chartContainer: {
-    backgroundColor: Colors.background,
     borderRadius: 12,
     padding: 0,
     overflow: 'hidden',
@@ -454,7 +424,6 @@ const styles = StyleSheet.create({
   sitesTitle: {
     fontSize: 20,
     fontWeight: '700' as const,
-    color: Colors.text,
     marginBottom: 12,
     marginTop: 8,
   },

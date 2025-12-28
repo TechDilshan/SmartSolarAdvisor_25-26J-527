@@ -4,20 +4,21 @@ import { Home, User, BarChart3 } from 'lucide-react-native';
 import HomeScreen from '../screens/HomeScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import CustomerAnalysisScreen from '../screens/CustomerAnalysisScreen';
-import Colors from '../constants/colors';
+import { useTheme } from '../contexts/ThemeContext';
 
 const Tab = createBottomTabNavigator();
 
 export default function TabNavigator() {
+  const { colors } = useTheme();
   return (
     <Tab.Navigator
       screenOptions={{
-        tabBarActiveTintColor: Colors.solarOrange,
-        tabBarInactiveTintColor: Colors.gray,
+        tabBarActiveTintColor: colors.solarOrange,
+        tabBarInactiveTintColor: colors.gray,
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: Colors.card,
-          borderTopColor: Colors.border,
+          backgroundColor: colors.card,
+          borderTopColor: colors.border,
         },
       }}
     >

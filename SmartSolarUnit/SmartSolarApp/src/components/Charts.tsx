@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Dimensions, ScrollView } from 'react-native';
 import { Svg, Path, Circle, G, Line as SvgLine } from 'react-native-svg';
-import Colors from '../constants/colors';
 
 interface LineChartProps {
   data: { x: number; y: number; timestamp?: Date | string }[];
@@ -11,7 +10,7 @@ interface LineChartProps {
   unit?: string;
 }
 
-export function LineChart({ data, height = 250, color = Colors.solarOrange, showLabels = true, unit = '' }: LineChartProps) {
+export function LineChart({ data, height = 250, color = '#F97316', showLabels = true, unit = '' }: LineChartProps) {
   const screenWidth = Dimensions.get('window').width;
   const padding = { left: 50, right: 20, top: 20, bottom: 60 };
   const chartHeight = height - padding.top - padding.bottom;
@@ -101,7 +100,7 @@ export function LineChart({ data, height = 250, color = Colors.solarOrange, show
                       y1={yPos}
                       x2={chartContentWidth}
                       y2={yPos}
-                      stroke={Colors.border}
+                      stroke={'#E2E8F0'}
                       strokeWidth="1"
                       strokeDasharray="3 3"
                       opacity={0.3}
@@ -134,7 +133,7 @@ export function LineChart({ data, height = 250, color = Colors.solarOrange, show
                   cx={point.x}
                   cy={point.y}
                   r="5"
-                  fill={Colors.white}
+                  fill={'#FFFFFF'}
                   stroke={color}
                   strokeWidth="3"
                 />
@@ -192,7 +191,7 @@ interface BarChartProps {
   color?: string;
 }
 
-export function BarChart({ data, height = 200, color = Colors.solarOrange }: BarChartProps) {
+export function BarChart({ data, height = 200, color = '#F97316' }: BarChartProps) {
   const width = Dimensions.get('window').width - 40;
   const padding = { left: 40, right: 20, top: 20, bottom: 40 };
   const chartWidth = width - padding.left - padding.right;
@@ -260,13 +259,13 @@ const styles = StyleSheet.create({
   },
   axisLabel: {
     fontSize: 10,
-    color: Colors.textSecondary,
+    color: '#64748B',
   },
   chartArea: {
     position: 'relative',
     borderLeftWidth: 1,
     borderBottomWidth: 1,
-    borderColor: Colors.border,
+    borderColor: '#E2E8F0',
   },
   point: {
     position: 'absolute',
@@ -294,7 +293,7 @@ const styles = StyleSheet.create({
   },
   yAxisLabel: {
     fontSize: 10,
-    color: Colors.textSecondary,
+    color: '#64748B',
     textAlign: 'right',
     width: 40,
   },
@@ -302,12 +301,12 @@ const styles = StyleSheet.create({
     position: 'relative',
     borderLeftWidth: 1,
     borderBottomWidth: 1,
-    borderColor: Colors.border,
+    borderColor: '#E2E8F0',
   },
   gridLine: {
     position: 'absolute',
     height: 1,
-    backgroundColor: Colors.border,
+    backgroundColor: '#E2E8F0',
     opacity: 0.3,
   },
   barContainer: {
@@ -317,12 +316,12 @@ const styles = StyleSheet.create({
   },
   xAxisLabel: {
     fontSize: 8,
-    color: Colors.textSecondary,
+    color: '#64748B',
     textAlign: 'center',
   },
   barValueLabel: {
     fontSize: 8,
-    color: Colors.text,
+    color: '#0F172A',
     textAlign: 'center',
     fontWeight: '600' as const,
   },
@@ -334,7 +333,7 @@ const styles = StyleSheet.create({
   },
   xAxisTitle: {
     fontSize: 12,
-    color: Colors.textSecondary,
+    color: '#64748B',
     fontWeight: '600' as const,
   },
   advancedChartContainer: {
@@ -345,7 +344,7 @@ const styles = StyleSheet.create({
     position: 'relative',
     borderLeftWidth: 1,
     borderBottomWidth: 1,
-    borderColor: Colors.border,
+    borderColor: '#E2E8F0',
   },
   xAxisLabelsContainer: {
     position: 'absolute',
@@ -362,7 +361,7 @@ interface CandleChartProps {
   color?: string;
 }
 
-export function CandleChart({ data, height = 250, color = Colors.solarOrange }: CandleChartProps) {
+export function CandleChart({ data, height = 250, color = '#F97316' }: CandleChartProps) {
   const screenWidth = Dimensions.get('window').width;
   const padding = { left: 50, right: 20, top: 20, bottom: 90 };
   const chartHeight = height - padding.top - padding.bottom;
