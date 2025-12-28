@@ -171,6 +171,125 @@ export const getProfile = async (req, res) => {
     }
 };
 
+export const updateProfile = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { name, email, customer_name } = req.body;
+
+    // Build update object
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (email !== undefined) updateData.email = email;
+    if (customer_name !== undefined) updateData.customer_name = customer_name;
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No fields to update'
+      });
+    }
+
+    // Update user in Firestore
+    const updatedUser = await UserModel.update(userId, updateData);
+
+    res.json({
+      success: true,
+      data: {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        role: updatedUser.role,
+        name: updatedUser.name,
+        customer_name: updatedUser.customer_name,
+        ...updatedUser
+      }
+    });
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update profile'
+    });
+  }
+};
+
+export const changePassword = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const userEmail = req.user.email;
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Current password and new password are required'
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password must be at least 6 characters long'
+      });
+    }
+
+    // Get Firebase API key
+    const firebaseApiKey = process.env.FIREBASE_API_KEY || 'AIzaSyD85ffkSKNDVAgEXLZOubnqBbTh_mtmjm4';
+
+    // First verify current password
+    try {
+      const verifyResponse = await fetch(
+        `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${firebaseApiKey}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: userEmail,
+            password: currentPassword,
+            returnSecureToken: true
+          })
+        }
+      );
+
+      const verifyData = await verifyResponse.json();
+      
+      if (!verifyResponse.ok || verifyData.error) {
+        return res.status(401).json({
+          success: false,
+          message: 'Current password is incorrect'
+        });
+      }
+
+      // Current password is correct, now update password
+      const firebaseUser = await admin.auth().getUser(userId);
+      const idToken = verifyData.idToken;
+
+      // Update password using Firebase Admin SDK
+      await admin.auth().updateUser(userId, {
+        password: newPassword
+      });
+
+      res.json({
+        success: true,
+        message: 'Password updated successfully'
+      });
+    } catch (error) {
+      console.error('Change password error:', error);
+      return res.status(401).json({
+        success: false,
+        message: 'Current password is incorrect'
+      });
+    }
+  } catch (error) {
+    console.error('Change password error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to change password'
+    });
+  }
+};
+
 export const verifyAdmin = async (req, res) => {
     try {
       if (!req.isAdmin) {

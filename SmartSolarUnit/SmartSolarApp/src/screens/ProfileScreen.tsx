@@ -1,16 +1,38 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, Switch } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Switch, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User, Mail, MapPin, LogOut, X, Sun, Moon } from 'lucide-react-native';
+import { User, Mail, MapPin, LogOut, X, Sun, Moon, Settings } from 'lucide-react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { useSidebar } from '../contexts/SidebarContext';
 import HamburgerIcon from '../components/HamburgerIcon';
 import { useTheme } from '../contexts/ThemeContext';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { databaseService } from '../services/database';
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
   const { openSidebar, closeSidebar, isOpen } = useSidebar();
   const { theme, toggleTheme, isDark } = useTheme();
+  const navigation = useNavigation<any>();
+  const [profilePicture, setProfilePicture] = useState<string | null>(null);
+
+  const loadProfilePicture = async () => {
+    if (user?.id) {
+      const picture = await databaseService.getProfilePicture(user.id);
+      setProfilePicture(picture);
+    }
+  };
+
+  useEffect(() => {
+    loadProfilePicture();
+  }, [user]);
+
+  // Reload profile picture when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      loadProfilePicture();
+    }, [user])
+  );
 
   const handleLogout = () => {
     Alert.alert(
@@ -27,6 +49,10 @@ export default function ProfileScreen() {
         },
       ]
     );
+  };
+
+  const handleSettingsPress = () => {
+    navigation.navigate('Settings');
   };
 
   if (!user) {
@@ -47,12 +73,28 @@ export default function ProfileScreen() {
       </View>
       <View style={styles.content}>
         <View style={styles.avatarContainer}>
-          <View style={[styles.avatar, { backgroundColor: theme.colors.primary }]}>
-            <User size={48} color={theme.colors.white} />
-          </View>
+          {profilePicture ? (
+            <Image 
+              source={{ uri: profilePicture }} 
+              style={styles.avatarImage}
+            />
+          ) : (
+            <View style={[styles.avatar, { backgroundColor: theme.colors.primary }]}>
+              <User size={48} color={theme.colors.white} />
+            </View>
+          )}
           <Text style={[styles.name, { color: theme.colors.text }]}>{user.customerName || user.email}</Text>
           <Text style={[styles.role, { color: theme.colors.textSecondary }]}>Solar System Owner</Text>
         </View>
+
+        {/* Settings Button */}
+        <TouchableOpacity 
+          style={[styles.settingsButton, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]} 
+          onPress={handleSettingsPress}
+        >
+          <Settings size={20} color={theme.colors.solarOrange} />
+          <Text style={[styles.settingsText, { color: theme.colors.text }]}>Settings</Text>
+        </TouchableOpacity>
         <View style={[styles.infoCard, { backgroundColor: theme.colors.card }]}>
           <View style={styles.infoRow}>
             <View style={[styles.iconContainer, { backgroundColor: theme.colors.lightGray }]}>
@@ -151,6 +193,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
+  },
+  avatarImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    marginBottom: 16,
+  },
+  settingsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    borderRadius: 12,
+    paddingVertical: 16,
+    borderWidth: 1,
+    marginBottom: 24,
+  },
+  settingsText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
   },
   name: {
     fontSize: 24,

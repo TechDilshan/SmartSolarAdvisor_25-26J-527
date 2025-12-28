@@ -40,9 +40,19 @@ class DatabaseService {
           updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );`
       );
-      console.log('Table created successfully');
+      
+      // Create user_profile table for storing profile pictures
+      db.executeAsync(
+        `CREATE TABLE IF NOT EXISTS user_profile (
+          user_id TEXT PRIMARY KEY NOT NULL,
+          profile_picture TEXT,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );`
+      );
+      
+      console.log('Tables created successfully');
     } catch (error) {
-      console.error('Error creating table:', error);
+      console.error('Error creating tables:', error);
       throw error;
     }
   }
@@ -86,6 +96,49 @@ class DatabaseService {
       console.log('Setting saved successfully:', key, value);
     } catch (error) {
       console.error('Error setting preference:', error);
+      throw error;
+    }
+  }
+
+  async getProfilePicture(userId: string): Promise<string | null> {
+    try {
+      await this.initDatabase();
+
+      if (!db) {
+        console.error('Database not initialized in getProfilePicture');
+        return null;
+      }
+
+      const result = await db.executeAsync(
+        'SELECT profile_picture FROM user_profile WHERE user_id = ?',
+        [userId]
+      );
+
+      if (result.rows && result.rows.length > 0) {
+        return result.rows.item(0).profile_picture;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error getting profile picture:', error);
+      return null;
+    }
+  }
+
+  async saveProfilePicture(userId: string, profilePicture: string): Promise<void> {
+    try {
+      await this.initDatabase();
+
+      if (!db) {
+        throw new Error('Database not initialized');
+      }
+
+      await db.executeAsync(
+        'INSERT OR REPLACE INTO user_profile (user_id, profile_picture, updated_at) VALUES (?, ?, datetime("now"))',
+        [userId, profilePicture]
+      );
+      console.log('Profile picture saved successfully');
+    } catch (error) {
+      console.error('Error saving profile picture:', error);
       throw error;
     }
   }

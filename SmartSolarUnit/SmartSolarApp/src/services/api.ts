@@ -68,7 +68,28 @@ export const authAPI = {
       email: string;
       role: string;
       customer_name?: string;
+      name?: string;
     }>('/auth/profile');
+  },
+  
+  updateProfile: async (profileData: { name?: string; email?: string; customer_name?: string }) => {
+    return apiRequest<{
+      id: string;
+      email: string;
+      role: string;
+      customer_name?: string;
+      name?: string;
+    }>('/auth/profile', {
+      method: 'PUT',
+      body: JSON.stringify(profileData),
+    });
+  },
+  
+  changePassword: async (currentPassword: string, newPassword: string) => {
+    return apiRequest<{ message: string }>('/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
   },
 };
 

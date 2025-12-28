@@ -1,6 +1,6 @@
 import { Router } from 'express';
 
-import { login, getProfile, verifyAdmin } from '../controllers/auth.controller.js';
+import { login, getProfile, updateProfile, changePassword, verifyAdmin } from '../controllers/auth.controller.js';
 import { verifyToken, requireAdmin } from '../middleware/auth.middleware.js';
 
 const router = Router();
@@ -10,6 +10,12 @@ router.post('/login', login);
 
 // Get current user profile
 router.get('/profile', verifyToken, getProfile);
+
+// Update current user profile
+router.put('/profile', verifyToken, updateProfile);
+
+// Change password
+router.post('/change-password', verifyToken, changePassword);
 
 // Verify admin status
 router.get('/verify-admin', verifyToken, verifyAdmin);

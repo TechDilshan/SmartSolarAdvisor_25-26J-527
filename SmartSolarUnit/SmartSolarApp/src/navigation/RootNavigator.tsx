@@ -6,6 +6,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import AuthStack from './AuthStack';
 import TabNavigator from './TabNavigator';
 import PerformanceStack from './PerformanceStack';
+import SettingsScreen from '../screens/SettingsScreen';
 import Sidebar from '../components/Sidebar';
 
 const Stack = createStackNavigator();
@@ -42,6 +43,7 @@ export default function RootNavigator() {
       >
         <Stack.Screen name="Tabs" component={TabNavigator} options={{ headerShown: false }} />
         <Stack.Screen name="PerformanceStack" component={PerformanceStack} options={{ headerShown: false }} />
+        <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: false }} />
       </Stack.Navigator>
       <Sidebar />
     </>
