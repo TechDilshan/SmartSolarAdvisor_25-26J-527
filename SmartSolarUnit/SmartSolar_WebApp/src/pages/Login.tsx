@@ -100,7 +100,7 @@ const Login: React.FC = () => {
           <div className="text-center mb-8">
             <h2 className="text-2xl font-bold text-foreground mb-2">Admin Login</h2>
             <p className="text-muted-foreground">
-              Sign in to access the solar monitoring dashboard
+              Sign in to access the smart solar advisor dashboard
             </p>
           </div>
 
@@ -154,7 +154,7 @@ const Login: React.FC = () => {
           </form>
 
           <p className="text-center text-sm text-muted-foreground mt-8">
-            Smart Solar Advisor v1.0 • IoT Platform
+            Smart Solar Advisor v1.0 • IoT Energy Forecasting Platform
           </p>
         </div>
       </div>

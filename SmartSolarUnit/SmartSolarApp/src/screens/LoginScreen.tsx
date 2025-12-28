@@ -42,7 +42,7 @@ export default function LoginScreen() {
                 resizeMode="cover"
               />
             </View>
-            <Text style={[styles.title, { color: colors.white }]}>Solar Monitor</Text>
+            <Text style={[styles.title, { color: colors.white }]}>Smart Solar Advisor</Text>
             <Text style={[styles.subtitle, { color: colors.gray }]}>Monitor your solar installation</Text>
           </View>
           <View style={styles.form}>
