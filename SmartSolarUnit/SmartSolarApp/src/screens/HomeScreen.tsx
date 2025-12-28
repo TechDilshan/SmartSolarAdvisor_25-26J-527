@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Activity as ActivityIcon, AlertCircle, Sun, Zap, TrendingUp, X } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -9,6 +9,8 @@ import { SolarSystem } from '../types';
 import { useSidebar } from '../contexts/SidebarContext';
 import HamburgerIcon from '../components/HamburgerIcon';
 import { useTheme } from '../contexts/ThemeContext';
+
+const logoImage = require('../assets/Logo.png');
 
 export default function HomeScreen() {  
   const navigation = useNavigation<any>();
@@ -95,6 +97,13 @@ export default function HomeScreen() {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
         <View style={[styles.header, { backgroundColor: colors.primary }]}>
+          <View style={styles.logoContainer}>
+            <Image 
+              source={logoImage} 
+              style={styles.logo}
+              resizeMode="cover"
+            />
+          </View>
           <Text style={[styles.title, { color: colors.white }]}>My Solar Systems</Text>
           <TouchableOpacity onPress={isOpen ? closeSidebar : openSidebar} style={styles.menuButton}>
             {isOpen ? (
@@ -115,6 +124,13 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <View style={[styles.header, { backgroundColor: colors.primary }]}>
+        <View style={styles.logoContainer}>
+          <Image 
+            source={logoImage} 
+            style={styles.logo}
+            resizeMode="cover"
+          />
+        </View>
         <View style={styles.headerTextContainer}>
           <Text style={[styles.title, { color: colors.white }]}>My Solar Systems</Text>
           <Text style={[styles.subtitle, { color: colors.gray }]}>{sites.length} installation{sites.length !== 1 ? 's' : ''}</Text>
@@ -212,6 +228,18 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 16,
   },
+  logoContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 12,
+    overflow: 'hidden',
+    backgroundColor: 'transparent',
+  },
+  logo: {
+    width: '100%',
+    height: '100%',
+  },
   headerTextContainer: {
     flex: 1,
   },
@@ -219,12 +247,12 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   title: {
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: '700' as const,
     marginBottom: 4,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 12,
   },
   loadingContainer: {
     flex: 1,

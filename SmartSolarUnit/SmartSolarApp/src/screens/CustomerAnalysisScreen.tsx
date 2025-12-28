@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, RefreshControl, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, RefreshControl, TouchableOpacity, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BarChart3, TrendingUp, Zap, Sun, AlertCircle, Activity, X } from 'lucide-react-native';
 import { useAuth } from '../contexts/AuthContext';
@@ -8,6 +8,8 @@ import { CandleChart } from '../components/Charts';
 import { useSidebar } from '../contexts/SidebarContext';
 import HamburgerIcon from '../components/HamburgerIcon';
 import { useTheme } from '../contexts/ThemeContext';
+
+const logoImage = require('../assets/Logo.png');
 
 export default function CustomerAnalysisScreen() {
   const { user } = useAuth();
@@ -102,6 +104,13 @@ export default function CustomerAnalysisScreen() {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
         <View style={[styles.header, { backgroundColor: colors.primary }]}>
+          <View style={styles.logoContainer}>
+            <Image 
+              source={logoImage} 
+              style={styles.logo}
+              resizeMode="cover"
+            />
+          </View>
           <Text style={[styles.title, { color: colors.white }]}>Customer Analysis</Text>
           <TouchableOpacity onPress={isOpen ? closeSidebar : openSidebar} style={styles.menuButton}>
             {isOpen ? (
@@ -122,6 +131,13 @@ export default function CustomerAnalysisScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <View style={[styles.header, { backgroundColor: colors.primary }]}>
+        <View style={styles.logoContainer}>
+          <Image 
+            source={logoImage} 
+            style={styles.logo}
+            resizeMode="cover"
+          />
+        </View>
         <View style={styles.headerTextContainer}>
           <Text style={[styles.title, { color: colors.white }]}>Customer Analysis</Text>
           <Text style={[styles.subtitle, { color: colors.gray }]}>{user?.customerName || user?.email || 'Customer'}</Text>
@@ -311,6 +327,18 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 16,
   },
+  logoContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 12,
+    overflow: 'hidden',
+    backgroundColor: 'transparent',
+  },
+  logo: {
+    width: '100%',
+    height: '100%',
+  },
   headerTextContainer: {
     flex: 1,
   },
@@ -318,12 +346,12 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   title: {
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: '700' as const,
     marginBottom: 4,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 12,
   },
   loadingContainer: {
     flex: 1,

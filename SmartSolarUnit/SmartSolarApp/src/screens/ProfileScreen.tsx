@@ -9,6 +9,8 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { databaseService } from '../services/database';
 
+const logoImage = require('../assets/Logo.png');
+
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
   const { openSidebar, closeSidebar, isOpen } = useSidebar();
@@ -73,6 +75,13 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['top']}>
       <View style={[styles.header, { backgroundColor: theme.colors.primary }]}>
+        <View style={styles.logoContainer}>
+          <Image 
+            source={logoImage} 
+            style={styles.logo}
+            resizeMode="cover"
+          />
+        </View>
         <Text style={[styles.title, { color: theme.colors.white }]}>Profile</Text>
         <TouchableOpacity onPress={isOpen ? closeSidebar : openSidebar} style={styles.menuButton}>
           {isOpen ? (
@@ -195,11 +204,23 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 16,
   },
+  logoContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 12,
+    overflow: 'hidden',
+    backgroundColor: 'transparent',
+  },
+  logo: {
+    width: '100%',
+    height: '100%',
+  },
   menuButton: {
     padding: 4,
   },
   title: {
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: '700' as const,
   },
   content: {
