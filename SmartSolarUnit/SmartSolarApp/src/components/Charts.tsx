@@ -1,89 +1,186 @@
 import React from 'react';
 import { View, Text, StyleSheet, Dimensions, ScrollView } from 'react-native';
+import { Svg, Path, Circle, G, Line as SvgLine } from 'react-native-svg';
 import Colors from '../constants/colors';
 
 interface LineChartProps {
-  data: { x: number; y: number }[];
+  data: { x: number; y: number; timestamp?: Date }[];
   height?: number;
   color?: string;
   showLabels?: boolean;
+  unit?: string;
 }
 
-export function LineChart({ data, height = 200, color = Colors.solarOrange, showLabels = true }: LineChartProps) {
-  const width = Dimensions.get('window').width - 40;
-  const padding = { left: 40, right: 20, top: 20, bottom: 40 };
-  const chartWidth = width - padding.left - padding.right;
+export function LineChart({ data, height = 250, color = Colors.solarOrange, showLabels = true, unit = '' }: LineChartProps) {
+  const screenWidth = Dimensions.get('window').width;
+  const padding = { left: 50, right: 20, top: 20, bottom: 60 };
   const chartHeight = height - padding.top - padding.bottom;
+  
+  // Calculate chart content width for scrolling
+  const minPointSpacing = 30;
+  const chartContentWidth = Math.max(screenWidth - padding.left - padding.right, data.length * minPointSpacing);
+  const pointSpacing = chartContentWidth / Math.max(data.length - 1, 1);
 
   if (data.length === 0) return null;
 
-  const maxY = Math.max(...data.map(d => d.y));
-  const minY = Math.min(...data.map(d => d.y));
-  const maxX = Math.max(...data.map(d => d.x));
-  const minX = Math.min(...data.map(d => d.x));
+  const maxY = Math.max(...data.map(d => d.y), 1);
+  const minY = Math.min(...data.map(d => d.y), 0);
   const yRange = maxY - minY || 1;
-  const xRange = maxX - minX || 1;
+  const yAxisSteps = 5;
+  const yStep = yRange / yAxisSteps;
 
-  const points = data.map((point) => {
-    const x = ((point.x - minX) / xRange) * chartWidth;
-    const y = chartHeight - ((point.y - minY) / yRange) * chartHeight;
-    return { x, y };
+  // Calculate points with proper bounds - ensure all points are within chart area
+  const points = data.map((point, index) => {
+    const x = Math.max(0, Math.min(chartContentWidth, index * pointSpacing));
+    const normalizedY = (point.y - minY) / yRange;
+    const y = chartHeight - (normalizedY * chartHeight);
+    // Ensure points stay within bounds (with small margin)
+    const clampedY = Math.max(2, Math.min(chartHeight - 2, y));
+    const clampedX = Math.max(2, Math.min(chartContentWidth - 2, x));
+    return { x: clampedX, y: clampedY, value: point.y };
   });
 
+  // Generate SVG path with smooth line segments (stays within bounds)
+  const generatePath = () => {
+    if (points.length === 0) return '';
+    if (points.length === 1) return `M ${points[0].x} ${points[0].y}`;
+    
+    let path = `M ${points[0].x} ${points[0].y}`;
+    
+    // Use simple line segments - all points are already clamped to bounds
+    for (let i = 1; i < points.length; i++) {
+      const curr = points[i];
+      path += ` L ${curr.x} ${curr.y}`;
+    }
+    
+    return path;
+  };
+
   return (
-    <View style={[styles.container, { height }]}>
-      <View style={styles.yAxis}>
-        <Text style={styles.axisLabel}>{maxY.toFixed(0)}</Text>
-        <Text style={styles.axisLabel}>{(maxY / 2).toFixed(0)}</Text>
-        <Text style={styles.axisLabel}>0</Text>
+    <View style={[styles.advancedChartContainer, { height }]}>
+      {/* Y-Axis Labels */}
+      <View style={[styles.yAxisContainer, { height: chartHeight, marginTop: padding.top }]}>
+        {Array.from({ length: yAxisSteps + 1 }, (_, i) => {
+          const value = maxY - (i * yStep);
+          const yPosition = (i * chartHeight / yAxisSteps);
+          return (
+            <Text 
+              key={i} 
+              style={[
+                styles.yAxisLabel, 
+                { 
+                  position: 'absolute', 
+                  top: yPosition - 8,
+                }
+              ]}
+            >
+              {value.toFixed(1)}{unit}
+            </Text>
+          );
+        })}
       </View>
      
+      {/* Scrollable Chart Area */}
       <View style={{ flex: 1 }}>
-        <View style={[styles.chartArea, { height: chartHeight, marginTop: padding.top }]}>
-          {points.map((point, i) => (
-            <View
-              key={i}
-              style={[
-                styles.point,
-                {
-                  left: point.x + padding.left,
-                  bottom: point.y,
-                  backgroundColor: color,
-                },
-              ]}
-            />
-          ))}
-          {points.map((point, i) => {
-            if (i === 0) return null;
-            const prev = points[i - 1];
-            const length = Math.sqrt(Math.pow(point.x - prev.x, 2) + Math.pow(point.y - prev.y, 2));
-            const angle = Math.atan2(point.y - prev.y, point.x - prev.x);
-           
-            return (
-              <View
-                key={`line-${i}`}
-                style={[
-                  styles.line,
-                  {
-                    left: prev.x + padding.left,
-                    bottom: prev.y,
-                    width: length,
-                    backgroundColor: color,
-                    transform: [{ rotate: `${angle}rad` }],
-                  },
-                ]}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={true}
+          contentContainerStyle={{ paddingRight: padding.right }}
+          style={{ flex: 1 }}
+        >
+          <View style={[styles.advancedChartArea, { width: chartContentWidth, height: chartHeight, marginTop: padding.top }]}>
+            <Svg width={chartContentWidth} height={chartHeight} style={{ position: 'absolute' }}>
+              {/* Grid Lines */}
+              <G>
+                {Array.from({ length: yAxisSteps + 1 }, (_, i) => {
+                  const yPos = (i * chartHeight / yAxisSteps);
+                  return (
+                    <SvgLine
+                      key={`grid-${i}`}
+                      x1="0"
+                      y1={yPos}
+                      x2={chartContentWidth}
+                      y2={yPos}
+                      stroke={Colors.border}
+                      strokeWidth="1"
+                      strokeDasharray="3 3"
+                      opacity={0.3}
+                    />
+                  );
+                })}
+              </G>
+              
+              {/* Area under the line (gradient effect) */}
+              <Path
+                d={`${generatePath()} L ${points[points.length - 1]?.x || 0} ${chartHeight} L 0 ${chartHeight} Z`}
+                fill={color}
+                opacity={0.1}
               />
-            );
-          })}
-        </View>
-       
-        {showLabels && (
-          <View style={styles.xAxis}>
-            <Text style={styles.axisLabel}>{minX.toFixed(0)}</Text>
-            <Text style={styles.axisLabel}>{((minX + maxX) / 2).toFixed(0)}</Text>
-            <Text style={styles.axisLabel}>{maxX.toFixed(0)}</Text>
+              
+              {/* Main Line */}
+              <Path
+                d={generatePath()}
+                fill="none"
+                stroke={color}
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              
+              {/* Data Points */}
+              {points.map((point, i) => (
+                <Circle
+                  key={i}
+                  cx={point.x}
+                  cy={point.y}
+                  r="5"
+                  fill={Colors.white}
+                  stroke={color}
+                  strokeWidth="3"
+                />
+              ))}
+            </Svg>
+            
+            {/* X-Axis Labels */}
+            {showLabels && (
+              <View style={styles.xAxisLabelsContainer}>
+                {points.map((point, i) => {
+                  // Show labels for every 5th point or first/last
+                  if (i % Math.ceil(data.length / 6) === 0 || i === data.length - 1) {
+                    let label = i.toString();
+                    if (data[i]?.timestamp) {
+                      const time = new Date(data[i].timestamp);
+                      label = time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                    }
+                    return (
+                      <Text
+                        key={i}
+                        style={[
+                          styles.xAxisLabel,
+                          {
+                            position: 'absolute',
+                            left: point.x - 20,
+                            bottom: -25,
+                            width: 40,
+                          }
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {label}
+                      </Text>
+                    );
+                  }
+                  return null;
+                })}
+              </View>
+            )}
           </View>
-        )}
+        </ScrollView>
+        
+        {/* X-Axis Title */}
+        <View style={styles.xAxisTitleContainer}>
+          <Text style={styles.xAxisTitle}>Time</Text>
+        </View>
       </View>
     </View>
   );
@@ -239,6 +336,23 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.textSecondary,
     fontWeight: '600' as const,
+  },
+  advancedChartContainer: {
+    flexDirection: 'row',
+    padding: 10,
+  },
+  advancedChartArea: {
+    position: 'relative',
+    borderLeftWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: Colors.border,
+  },
+  xAxisLabelsContainer: {
+    position: 'absolute',
+    bottom: -30,
+    left: 0,
+    right: 0,
+    height: 30,
   },
 });
 

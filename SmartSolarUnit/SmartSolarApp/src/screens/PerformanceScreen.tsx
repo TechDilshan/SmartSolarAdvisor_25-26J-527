@@ -52,14 +52,17 @@ export default function PerformanceScreen() {
     }
   };
 
-  const chartData = sensorData.slice(-20).map((data, index) => ({
+  // Use more data points and time-based X-axis
+  const chartData = sensorData.slice(-30).map((data, index) => ({
     x: index,
     y: getSensorValue(data, selectedSensor),
+    timestamp: data.timestamp,
   }));
 
-  const predictionChartData = predictions.slice(-20).map((data, index) => ({
+  const predictionChartData = predictions.slice(-30).map((data, index) => ({
     x: index,
     y: data.predictedEnergy,
+    timestamp: data.timestamp,
   }));
 
   const renderMetricCard = (
@@ -179,7 +182,14 @@ export default function PerformanceScreen() {
               ))}
             </View>
             <View style={styles.chartContainer}>
-              <LineChart data={chartData} color={Colors.solarOrange} />
+              <LineChart 
+                data={chartData} 
+                color={Colors.solarOrange}
+                unit={selectedSensor === 'irradiance' ? ' lux' : 
+                      selectedSensor === 'temperature' ? ' °C' :
+                      selectedSensor === 'humidity' ? ' %' :
+                      selectedSensor === 'dustLevel' ? ' mg/m³' : ' %'}
+              />
             </View>
           </View>
         )}
@@ -201,7 +211,11 @@ export default function PerformanceScreen() {
               </View>
             </View>
             <View style={styles.chartContainer}>
-              <LineChart data={predictionChartData} color={Colors.success} />
+              <LineChart 
+                data={predictionChartData} 
+                color={Colors.success}
+                unit=" kWh"
+              />
             </View>
           </View>
         )}
@@ -378,12 +392,13 @@ const styles = StyleSheet.create({
   chartContainer: {
     backgroundColor: Colors.card,
     borderRadius: 12,
-    padding: 8,
+    padding: 0,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
+    overflow: 'hidden',
   },
   energyCards: {
     flexDirection: 'row',
