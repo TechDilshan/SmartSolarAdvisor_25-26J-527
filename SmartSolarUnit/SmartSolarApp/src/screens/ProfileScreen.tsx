@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, Switch, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Image, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User, Mail, MapPin, LogOut, X, Sun, Moon, Settings } from 'lucide-react-native';
+import { User, Mail, MapPin, LogOut, X, Settings } from 'lucide-react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { useSidebar } from '../contexts/SidebarContext';
 import HamburgerIcon from '../components/HamburgerIcon';
@@ -15,6 +15,7 @@ export default function ProfileScreen() {
   const { theme, toggleTheme, isDark } = useTheme();
   const navigation = useNavigation<any>();
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
+  const slideAnim = React.useRef(new Animated.Value(isDark ? 1 : 0)).current;
 
   const loadProfilePicture = async () => {
     if (user?.id) {
@@ -33,6 +34,16 @@ export default function ProfileScreen() {
       loadProfilePicture();
     }, [user])
   );
+
+  // Animate slider when theme changes
+  useEffect(() => {
+    Animated.spring(slideAnim, {
+      toValue: isDark ? 1 : 0,
+      useNativeDriver: false, // Must be false for percentage transforms
+      tension: 100,
+      friction: 8,
+    }).start();
+  }, [isDark]);
 
   const handleLogout = () => {
     Alert.alert(
@@ -123,28 +134,41 @@ export default function ProfileScreen() {
 
         {/* Theme Toggle Section */}
         <View style={[styles.infoCard, { backgroundColor: theme.colors.card }]}>
-          <View style={styles.infoRow}>
-            <View style={[styles.iconContainer, { backgroundColor: theme.colors.lightGray }]}>
-              {isDark ? (
-                <Moon size={20} color={theme.colors.primary} />
-              ) : (
-                <Sun size={20} color={theme.colors.solarOrange} />
-              )}
+          <Text style={[styles.themeLabel, { color: theme.colors.textSecondary }]}>Theme</Text>
+          <TouchableOpacity 
+            style={[styles.themeToggle, { backgroundColor: isDark ? theme.colors.primary : theme.colors.lightGray }]}
+            onPress={toggleTheme}
+            activeOpacity={0.8}
+          >
+            <View style={styles.themeToggleContent}>
+              <View style={styles.themeOption}>
+                <Text style={styles.themeEmoji}>☀️</Text>
+                <Text style={[styles.themeOptionText, { color: !isDark ? theme.colors.text : theme.colors.textSecondary }]}>
+                  Light
+                </Text>
+              </View>
+              <View style={styles.themeOption}>
+                <Text style={styles.themeEmoji}>🌙</Text>
+                <Text style={[styles.themeOptionText, { color: isDark ? theme.colors.text : theme.colors.textSecondary }]}>
+                  Dark
+                </Text>
+              </View>
             </View>
-            <View style={styles.infoContent}>
-              <Text style={[styles.infoLabel, { color: theme.colors.textSecondary }]}>Theme</Text>
-              <Text style={[styles.infoValue, { color: theme.colors.text }]}>
-                {isDark ? 'Dark Mode' : 'Light Mode'}
-              </Text>
-            </View>
-            <Switch
-              value={isDark}
-              onValueChange={toggleTheme}
-              trackColor={{ false: theme.colors.border, true: theme.colors.solarOrange }}
-              thumbColor={theme.colors.white}
-              ios_backgroundColor={theme.colors.border}
+            <Animated.View 
+              style={[
+                styles.themeToggleSlider, 
+                { 
+                  backgroundColor: isDark ? theme.colors.card : theme.colors.white,
+                  transform: [{
+                    translateX: slideAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: ['0%', '52%'],
+                    })
+                  }]
+                }
+              ]} 
             />
-          </View>
+          </TouchableOpacity>
         </View>
 
         <TouchableOpacity 
@@ -271,5 +295,55 @@ const styles = StyleSheet.create({
   logoutText: {
     fontSize: 16,
     fontWeight: '600' as const,
+  },
+  themeLabel: {
+    fontSize: 12,
+    marginBottom: 12,
+    fontWeight: '600' as const,
+  },
+  themeToggle: {
+    height: 56,
+    borderRadius: 28,
+    padding: 4,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  themeToggleContent: {
+    flexDirection: 'row',
+    height: '100%',
+    zIndex: 2,
+  },
+  themeOption: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: 24,
+    zIndex: 2,
+  },
+  themeOptionActive: {
+    // Active state handled by slider
+  },
+  themeEmoji: {
+    fontSize: 24,
+  },
+  themeOptionText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+  },
+  themeToggleSlider: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    width: '48%',
+    height: 48,
+    borderRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    zIndex: 1,
   },
 });
