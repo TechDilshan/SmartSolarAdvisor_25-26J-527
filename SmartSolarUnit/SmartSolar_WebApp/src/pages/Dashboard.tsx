@@ -1,8 +1,9 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { LiveCounter } from "@/components/dashboard/LiveCounter";
 import { SensorChart } from "@/components/charts/SensorChart";
+import { PowerGauge } from "@/components/charts/PowerGauge";
 import { useSolarSites, useSensorData, usePredictionData } from "@/hooks/useBackendAPI";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -22,10 +23,66 @@ const Dashboard: React.FC = () => {
   // Get first running site for demo data
   const runningSite = sites.find((s) => s.status === "running");
   const { data: sensorData } = useSensorData(runningSite?.device_id || null);
-  const { dailyTotal, monthlyTotal } = usePredictionData(
+  const { data: predictionData, dailyTotal, monthlyTotal, loading: predictionLoading } = usePredictionData(
     runningSite?.customer_name || null,
     runningSite?.id || null
   );
+
+  // Check device active/inactive status based on last sensor reading
+  const deviceStatus = useMemo(() => {
+    if (!sensorData || sensorData.length === 0) return { isActive: false, lastReadingMinutes: null };
+    
+    // Get the most recent sensor reading
+    const sorted = [...sensorData].sort((a, b) => {
+      const tsA = new Date(a.timestamp).getTime();
+      const tsB = new Date(b.timestamp).getTime();
+      return tsB - tsA; // Descending order (newest first)
+    });
+    
+    const latestReading = sorted[0];
+    if (!latestReading || !latestReading.timestamp) return { isActive: false, lastReadingMinutes: null };
+    
+    // Calculate minutes since last reading
+    const lastReadingTime = new Date(latestReading.timestamp).getTime();
+    const now = new Date().getTime();
+    const minutesAgo = Math.floor((now - lastReadingTime) / (1000 * 60));
+    
+    // Device is active if last reading is within 24 hours (1440 minutes)
+    const isActive = minutesAgo <= 1440;
+    
+    return { isActive, lastReadingMinutes: minutesAgo };
+  }, [sensorData]);
+
+  // Get the last/most recent 5-minute predicted kWh value
+  // Get the actual prediction value even if device is inactive (for max calculation)
+  const currentPredictedKwh5min = useMemo(() => {
+    if (!predictionData || predictionData.length === 0) return 0;
+    
+    // Sort by timestamp to ensure we get the most recent one
+    const sorted = [...predictionData].sort((a, b) => {
+      const tsA = a.timestamp || '';
+      const tsB = b.timestamp || '';
+      return tsB.localeCompare(tsA); // Descending order (newest first)
+    });
+    
+    // Get the most recent prediction (first after sorting)
+    const latest = sorted[0];
+    
+    // Ensure we return 0 if the value is null, undefined, or NaN
+    const value = latest?.predicted_kwh_5min;
+    if (value === null || value === undefined || isNaN(Number(value))) return 0;
+    
+    // Return the actual value (including 0)
+    // Note: If device is inactive, this value will be displayed as 0 in the gauge,
+    // but we still use it for max calculation
+    return Number(value);
+  }, [predictionData]);
+
+  // Max is now calculated automatically in PowerGauge component
+  // based on last reading + 25%, so we don't need to calculate it here
+
+  // Get system capacity
+  const systemCapacity = runningSite?.system_kw || 0;
 
   const runningSystems = sites.filter((s) => s.status === "running").length;
   const completedSystems = sites.filter((s) => s.status === "completed").length;
@@ -62,6 +119,20 @@ const Dashboard: React.FC = () => {
               : "Real-time monitoring of your solar energy systems"}
           </p>
         </div>
+
+        {/* Power Gauge - Prominent Display */}
+        {runningSite && systemCapacity > 0 && (
+          <div className="flex justify-center">
+            <PowerGauge
+              predictedKwh5min={currentPredictedKwh5min}
+              capacity={systemCapacity}
+              siteName={runningSite.site_name}
+              loading={predictionLoading}
+              isDeviceActive={deviceStatus.isActive}
+              lastReadingMinutes={deviceStatus.lastReadingMinutes}
+            />
+          </div>
+        )}
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
