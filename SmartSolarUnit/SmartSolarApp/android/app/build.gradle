@@ -84,6 +84,9 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
+        // Allow HTTP (cleartext) traffic for local development
+        // This enables connections to localhost, 10.0.2.2 (Android emulator), and local network IPs
+        manifestPlaceholders = [usesCleartextTraffic: "true"]
     }
     signingConfigs {
         debug {
