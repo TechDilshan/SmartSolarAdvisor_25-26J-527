@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Zap, Mail, Lock, AlertCircle } from "lucide-react";
+import { Activity, Brain, Mail, Lock, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const Login: React.FC = () => {
@@ -46,9 +46,11 @@ const Login: React.FC = () => {
         </div>
         <div className="relative z-10 flex flex-col justify-center px-16">
           <div className="flex items-center gap-4 mb-8">
-            <div className="w-16 h-16 rounded-2xl gradient-solar flex items-center justify-center glow-orange">
-              <Zap className="w-8 h-8 text-accent-foreground" />
-            </div>
+            <img 
+              src="/Logo.png" 
+              alt="Smart Solar Advisor Logo" 
+              className="w-16 h-16 rounded-2xl object-contain"
+            />
             <div>
               <h1 className="text-3xl font-bold text-primary-foreground">Smart Solar Advisor</h1>
               <p className="text-primary-foreground/60">IoT Energy Forecasting Platform</p>
@@ -65,7 +67,7 @@ const Login: React.FC = () => {
             <div className="flex flex-col gap-4 pt-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-success/20 flex items-center justify-center">
-                  <Zap className="w-5 h-5 text-success" />
+                  <Activity className="w-5 h-5 text-success" />
                 </div>
                 <div>
                   <p className="font-medium text-primary-foreground">Real-time Monitoring</p>
@@ -74,7 +76,7 @@ const Login: React.FC = () => {
               </div>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-solar-orange/20 flex items-center justify-center">
-                  <Zap className="w-5 h-5 text-solar-orange" />
+                  <Brain className="w-5 h-5 text-solar-orange" />
                 </div>
                 <div>
                   <p className="font-medium text-primary-foreground">ML Predictions</p>
@@ -91,14 +93,16 @@ const Login: React.FC = () => {
         <div className="w-full max-w-md">
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-3 mb-8 justify-center">
-            <div className="w-12 h-12 rounded-xl gradient-solar flex items-center justify-center">
-              <Zap className="w-6 h-6 text-accent-foreground" />
-            </div>
+            <img 
+              src="/Logo.png" 
+              alt="Smart Solar Advisor Logo" 
+              className="w-12 h-12 rounded-xl object-contain"
+            />
             <h1 className="text-2xl font-bold text-foreground">Solar Advisor</h1>
           </div>
 
           <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold text-foreground mb-2">Admin Login</h2>
+            <h2 className="text-2xl font-bold text-foreground mb-2">Dashboard Login</h2>
             <p className="text-muted-foreground">
               Sign in to access the smart solar advisor dashboard
             </p>

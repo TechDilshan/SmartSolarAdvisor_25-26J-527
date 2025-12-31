@@ -72,9 +72,13 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="flex items-center gap-3 px-6 py-6 border-b border-sidebar-border">
-            <div className="w-10 h-10 rounded-lg gradient-solar flex items-center justify-center glow-orange">
-              <Zap className="w-6 h-6 text-accent-foreground" />
-            </div>
+            
+              <img 
+                src="/Logo.png" 
+                alt="Smart Solar Advisor Logo" 
+                className="w-6 h-6 rounded-md object-contain"
+              />
+            
             <div>
               <h1 className="font-bold text-sidebar-foreground text-lg">Solar Advisor</h1>
               <p className="text-xs text-sidebar-foreground/60">IoT Platform</p>
