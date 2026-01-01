@@ -208,10 +208,39 @@ const SiteDetail: React.FC = () => {
     rain: ((d.rain?.pct1 || 0) + (d.rain?.pct2 || 0)) / 2,
   }));
 
-  const predictionChartData = predictionData.slice(-30).map((d) => ({
-    time: d.timestamp?.substring(9, 15) || "",
-    predicted: d.predicted_kwh_5min * 1000, // Convert to Wh for better visualization
-  }));
+  const predictionChartData = predictionData.slice(-30).map((d) => {
+    // Format timestamp as time (HH:MM)
+    let timeStr = "";
+    if (d.timestamp) {
+      try {
+        // Handle different timestamp formats
+        let date: Date;
+        if (typeof d.timestamp === 'string' && d.timestamp.includes('_')) {
+          // Format: YYYYMMDD_HHMMSS
+          const datePart = d.timestamp.substring(0, 8);
+          const timePart = d.timestamp.substring(9, 15);
+          const year = parseInt(datePart.substring(0, 4));
+          const month = parseInt(datePart.substring(4, 6)) - 1;
+          const day = parseInt(datePart.substring(6, 8));
+          const hour = parseInt(timePart.substring(0, 2));
+          const minute = parseInt(timePart.substring(2, 4));
+          date = new Date(year, month, day, hour, minute);
+        } else {
+          date = new Date(d.timestamp);
+        }
+        timeStr = date.toLocaleTimeString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+      } catch {
+        timeStr = "";
+      }
+    }
+    return {
+      time: timeStr,
+      predicted: d.predicted_kwh_5min || 0, // Keep in kWh
+    };
+  });
 
   // Prepare 30 days of daily energy data
   const dailyEnergyData = monthlyDailyData.map((day) => {
@@ -529,10 +558,10 @@ const SiteDetail: React.FC = () => {
           <SensorChart
             data={predictionChartData}
             dataKeys={[
-              { key: "predicted", color: "hsl(var(--chart-prediction))", label: "Predicted (Wh)" },
+              { key: "predicted", color: "hsl(var(--chart-prediction))", label: "Predicted (kWh)" },
             ]}
             title="5-Minute Energy Predictions"
-            unit=" Wh"
+            unit=" kWh"
           />
         </div>
 

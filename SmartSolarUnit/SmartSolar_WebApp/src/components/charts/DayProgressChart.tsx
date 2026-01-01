@@ -1,6 +1,7 @@
 import React from "react";
 import { cn } from "@/lib/utils";
 import { CheckCircle2, Clock } from "lucide-react";
+import { format } from "date-fns";
 
 interface DayProgressChartProps {
   startDate: Date;
@@ -64,8 +65,8 @@ export const DayProgressChart: React.FC<DayProgressChartProps> = ({
           <div
             key={day.day}
             className={cn(
-              "aspect-square rounded flex items-center justify-center transition-all",
-              "w-16 h-16",
+              "aspect-square rounded flex flex-col items-center justify-center transition-all",
+              "w-16 h-16 p-1",
               day.isCompleted
                 ? "bg-success text-success-foreground"
                 : day.isToday
@@ -75,11 +76,17 @@ export const DayProgressChart: React.FC<DayProgressChartProps> = ({
             title={`Day ${day.day} - ${day.date.toLocaleDateString()}`}
           >
             {day.isCompleted ? (
-              <CheckCircle2 className="w-4 h-4" />
+              <>
+                <CheckCircle2 className="w-3 h-3 mb-0.5" />
+                <span className="text-[8px] font-medium">{format(day.date, "MMM d")}</span>
+              </>
             ) : day.isToday ? (
-              <Clock className="w-4 h-4" />
+              <>
+                <Clock className="w-3 h-3 mb-0.5" />
+                <span className="text-[8px] font-medium">{format(day.date, "MMM d")}</span>
+              </>
             ) : (
-              <span className="text-xs font-medium">{day.day}</span>
+              <span className="text-[8px] font-medium">{format(day.date, "MMM d")}</span>
             )}
           </div>
         ))}
