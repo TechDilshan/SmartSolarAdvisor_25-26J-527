@@ -144,11 +144,12 @@ export const getSummary = async (req, res) => {
     
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0].replace(/-/g, '');
-    const currentMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`;
     
+    // Use last 30 days total instead of current calendar month
+    // This handles year boundaries correctly (e.g., Jan 1st will include Dec data)
     const [dailyTotal, monthlyTotal, latestPrediction] = await Promise.all([
       PredictionModel.getDailyTotal(customerName, siteId, todayStr),
-      PredictionModel.getMonthlyTotal(customerName, siteId, currentMonth),
+      PredictionModel.getLast30DaysTotal(customerName, siteId),
       PredictionModel.getLatestPrediction(customerName, siteId)
     ]);
 

@@ -113,6 +113,49 @@ class PredictionModel {
     };
   }
 
+  async getLast30DaysTotal(customerName, siteId) {
+    // Calculate last 30 days (rolling period, not calendar month)
+    const now = new Date();
+    const endDate = new Date(now);
+    endDate.setHours(23, 59, 59, 999);
+    
+    const startDate = new Date(now);
+    startDate.setDate(startDate.getDate() - 29); // 30 days including today
+    startDate.setHours(0, 0, 0, 0);
+    
+    // Format dates as YYYYMMDD_HHMMSS
+    const formatDate = (date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const seconds = String(date.getSeconds()).padStart(2, '0');
+      return `${year}${month}${day}_${hours}${minutes}${seconds}`;
+    };
+    
+    const startTime = formatDate(startDate);
+    const endTime = formatDate(endDate);
+    
+    const predictions = await this.getPredictionsInRange(
+      customerName,
+      siteId,
+      startTime,
+      endTime
+    );
+    
+    const totalKwh = predictions.reduce(
+      (sum, pred) => sum + (pred.predicted_kwh_5min || 0),
+      0
+    );
+    
+    return {
+      yearMonth: null, // Not applicable for rolling 30 days
+      totalKwh,
+      readingsCount: predictions.length
+    };
+  }
+
   subscribeToPredictions(customerName, siteId, callback) {
     const predRef = this.predictionsRef.child(customerName).child(siteId);
     
