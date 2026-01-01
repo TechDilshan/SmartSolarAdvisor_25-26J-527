@@ -135,11 +135,11 @@ export const PowerGauge: React.FC<PowerGaugeProps> = ({
   };
 
   // SVG parameters
-  const size = 320;
+  const size = 500;
   const centerX = size / 2;
   const centerY = size / 2;
-  const radius = 120;
-  const arrowLength = 90;
+  const radius = 180;
+  const arrowLength = 140;
 
   // Calculate arrow tip position
   const arrowTipX = centerX + arrowLength * Math.cos((arrowAngle * Math.PI) / 180);

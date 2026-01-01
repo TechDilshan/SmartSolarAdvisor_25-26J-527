@@ -49,6 +49,7 @@ export const LiveCounter: React.FC<LiveCounterProps> = ({
         "p-6 rounded-xl bg-gradient-to-br from-deep-blue to-deep-blue-light text-primary-foreground",
         className
       )}
+      style={{ height: "400px", width: "100%" }}
     >
       <p className="text-sm font-medium text-primary-foreground/70 mb-2">{label}</p>
       <div className="flex items-baseline gap-2">

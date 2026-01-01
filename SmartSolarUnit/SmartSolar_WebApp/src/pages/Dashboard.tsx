@@ -120,98 +120,169 @@ const Dashboard: React.FC = () => {
           </p>
         </div>
 
-        {/* Power Gauge - Prominent Display */}
-        {runningSite && systemCapacity > 0 && (
-          <div className="flex justify-center">
-            <PowerGauge
-              predictedKwh5min={currentPredictedKwh5min}
-              capacity={systemCapacity}
-              siteName={runningSite.site_name}
-              loading={predictionLoading}
-              isDeviceActive={deviceStatus.isActive}
-              lastReadingMinutes={deviceStatus.lastReadingMinutes}
-            />
+        {/* Power Gauge + Stats Grid - 2 Column Layout */}
+        {runningSite && systemCapacity > 0 ? (
+          <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-0 items-stretch" style={{ gridTemplateColumns: '1fr 1fr' }}>
+            {/* Left Column: Gauge Meter */}
+            <div className="flex justify-center lg:justify-start h-full w-full">
+              <PowerGauge
+                predictedKwh5min={currentPredictedKwh5min}
+                capacity={systemCapacity}
+                siteName={runningSite.site_name}
+                loading={predictionLoading}
+                isDeviceActive={deviceStatus.isActive}
+                lastReadingMinutes={deviceStatus.lastReadingMinutes}
+              />
+            </div>
+
+            {/* Right Column: Stats Grid 2x2 + Live Counters */}
+            <div className="flex flex-col gap-4 h-full w-full">
+              {/* Stats Grid 2x2 */}
+              <div className="grid grid-cols-2 gap-4 w-full">
+                {isAdmin ? (
+                  <>
+                    <StatsCard
+                      title="Total Sites"
+                      value={sitesLoading ? "-" : sites.length}
+                      subtitle="Registered solar installations"
+                      icon={Sun}
+                      variant="accent"
+                    />
+                    <StatsCard
+                      title="Running Systems"
+                      value={sitesLoading ? "-" : runningSystems}
+                      subtitle="Currently active"
+                      icon={Zap}
+                      variant="success"
+                    />
+                    <StatsCard
+                      title="Completed Systems"
+                      value={sitesLoading ? "-" : completedSystems}
+                      subtitle="Installation complete"
+                      icon={CheckCircle2}
+                    />
+                    <StatsCard
+                      title="Today's Prediction"
+                      value={`${dailyTotal.toFixed(4)} kWh`}
+                      subtitle="Total energy forecast"
+                      icon={TrendingUp}
+                      variant="accent"
+                    />
+                  </>
+                ) : (
+                  <>
+                    <StatsCard
+                      title="My Sites"
+                      value={sitesLoading ? "-" : sites.length}
+                      subtitle="Your solar installations"
+                      icon={Sun}
+                      variant="accent"
+                    />
+                    <StatsCard
+                      title="Active Systems"
+                      value={sitesLoading ? "-" : runningSystems}
+                      subtitle="Currently generating"
+                      icon={Zap}
+                      variant="success"
+                    />
+                    <StatsCard
+                      title="Today's Energy"
+                      value={`${dailyTotal.toFixed(4)} kWh`}
+                      subtitle="Predicted generation"
+                      icon={TrendingUp}
+                      variant="accent"
+                    />
+                    <StatsCard
+                      title="Monthly Energy"
+                      value={`${monthlyTotal.toFixed(4)} kWh`}
+                      subtitle="This month's forecast"
+                      icon={CheckCircle2}
+                    />
+                  </>
+                )}
+              </div>
+
+              {/* Live Counters below the 2x2 grid */}
+              <div className="grid grid-cols-2 gap-4 w-full">
+                <LiveCounter
+                  value={dailyTotal}
+                  unit="kWh"
+                  label="Today's Predicted Energy"
+                />
+                <LiveCounter
+                  value={monthlyTotal}
+                  unit="kWh"
+                  label="Monthly Predicted Energy"
+                />
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* Fallback: Stats Grid if no running site */
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {isAdmin ? (
+              <>
+                <StatsCard
+                  title="Total Sites"
+                  value={sitesLoading ? "-" : sites.length}
+                  subtitle="Registered solar installations"
+                  icon={Sun}
+                  variant="accent"
+                />
+                <StatsCard
+                  title="Running Systems"
+                  value={sitesLoading ? "-" : runningSystems}
+                  subtitle="Currently active"
+                  icon={Zap}
+                  variant="success"
+                />
+                <StatsCard
+                  title="Completed Systems"
+                  value={sitesLoading ? "-" : completedSystems}
+                  subtitle="Installation complete"
+                  icon={CheckCircle2}
+                />
+                <StatsCard
+                  title="Today's Prediction"
+                  value={`${dailyTotal.toFixed(4)} kWh`}
+                  subtitle="Total energy forecast"
+                  icon={TrendingUp}
+                  variant="accent"
+                />
+              </>
+            ) : (
+              <>
+                <StatsCard
+                  title="My Sites"
+                  value={sitesLoading ? "-" : sites.length}
+                  subtitle="Your solar installations"
+                  icon={Sun}
+                  variant="accent"
+                />
+                <StatsCard
+                  title="Active Systems"
+                  value={sitesLoading ? "-" : runningSystems}
+                  subtitle="Currently generating"
+                  icon={Zap}
+                  variant="success"
+                />
+                <StatsCard
+                  title="Today's Energy"
+                  value={`${dailyTotal.toFixed(4)} kWh`}
+                  subtitle="Predicted generation"
+                  icon={TrendingUp}
+                  variant="accent"
+                />
+                <StatsCard
+                  title="Monthly Energy"
+                  value={`${monthlyTotal.toFixed(4)} kWh`}
+                  subtitle="This month's forecast"
+                  icon={CheckCircle2}
+                />
+              </>
+            )}
           </div>
         )}
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {isAdmin ? (
-            <>
-          <StatsCard
-            title="Total Sites"
-            value={sitesLoading ? "-" : sites.length}
-            subtitle="Registered solar installations"
-            icon={Sun}
-            variant="accent"
-          />
-          <StatsCard
-            title="Running Systems"
-            value={sitesLoading ? "-" : runningSystems}
-            subtitle="Currently active"
-            icon={Zap}
-            variant="success"
-          />
-          <StatsCard
-            title="Completed Systems"
-            value={sitesLoading ? "-" : completedSystems}
-            subtitle="Installation complete"
-            icon={CheckCircle2}
-          />
-          <StatsCard
-            title="Today's Prediction"
-            value={`${dailyTotal.toFixed(4)} kWh`}
-            subtitle="Total energy forecast"
-            icon={TrendingUp}
-            variant="accent"
-          />
-            </>
-          ) : (
-            <>
-              <StatsCard
-                title="My Sites"
-                value={sitesLoading ? "-" : sites.length}
-                subtitle="Your solar installations"
-                icon={Sun}
-                variant="accent"
-              />
-              <StatsCard
-                title="Active Systems"
-                value={sitesLoading ? "-" : runningSystems}
-                subtitle="Currently generating"
-                icon={Zap}
-                variant="success"
-              />
-              <StatsCard
-                title="Today's Energy"
-                value={`${dailyTotal.toFixed(4)} kWh`}
-                subtitle="Predicted generation"
-                icon={TrendingUp}
-                variant="accent"
-              />
-              <StatsCard
-                title="Monthly Energy"
-                value={`${monthlyTotal.toFixed(4)} kWh`}
-                subtitle="This month's forecast"
-                icon={CheckCircle2}
-              />
-            </>
-          )}
-        </div>
-
-        {/* Live Counters */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <LiveCounter
-            value={dailyTotal}
-            unit="kWh"
-            label="Today's Predicted Energy"
-          />
-          <LiveCounter
-            value={monthlyTotal}
-            unit="kWh"
-            label="Monthly Predicted Energy"
-          />
-        </div>
 
         {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
