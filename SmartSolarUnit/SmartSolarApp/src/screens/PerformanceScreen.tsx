@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Thermometer, Droplets, Wind, CloudRain, Sun, TrendingUp, Zap, Calendar, AlertCircle } from 'lucide-react-native';
 import { LineChart } from '../components/Charts';
+import { PowerGauge } from '../components/PowerGauge';
+import { DayProgressChart } from '../components/DayProgressChart';
 import { useSolarSite, useSensorData, usePredictionData } from '../hooks/useBackendAPI';
 import { SensorData, PredictionData } from '../types';
 import { useTheme } from '../contexts/ThemeContext';
@@ -26,6 +28,82 @@ export default function PerformanceScreen() {
 
   const [selectedSensor, setSelectedSensor] = useState<SensorType>('irradiance');
   const [pulseAnim] = useState(() => new Animated.Value(1));
+  
+  // Calculate device status and current predicted kWh 5min
+  const deviceStatus = useMemo(() => {
+    if (!sensorData || sensorData.length === 0) return { isActive: false, lastReadingMinutes: null };
+    const sorted = [...sensorData].sort((a, b) => {
+      const tsA = new Date(a.timestamp).getTime();
+      const tsB = new Date(b.timestamp).getTime();
+      return tsB - tsA;
+    });
+    const latestReading = sorted[0];
+    if (!latestReading || !latestReading.timestamp) return { isActive: false, lastReadingMinutes: null };
+    const lastReadingTime = new Date(latestReading.timestamp).getTime();
+    const now = new Date().getTime();
+    const minutesAgo = Math.floor((now - lastReadingTime) / (1000 * 60));
+    const isActive = minutesAgo <= 1440; // 24 hours
+    return { isActive, lastReadingMinutes: minutesAgo };
+  }, [sensorData]);
+  
+  const currentPredictedKwh5min = useMemo(() => {
+    if (!predictions || predictions.length === 0) return 0;
+    const sorted = [...predictions].sort((a, b) => {
+      const tsA = new Date(a.timestamp).getTime();
+      const tsB = new Date(b.timestamp).getTime();
+      return tsB - tsA;
+    });
+    const latest = sorted[0];
+    const value = latest?.predictedEnergy;
+    if (value === null || value === undefined || isNaN(Number(value))) return 0;
+    return Number(value);
+  }, [predictions]);
+
+  // Calculate 30-day period dates and statistics
+  const dateStats = useMemo(() => {
+    if (!site?.created_at) {
+      return null;
+    }
+
+    // Parse start date (assuming created_at is in a parseable format)
+    let start: Date;
+    try {
+      // Try to parse the date (could be ISO string or other format)
+      start = new Date(site.created_at);
+      if (isNaN(start.getTime())) {
+        // If parsing fails, use current date - 30 days as fallback
+        start = new Date();
+        start.setDate(start.getDate() - 30);
+      }
+    } catch {
+      start = new Date();
+      start.setDate(start.getDate() - 30);
+    }
+
+    // Calculate end date (30 days from start)
+    const end = new Date(start);
+    end.setDate(end.getDate() + 29); // 30 days including start date
+
+    // Current date
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    start.setHours(0, 0, 0, 0);
+    end.setHours(0, 0, 0, 0);
+
+    // Calculate completed days (from start to today, max 30)
+    const completedDays = Math.max(0, Math.min(30, Math.floor((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))));
+
+    // Calculate remaining days (from today to end, min 0)
+    const remainingDays = Math.max(0, Math.floor((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));
+
+    return {
+      startDate: start,
+      endDate: end,
+      completedDays,
+      remainingDays,
+      totalDays: 30,
+    };
+  }, [site?.created_at]);
 
   useEffect(() => {
     const animation = Animated.loop(
@@ -125,6 +203,69 @@ export default function PerformanceScreen() {
             </Text>
           )}
         </View>
+        
+        {/* Gauge Meter */}
+        {site && site.systemCapacity > 0 && (
+          <View style={styles.section}>
+            <PowerGauge
+              predictedKwh5min={currentPredictedKwh5min}
+              capacity={site.systemCapacity}
+              siteName={site.siteName}
+              loading={predictionLoading}
+              isDeviceActive={deviceStatus.isActive}
+              lastReadingMinutes={deviceStatus.lastReadingMinutes}
+            />
+          </View>
+        )}
+
+        {/* 30-Day Period Tracking */}
+        {dateStats && (
+          <View style={styles.section}>
+            <View style={[styles.dateStatsContainer, { backgroundColor: colors.card }]}>
+              <Text style={[styles.dateStatsTitle, { color: colors.text }]}>30-Day System Overview</Text>
+              <View style={styles.dateStatsGrid}>
+                <View style={styles.dateStatItem}>
+                  <Text style={[styles.dateStatLabel, { color: colors.textSecondary }]}>Start Date</Text>
+                  <Text style={[styles.dateStatValue, { color: colors.text }]}>
+                    {dateStats.startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </Text>
+                </View>
+                <View style={styles.dateStatItem}>
+                  <Text style={[styles.dateStatLabel, { color: colors.textSecondary }]}>End Date</Text>
+                  <Text style={[styles.dateStatValue, { color: colors.text }]}>
+                    {dateStats.endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </Text>
+                </View>
+                <View style={styles.dateStatItem}>
+                  <Text style={[styles.dateStatLabel, { color: colors.textSecondary }]}>Completed Days</Text>
+                  <Text style={[styles.dateStatValue, { color: colors.text }]}>
+                    {dateStats.completedDays} / {dateStats.totalDays}
+                  </Text>
+                </View>
+                <View style={styles.dateStatItem}>
+                  <Text style={[styles.dateStatLabel, { color: colors.textSecondary }]}>Remaining Days</Text>
+                  <Text style={[styles.dateStatValue, { color: colors.text }]}>
+                    {dateStats.remainingDays} / {dateStats.totalDays}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Day-by-Day Progress Chart */}
+        {dateStats && (
+          <View style={styles.section}>
+            <DayProgressChart
+              startDate={dateStats.startDate}
+              endDate={dateStats.endDate}
+              completedDays={dateStats.completedDays}
+              remainingDays={dateStats.remainingDays}
+              totalDays={dateStats.totalDays}
+            />
+          </View>
+        )}
+        
         {latestSensor && (
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Real-Time Sensors</Text>
@@ -421,6 +562,37 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   navButtonText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+  },
+  dateStatsContainer: {
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  dateStatsTitle: {
+    fontSize: 18,
+    fontWeight: '700' as const,
+    marginBottom: 16,
+  },
+  dateStatsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+  },
+  dateStatItem: {
+    flex: 1,
+    minWidth: '45%',
+  },
+  dateStatLabel: {
+    fontSize: 12,
+    marginBottom: 4,
+  },
+  dateStatValue: {
     fontSize: 16,
     fontWeight: '600' as const,
   },

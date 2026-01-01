@@ -3,8 +3,9 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Activity as ActivityIcon, AlertCircle, Sun, Zap, TrendingUp, X } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
-import { useSolarSites, usePredictionData, useDailyEnergy30Days } from '../hooks/useBackendAPI';
+import { useSolarSites, usePredictionData, useDailyEnergy30Days, useSensorData } from '../hooks/useBackendAPI';
 import { CandleChart } from '../components/Charts';
+import { PowerGauge } from '../components/PowerGauge';
 import { SolarSystem } from '../types';
 import { useSidebar } from '../contexts/SidebarContext';
 import HamburgerIcon from '../components/HamburgerIcon';
@@ -20,11 +21,14 @@ export default function HomeScreen() {
   
   // Get first site for summary and chart (or aggregate all sites)
   const firstSite = sites.length > 0 ? sites[0] : null;
-  const { dailyTotal, monthlyTotal } = usePredictionData(
+  const { data: predictions, dailyTotal, monthlyTotal, loading: predictionLoading } = usePredictionData(
     firstSite?.customerName || null,
     firstSite?.id || null,
     10000
   );
+  
+  // Get sensor data for device status
+  const { data: sensorData } = useSensorData(firstSite?.deviceId || null, 10000);
   
   // Use site creation date as start date for the 30-day chart (like web app)
   const startDate = firstSite?.created_at || null;
@@ -35,6 +39,36 @@ export default function HomeScreen() {
     30,
     startDate
   );
+  
+  // Calculate device status and current predicted kWh 5min
+  const deviceStatus = useMemo(() => {
+    if (!sensorData || sensorData.length === 0) return { isActive: false, lastReadingMinutes: null };
+    const sorted = [...sensorData].sort((a, b) => {
+      const tsA = new Date(a.timestamp).getTime();
+      const tsB = new Date(b.timestamp).getTime();
+      return tsB - tsA;
+    });
+    const latestReading = sorted[0];
+    if (!latestReading || !latestReading.timestamp) return { isActive: false, lastReadingMinutes: null };
+    const lastReadingTime = new Date(latestReading.timestamp).getTime();
+    const now = new Date().getTime();
+    const minutesAgo = Math.floor((now - lastReadingTime) / (1000 * 60));
+    const isActive = minutesAgo <= 1440; // 24 hours
+    return { isActive, lastReadingMinutes: minutesAgo };
+  }, [sensorData]);
+  
+  const currentPredictedKwh5min = useMemo(() => {
+    if (!predictions || predictions.length === 0) return 0;
+    const sorted = [...predictions].sort((a, b) => {
+      const tsA = new Date(a.timestamp).getTime();
+      const tsB = new Date(b.timestamp).getTime();
+      return tsB - tsA;
+    });
+    const latest = sorted[0];
+    const value = latest?.predictedEnergy;
+    if (value === null || value === undefined || isNaN(Number(value))) return 0;
+    return Number(value);
+  }, [predictions]);
   
   const chartData = useMemo(() => {
     return dailyEnergy30Days.map(item => ({
@@ -163,6 +197,18 @@ export default function HomeScreen() {
               <Text style={[styles.retryButtonText, { color: colors.white }]}>Retry</Text>
             </TouchableOpacity>
           </View>
+        )}
+        
+        {/* Gauge Meter */}
+        {firstSite && firstSite.systemCapacity > 0 && (
+          <PowerGauge
+            predictedKwh5min={currentPredictedKwh5min}
+            capacity={firstSite.systemCapacity}
+            siteName={firstSite.siteName}
+            loading={predictionLoading}
+            isDeviceActive={deviceStatus.isActive}
+            lastReadingMinutes={deviceStatus.lastReadingMinutes}
+          />
         )}
         
         {/* Energy Summary Cards */}
