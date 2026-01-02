@@ -110,27 +110,34 @@ class EmbeddingsHandler:
         logger.info(f"✓ Successfully added all chunks to vector database")
         logger.info(f"  Total items in collection: {self.collection.count()}")
     
-    def search(self, query: str, n_results: int = 5) -> Dict:
-        """
-        Search for relevant chunks using semantic similarity
-        
-        Args:
-            query: Search query
-            n_results: Number of results to return
+    def search(self, query: str, n_results: int = 3):
+        """Search for similar chunks"""
+        try:
+            # Generate query embedding
+            query_embedding = self.model.encode([query])[0].tolist()
             
-        Returns:
-            Dictionary with results
-        """
-        # Create query embedding
-        query_embedding = self.model.encode([query]).tolist()
-        
-        # Search in ChromaDB
-        results = self.collection.query(
-            query_embeddings=query_embedding,
-            n_results=n_results
-        )
-        
-        return results
+            # Search in ChromaDB with cosine similarity
+            results = self.collection.query(
+                query_embeddings=[query_embedding],
+                n_results=n_results,
+                include=['documents', 'metadatas', 'distances']
+            )
+            
+            # Convert squared L2 distances to similarity scores
+            # ChromaDB uses squared L2 distance by default
+            # We need to normalize or convert appropriately
+            if results['distances']:
+                # Normalize distances to 0-1 range for better interpretation
+                distances = results['distances'][0]
+                max_dist = max(distances) if distances else 1
+                normalized_distances = [d / max_dist if max_dist > 0 else d for d in distances]
+                results['distances'] = [normalized_distances]
+            
+            return results
+            
+        except Exception as e:
+            logging.error(f"Error during search: {str(e)}")
+            return {'documents': [[]], 'metadatas': [[]], 'distances': [[]]}
     
     def get_collection_info(self) -> Dict:
         """Get information about the vector database collection"""
