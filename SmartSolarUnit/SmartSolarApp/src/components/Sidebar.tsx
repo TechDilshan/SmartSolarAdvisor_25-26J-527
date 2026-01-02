@@ -1,11 +1,13 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, Alert, Animated } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, Alert, Animated, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Home, BarChart3, User, LogOut, X } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSidebar } from '../contexts/SidebarContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+
+const screenHeight = Dimensions.get('window').height;
 
 export default function Sidebar() {
   const { isOpen, closeSidebar } = useSidebar();
@@ -149,8 +151,8 @@ const styles = StyleSheet.create({
     elevation: 10,
     position: 'absolute',
     right: 0,
-    top: 0,
-    bottom: 0,
+    top: 60, // Add margin from top
+    bottom: 60, // Add margin from bottom
   },
   safeArea: {
     flex: 1,
