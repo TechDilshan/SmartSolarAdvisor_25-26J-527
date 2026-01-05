@@ -101,10 +101,18 @@ def predict():
         
         annual_energy = monthly_energy * 12
         
-        # Default values in LKR (Sri Lankan Rupees) - Updated for 2024
-        # Based on actual Sri Lankan market rates
-        electricity_rate_lkr = data.get('electricity_rate', 23.38)  # LKR/kWh (Sri Lanka average residential rate 2024)
-        system_cost_per_kw_lkr = data.get('system_cost_per_kw', 225000)  # LKR/kW (Sri Lanka average solar installation cost)
+        # Updated electricity rates for Sri Lanka 2025
+        ELECTRICITY_RATES = {
+            'residential': 35.0,   # LKR/kWh, 2025 average (30-40 range)
+            'commercial': 50.0,    # LKR/kWh, 2025 average (45-55 range)
+            'industrial': 30.0     # LKR/kWh, 2025 average (28-35 range)
+        }
+
+        user_type = data.get('user_type', 'residential')
+        electricity_rate_lkr = data.get('electricity_rate', ELECTRICITY_RATES.get(user_type, 35.0))
+
+        # System cost per kW - 225,000 LKR is accurate for 2025 (range: 170,000-280,000)
+        system_cost_per_kw_lkr = data.get('system_cost_per_kw', 225000)
         system_cost_lkr = data['installed_capacity_kw'] * system_cost_per_kw_lkr
         
         # Calculate savings and ROI in LKR
@@ -239,9 +247,9 @@ def predict_annual():
             })
             total_annual_energy += monthly_energy
         
-        # Calculate financial metrics in LKR - Updated for 2024
-        electricity_rate_lkr = data.get('electricity_rate', 23.38)  # LKR/kWh (Sri Lanka average residential rate)
-        system_cost_per_kw_lkr = data.get('system_cost_per_kw', 225000)  # LKR/kW (Sri Lanka average solar installation cost)
+        # Calculate financial metrics in LKR - Updated for 2025
+        electricity_rate_lkr = data.get('electricity_rate', 35.0)  # LKR/kWh (2025 residential average)
+        system_cost_per_kw_lkr = data.get('system_cost_per_kw', 225000)  # LKR/kW (2025 average)
         system_cost_lkr = data['installed_capacity_kw'] * system_cost_per_kw_lkr
         annual_savings_lkr = total_annual_energy * electricity_rate_lkr
         monthly_savings_avg_lkr = annual_savings_lkr / 12

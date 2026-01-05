@@ -3,11 +3,11 @@ from flask_jwt_extended import jwt_required
 import requests
 import os
 from datetime import datetime
+import math
 
 weather_bp = Blueprint('weather', __name__)
 
-# OpenWeatherMap API key (set in environment or use default)
-OPENWEATHER_API_KEY = os.environ.get('OPENWEATHER_API_KEY', 'your_api_key_here')
+OPENWEATHER_API_KEY = os.environ.get('OPENWEATHER_API_KEY', '')
 
 @weather_bp.route('/data', methods=['GET'])
 @jwt_required()
@@ -35,7 +35,7 @@ def get_weather_data():
         if not (-180 <= lon <= 180):
             return jsonify({'error': f'Longitude must be between -180 and 180, got {lon}'}), 400
         
-        # Try to get real-time data from OpenWeatherMap
+        # get real-time data from OpenWeatherMap
         weather_data = fetch_openweather_data(lat, lon)
         
         if not weather_data:
@@ -68,15 +68,81 @@ def get_weather_forecast():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+def calculate_solar_irradiance(lat, lon, cloud_coverage, elevation=0):
+    """
+    Calculate daily solar irradiance (kWh/m²/day) using improved formula
+    Based on location, date, elevation, and cloud coverage
+    """
+    # Current date
+    now = datetime.utcnow()
+    day_of_year = now.timetuple().tm_yday
+    
+    # Solar declination angle (degrees)
+    declination = 23.45 * math.sin(math.radians(360 * (284 + day_of_year) / 365))
+    
+    # Convert to radians
+    lat_rad = math.radians(lat)
+    dec_rad = math.radians(declination)
+    
+    # Sunrise/sunset hour angle
+    hour_angle = math.acos(-math.tan(lat_rad) * math.tan(dec_rad))
+    
+    # Day length in hours
+    day_length = 2 * hour_angle * 12 / math.pi
+    
+    # Extraterrestrial solar radiation (W/m²)
+    solar_constant = 1367
+    
+    # Average daily extraterrestrial radiation (Wh/m²/day)
+    cos_lat = math.cos(lat_rad)
+    cos_dec = math.cos(dec_rad)
+    sin_lat = math.sin(lat_rad)
+    sin_dec = math.sin(dec_rad)
+    
+    # Daily extraterrestrial radiation (Wh/m²/day)
+    h0 = (24 * solar_constant / math.pi) * (
+        cos_lat * cos_dec * math.sin(hour_angle) +
+        hour_angle * sin_lat * sin_dec
+    )
+    
+    # Convert to kWh/m²/day
+    h0_kwh = h0 / 1000
+    
+    # Atmospheric transmittance factors
+    # Clear sky transmittance (typical values: 0.6-0.7 for clear days)
+    clear_sky_transmittance = 0.65
+    
+    # Elevation correction (higher elevation = less atmosphere = more irradiance)
+    # Rough approximation: +1% per 100m elevation
+    elevation_factor = 1 + (elevation / 10000)
+    
+    # Clear sky irradiance
+    clear_sky_irradiance = h0_kwh * clear_sky_transmittance * elevation_factor
+    
+    # Cloud coverage reduction
+    # More realistic: clouds reduce irradiance by 60-80% depending on type
+    cloud_reduction = 0.7  # 70% reduction for full cloud coverage
+    cloud_factor = 1 - (cloud_coverage / 100.0 * cloud_reduction)
+    
+    # Final solar irradiance
+    solar_irradiance = clear_sky_irradiance * cloud_factor
+    
+    # Clamp to reasonable values (1-8 kWh/m²/day)
+    solar_irradiance = max(1.0, min(8.0, solar_irradiance))
+    
+    return round(solar_irradiance, 2)
+
 def fetch_openweather_data(lat, lon):
     """
     Fetch real-time weather data from OpenWeatherMap API
     """
     try:
-        if OPENWEATHER_API_KEY == 'your_api_key_here':
+        # Check if API key is provided
+        if not OPENWEATHER_API_KEY or OPENWEATHER_API_KEY.strip() == '':
+            print("OpenWeatherMap API key not configured")
             return None
         
-        url = f"http://api.openweathermap.org/data/2.5/weather"
+        url = f"https://api.openweathermap.org/data/2.5/weather"
         params = {
             'lat': lat,
             'lon': lon,
@@ -84,37 +150,59 @@ def fetch_openweather_data(lat, lon):
             'units': 'metric'
         }
         
-        response = requests.get(url, params=params, timeout=5)
+        response = requests.get(url, params=params, timeout=10)
         
         if response.status_code == 200:
             data = response.json()
             
-            # Calculate solar irradiance estimate (simplified)
-            # This is a rough estimate - in production, use dedicated solar irradiance APIs
-            cloud_coverage = data.get('clouds', {}).get('all', 50) / 100.0
+            # Extract weather data
             temp = data['main']['temp']
             humidity = data['main']['humidity']
+            wind_speed = data.get('wind', {}).get('speed', 0)
+            cloud_coverage = data.get('clouds', {}).get('all', 0)
+            pressure = data['main'].get('pressure', 1013)
             
-            # Estimate solar irradiance (kWh/m²/day)
-            # Simplified formula - actual calculation is more complex
-            base_irradiance = 5.0  # Average daily solar irradiance
-            cloud_factor = 1 - (cloud_coverage * 0.6)
-            solar_irradiance = base_irradiance * cloud_factor
+            # Get elevation if available (from weather station or geocoding)
+            elevation = 0  # Default, can be enhanced with elevation API
+            
+            # Calculate accurate solar irradiance
+            solar_irradiance = calculate_solar_irradiance(lat, lon, cloud_coverage, elevation)
+            
+            # Location name
+            location_name = data.get('name', 'Unknown')
+            country = data.get('sys', {}).get('country', '')
+            if country:
+                location_name = f"{location_name}, {country}"
             
             return {
-                'location': f"{data['name']}, {data.get('sys', {}).get('country', '')}",
-                'temperature': temp,
-                'humidity': humidity,
-                'wind_speed': data.get('wind', {}).get('speed', 0),
-                'solar_irradiance': round(solar_irradiance, 2),
-                'cloud_coverage': cloud_coverage * 100,
-                'pressure': data['main'].get('pressure', 1013),
+                'location': location_name,
+                'temperature': round(temp, 1),
+                'humidity': round(humidity, 1),
+                'wind_speed': round(wind_speed, 1),
+                'solar_irradiance': solar_irradiance,
+                'cloud_coverage': round(cloud_coverage, 1),
+                'pressure': round(pressure, 1),
                 'timestamp': datetime.utcnow().isoformat(),
                 'source': 'OpenWeatherMap'
             }
+        elif response.status_code == 401:
+            print(f"OpenWeatherMap API authentication failed - Invalid API key")
+            return None
+        elif response.status_code == 429:
+            print(f"OpenWeatherMap API rate limit exceeded")
+            return None
+        else:
+            print(f"OpenWeatherMap API error: {response.status_code} - {response.text}")
+            return None
     
+    except requests.exceptions.Timeout:
+        print("OpenWeatherMap API request timeout")
+        return None
+    except requests.exceptions.RequestException as e:
+        print(f"OpenWeatherMap API request error: {e}")
+        return None
     except Exception as e:
-        print(f"Error fetching OpenWeatherMap data: {e}")
+        print(f"Error processing OpenWeatherMap data: {e}")
         return None
 
 def estimate_weather_data(lat, lon):
@@ -167,7 +255,6 @@ def estimate_weather_data(lat, lon):
             
             if is_highland:
                 # Central highlands - estimate elevation based on position
-                # Nuwara Eliya area is highest
                 elevation_estimate = 1000 + (abs(lat - 6.95) + abs(lon - 80.75)) * 200
                 elevation_estimate = min(2000, max(500, elevation_estimate))
                 base_temp = 18 + (2000 - elevation_estimate) / 2000 * 10  # 18-28°C range
@@ -187,6 +274,7 @@ def estimate_weather_data(lat, lon):
                 solar_irradiance = 5.2 + (lat - 7) * 0.15
             
             location_name = f"Lat: {lat:.4f}, Lon: {lon:.4f}"
+            solar_irradiance = calculate_solar_irradiance(lat, lon, 50.0, elevation_estimate if 'elevation_estimate' in locals() else 0)
     else:
         # Generic estimation for non-Sri Lanka locations
         location_name = f"Lat: {lat:.4f}, Lon: {lon:.4f}"
@@ -194,35 +282,31 @@ def estimate_weather_data(lat, lon):
         if lat_abs < 10:
             base_temp = 28 + (lat_abs - 5) * 0.5  # Tropical
             humidity = 75 + (lat_abs - 5) * 1.0
-            solar_irradiance = 5.5 - (lat_abs - 5) * 0.05
         elif lat_abs < 30:
             base_temp = 22 + (lat_abs - 15) * 0.3  # Subtropical
             humidity = 65 + (lat_abs - 15) * 0.5
-            solar_irradiance = 5.0 - (lat_abs - 15) * 0.08
         elif lat_abs < 50:
             base_temp = 15 + (lat_abs - 35) * 0.2  # Temperate
             humidity = 60 + (lat_abs - 35) * 0.3
-            solar_irradiance = 4.0 - (lat_abs - 35) * 0.06
         else:
             base_temp = 5 + (lat_abs - 50) * 0.1   # Polar
             humidity = 55 + (lat_abs - 50) * 0.2
-            solar_irradiance = 2.5 - (lat_abs - 50) * 0.03
+        
+        # Calculate solar irradiance using improved formula (assuming 50% cloud coverage)
+        solar_irradiance = calculate_solar_irradiance(lat, lon, 50.0, 0)
     
-    # Add seasonal variation (rough estimate)
+    # Add seasonal variation for temperature (solar irradiance already accounts for season)
     month = datetime.utcnow().month
     if 11 <= month or month <= 2:  # Nov-Feb (winter in northern hemisphere)
         if lat > 0:
             base_temp -= 2
-            solar_irradiance -= 0.3
     elif 6 <= month <= 8:  # Jun-Aug (summer)
         if lat > 0:
             base_temp += 3
-            solar_irradiance += 0.5
     
     # Ensure reasonable bounds
     base_temp = max(5, min(35, base_temp))
     humidity = max(40, min(95, humidity))
-    solar_irradiance = max(2.0, min(7.0, solar_irradiance))
     
     # Initialize location_name if not set
     if 'location_name' not in locals():
@@ -233,7 +317,7 @@ def estimate_weather_data(lat, lon):
         'temperature': round(base_temp, 1),
         'humidity': round(humidity, 1),
         'wind_speed': 3.5,
-        'solar_irradiance': round(solar_irradiance, 2),
+        'solar_irradiance': solar_irradiance,
         'cloud_coverage': 50.0,
         'pressure': 1013.0,
         'timestamp': datetime.utcnow().isoformat(),
@@ -242,13 +326,14 @@ def estimate_weather_data(lat, lon):
 
 def fetch_weather_forecast(lat, lon):
     """
-    Fetch weather forecast data
+    Fetch weather forecast data from OpenWeatherMap API
     """
     try:
-        if OPENWEATHER_API_KEY == 'your_api_key_here':
-            return {'forecast': [], 'message': 'API key not configured'}
+        # Check if API key is provided
+        if not OPENWEATHER_API_KEY or OPENWEATHER_API_KEY.strip() == '':
+            return {'forecast': [], 'message': 'OpenWeatherMap API key not configured'}
         
-        url = f"http://api.openweathermap.org/data/2.5/forecast"
+        url = f"https://api.openweathermap.org/data/2.5/forecast"
         params = {
             'lat': lat,
             'lon': lon,
@@ -256,23 +341,35 @@ def fetch_weather_forecast(lat, lon):
             'units': 'metric'
         }
         
-        response = requests.get(url, params=params, timeout=5)
+        response = requests.get(url, params=params, timeout=10)
         
         if response.status_code == 200:
             data = response.json()
             forecast = []
             
             for item in data.get('list', [])[:5]:  # Next 5 forecasts
+                cloud_coverage = item.get('clouds', {}).get('all', 0)
+                solar_irradiance = calculate_solar_irradiance(lat, lon, cloud_coverage)
+                
                 forecast.append({
                     'datetime': item['dt_txt'],
-                    'temperature': item['main']['temp'],
-                    'humidity': item['main']['humidity'],
-                    'wind_speed': item.get('wind', {}).get('speed', 0),
-                    'cloud_coverage': item.get('clouds', {}).get('all', 0)
+                    'temperature': round(item['main']['temp'], 1),
+                    'humidity': round(item['main']['humidity'], 1),
+                    'wind_speed': round(item.get('wind', {}).get('speed', 0), 1),
+                    'cloud_coverage': round(cloud_coverage, 1),
+                    'solar_irradiance': solar_irradiance
                 })
             
             return {'forecast': forecast}
+        elif response.status_code == 401:
+            return {'forecast': [], 'error': 'Invalid API key'}
+        elif response.status_code == 429:
+            return {'forecast': [], 'error': 'API rate limit exceeded'}
+        else:
+            return {'forecast': [], 'error': f'API error: {response.status_code}'}
     
+    except requests.exceptions.Timeout:
+        return {'forecast': [], 'error': 'Request timeout'}
     except Exception as e:
         print(f"Error fetching forecast: {e}")
         return {'forecast': [], 'error': str(e)}
