@@ -5,7 +5,9 @@ from models.prediction import Prediction
 from ml_models.predictor import SolarPredictor
 from utills.helpers import calculate_roi
 from utills.energy_calculator import calculate_monthly_energy_physics, compute_shading
+from utills.carbon_footprint import calculate_carbon_savings, calculate_lifetime_carbon_savings
 from datetime import datetime
+import logging
 
 predictions_bp = Blueprint('predictions', __name__)
 predictor = SolarPredictor()
@@ -94,8 +96,9 @@ def predict():
             # Use physics-based as primary, ML for confidence adjustment
             monthly_energy = monthly_energy_physics
             confidence_score = ml_result.get('confidence_score', 0.85)
-        except:
+        except Exception as ml_error:
             # Fallback to physics-based only
+            logging.warning(f"ML prediction failed, using physics-based: {str(ml_error)}")
             monthly_energy = monthly_energy_physics
             confidence_score = 0.80
         
@@ -153,6 +156,11 @@ def predict():
         db.session.add(prediction)
         db.session.commit()
         
+        # Calculate carbon footprint savings
+        carbon_monthly = calculate_carbon_savings(monthly_energy, country='LK')
+        carbon_annual = calculate_carbon_savings(annual_energy, country='LK')
+        carbon_lifetime = calculate_lifetime_carbon_savings(annual_energy)
+        
         return jsonify({
             'prediction': prediction.to_dict(),
             'details': {
@@ -167,6 +175,11 @@ def predict():
                 'roi_percentage': roi_percentage,
                 'payback_period_years': payback_period,
                 'electricity_rate_lkr': electricity_rate_lkr
+            },
+            'carbon_footprint': {
+                'monthly': carbon_monthly,
+                'annual': carbon_annual,
+                'lifetime': carbon_lifetime
             }
         }), 200
     
@@ -293,6 +306,10 @@ def predict_annual():
         
         db.session.commit()
         
+        # Calculate carbon footprint for annual prediction
+        carbon_annual = calculate_carbon_savings(total_annual_energy, country='LK')
+        carbon_lifetime = calculate_lifetime_carbon_savings(total_annual_energy)
+        
         return jsonify({
             'predictions': [p.to_dict() for p in saved_predictions],
             'summary': {
@@ -304,6 +321,10 @@ def predict_annual():
                 'roi_percentage': roi_percentage,
                 'payback_period_years': payback_period,
                 'electricity_rate_lkr': electricity_rate_lkr
+            },
+            'carbon_footprint': {
+                'annual': carbon_annual,
+                'lifetime': carbon_lifetime
             }
         }), 200
     
@@ -372,3 +393,174 @@ def admin_delete_prediction(prediction_id):
     db.session.commit()
 
     return jsonify({'message': 'Prediction deleted by admin'}), 200
+
+@predictions_bp.route('/compare', methods=['POST'])
+@jwt_required()
+def compare_predictions():
+    """
+    Compare multiple predictions/scenarios
+    Expects JSON with array of prediction IDs or prediction data
+    """
+    try:
+        user_id = get_jwt_identity()
+        data = request.get_json()
+        
+        prediction_ids = data.get('prediction_ids', [])
+        predictions_data = []
+        
+        # Fetch predictions by IDs
+        if prediction_ids:
+            predictions = Prediction.query.filter(
+                Prediction.id.in_(prediction_ids),
+                Prediction.user_id == user_id
+            ).all()
+            
+            for pred in predictions:
+                pred_dict = pred.to_dict()
+                # Add carbon footprint
+                monthly_carbon = calculate_carbon_savings(pred.predicted_energy_kwh, country='LK')
+                annual_carbon = calculate_carbon_savings(pred.predicted_energy_kwh * 12, country='LK')
+                pred_dict['carbon_footprint'] = {
+                    'monthly': monthly_carbon,
+                    'annual': annual_carbon
+                }
+                predictions_data.append(pred_dict)
+        else:
+            return jsonify({'error': 'No prediction IDs provided'}), 400
+        
+        if not predictions_data:
+            return jsonify({'error': 'No predictions found'}), 404
+        
+        # Calculate comparison metrics
+        best_energy = max(p['predicted_energy_kwh'] for p in predictions_data)
+        best_savings = max(p.get('monthly_savings_usd', 0) or 0 for p in predictions_data)
+        best_roi = max(p.get('roi_percentage', 0) or 0 for p in predictions_data)
+        
+        comparison = {
+            'predictions': predictions_data,
+            'summary': {
+                'total_scenarios': len(predictions_data),
+                'best_energy_kwh': best_energy,
+                'best_monthly_savings_lkr': best_savings,
+                'best_roi_percentage': best_roi,
+                'average_energy_kwh': sum(p['predicted_energy_kwh'] for p in predictions_data) / len(predictions_data),
+                'average_savings_lkr': sum(p.get('monthly_savings_usd', 0) or 0 for p in predictions_data) / len(predictions_data)
+            }
+        }
+        
+        return jsonify(comparison), 200
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@predictions_bp.route('/recommendations', methods=['POST'])
+@jwt_required()
+def get_recommendations():
+    """
+    Get system recommendations based on prediction results
+    """
+    try:
+        user_id = get_jwt_identity()
+        data = request.get_json()
+        
+        prediction_id = data.get('prediction_id')
+        if prediction_id:
+            prediction = Prediction.query.filter_by(
+                id=prediction_id,
+                user_id=user_id
+            ).first()
+        else:
+            # Use latest prediction
+            prediction = Prediction.query.filter_by(
+                user_id=user_id
+            ).order_by(Prediction.created_at.desc()).first()
+        
+        if not prediction:
+            return jsonify({'error': 'No prediction found'}), 404
+        
+        recommendations = []
+        
+        # ROI-based recommendations
+        if prediction.roi_percentage:
+            if prediction.roi_percentage > 15:
+                recommendations.append({
+                    'type': 'financial',
+                    'priority': 'high',
+                    'title': 'Excellent ROI',
+                    'message': f'Your system shows a {prediction.roi_percentage:.1f}% ROI, which is excellent. Consider proceeding with installation.',
+                    'action': 'proceed'
+                })
+            elif prediction.roi_percentage > 10:
+                recommendations.append({
+                    'type': 'financial',
+                    'priority': 'medium',
+                    'title': 'Good ROI',
+                    'message': f'Your system shows a {prediction.roi_percentage:.1f}% ROI. The investment is viable.',
+                    'action': 'consider'
+                })
+            else:
+                recommendations.append({
+                    'type': 'financial',
+                    'priority': 'low',
+                    'title': 'Low ROI',
+                    'message': f'Your system shows a {prediction.roi_percentage:.1f}% ROI. Consider optimizing system parameters or waiting for better rates.',
+                    'action': 'optimize'
+                })
+        
+        # Payback period recommendations
+        if prediction.payback_period_years:
+            if prediction.payback_period_years < 5:
+                recommendations.append({
+                    'type': 'financial',
+                    'priority': 'high',
+                    'title': 'Quick Payback',
+                    'message': f'Payback period of {prediction.payback_period_years:.1f} years is excellent.',
+                    'action': 'proceed'
+                })
+            elif prediction.payback_period_years > 10:
+                recommendations.append({
+                    'type': 'financial',
+                    'priority': 'medium',
+                    'title': 'Long Payback Period',
+                    'message': f'Payback period of {prediction.payback_period_years:.1f} years is longer than ideal. Consider system optimization.',
+                    'action': 'optimize'
+                })
+        
+        # System optimization recommendations
+        if prediction.tilt_deg < 15 or prediction.tilt_deg > 35:
+            recommendations.append({
+                'type': 'technical',
+                'priority': 'medium',
+                'title': 'Tilt Angle Optimization',
+                'message': f'Current tilt angle is {prediction.tilt_deg:.1f}°. Optimal range for Sri Lanka is 15-30°. Consider adjusting.',
+                'action': 'adjust_tilt'
+            })
+        
+        if prediction.shading_factor < 0.85:
+            recommendations.append({
+                'type': 'technical',
+                'priority': 'high',
+                'title': 'Shading Issue',
+                'message': f'Shading factor is {prediction.shading_factor:.3f}, indicating significant shading. Consider removing obstructions.',
+                'action': 'reduce_shading'
+            })
+        
+        # Capacity recommendations
+        monthly_energy = prediction.predicted_energy_kwh
+        if monthly_energy < 100:
+            recommendations.append({
+                'type': 'capacity',
+                'priority': 'medium',
+                'title': 'Low Energy Output',
+                'message': f'Monthly output of {monthly_energy:.1f} kWh is low. Consider increasing system capacity.',
+                'action': 'increase_capacity'
+            })
+        
+        return jsonify({
+            'prediction_id': prediction.id,
+            'recommendations': recommendations,
+            'total_recommendations': len(recommendations)
+        }), 200
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

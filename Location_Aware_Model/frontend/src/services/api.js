@@ -50,6 +50,8 @@ export const predictionsAPI = {
   predictAnnual: (data) => api.post('/predictions/predict/annual', data),
   getHistory: () => api.get('/predictions/history'),
   deletePrediction: (id) => api.delete(`/predictions/history/${id}`),
+  comparePredictions: (predictionIds) => api.post('/predictions/compare', { prediction_ids: predictionIds }),
+  getRecommendations: (predictionId) => api.post('/predictions/recommendations', { prediction_id: predictionId }),
 };
 
 // Admin API
@@ -79,6 +81,13 @@ export const iotAPI = {
 export const exportAPI = {
   exportPredictionsCSV: () => api.get('/export/predictions/csv', { responseType: 'blob' }),
   exportPredictionsJSON: () => api.get('/export/predictions/json', { responseType: 'blob' }),
+  exportPredictionsExcel: () => api.get('/export/predictions/excel', { responseType: 'blob' }),
+  exportAnnualExcel: (year, latitude, longitude) => {
+    const params = new URLSearchParams({ year });
+    if (latitude) params.append('latitude', latitude);
+    if (longitude) params.append('longitude', longitude);
+    return api.get(`/export/predictions/annual/${year}/excel?${params.toString()}`, { responseType: 'blob' });
+  }
 };
 
 // Profile API
@@ -93,7 +102,15 @@ export const reportsAPI = {
   downloadPredictionPDF: (predictionId) =>
     api.get(`/reports/prediction/${predictionId}/pdf`, {
       responseType: 'blob'
-    })
+    }),
+  downloadAnnualPDF: (year, latitude, longitude) => {
+    const params = new URLSearchParams({ year });
+    if (latitude) params.append('latitude', latitude);
+    if (longitude) params.append('longitude', longitude);
+    return api.get(`/reports/prediction/annual/${year}/pdf?${params.toString()}`, {
+      responseType: 'blob'
+    });
+  }
 };
 
 

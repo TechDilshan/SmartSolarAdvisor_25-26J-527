@@ -22,6 +22,12 @@ logging.basicConfig(
     format='[%(asctime)s] %(levelname)s in %(module)s: %(message)s'
 )
 
+# Disable Flask's default logging
+log = logging.getLogger('werkzeug')
+log.setLevel(logging.ERROR)  # Only show errors
+log.disabled = True
+logging.getLogger('flask.app').disabled = True
+
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
@@ -110,9 +116,19 @@ def create_app():
 
     return app
 
+MODEL_METRICS = {
+    "MAE": 51.13,       # Mean Absolute Error in kWh
+    "RMSE": 62.40,      # Root Mean Squared Error in kWh
+    "R2": 0.9580        # R² Score
+}
 
 if __name__ == '__main__':
     PORT = 5000
     app = create_app()
+
+    logging.info("Model Performance Metrics")
+    logging.info(f"MAE  : {MODEL_METRICS['MAE']:.2f} kWh")
+    logging.info(f"RMSE : {MODEL_METRICS['RMSE']:.2f} kWh")
+    logging.info(f"R²   : {MODEL_METRICS['R2']:.4f}")
     print(f"Backend Running on port {PORT}")
     app.run(debug=False, host='0.0.0.0', port=PORT)

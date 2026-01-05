@@ -83,28 +83,34 @@ function PredictionResults({ result, type }) {
     };
 
     const handleDownloadPDF = async () => {
-  try {
-    const firstPrediction =
-      sortedMonthlyData[0]?.prediction || sortedMonthlyData[0];
+      try {
+        const firstPrediction =
+          sortedMonthlyData[0]?.prediction || sortedMonthlyData[0];
 
-    if (!firstPrediction?.id) {
-      alert('No prediction ID available');
-      return;
-    }
+        if (!firstPrediction?.id) {
+          alert('No prediction ID available');
+          return;
+        }
 
-    const response = await reportsAPI.downloadPredictionPDF(firstPrediction.id);
+        const year = firstPrediction.year || summary.year || new Date().getFullYear();
+        const response = await reportsAPI.downloadAnnualPDF(
+          year,
+          firstPrediction.latitude,
+          firstPrediction.longitude
+        );
 
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', 'annual_solar_report.pdf');
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-  } catch (error) {
-    alert('Failed to download PDF');
-  }
-};
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `annual_solar_report_${year}.pdf`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      } catch (error) {
+        console.error('PDF download error:', error);
+        alert('Failed to download PDF. Please try again.');
+      }
+    };
 
     return (
       <div className="prediction-results">
@@ -322,6 +328,54 @@ function PredictionResults({ result, type }) {
                 LKR {(result.financial.electricity_rate_lkr || result.financial.electricity_rate || 0).toFixed(2)}/kWh
               </span>
             </div>
+          </div>
+        </div>
+      )}
+
+      {result.carbon_footprint && (
+        <div className="carbon-footprint">
+          <h3>Environmental Impact</h3>
+          <div className="carbon-grid">
+            {result.carbon_footprint.monthly && (
+              <>
+                <div className="carbon-item">
+                  <span className="carbon-label">Monthly CO₂ Avoided:</span>
+                  <span className="carbon-value">
+                    {result.carbon_footprint.monthly.co2_avoided_kg.toFixed(2)} kg
+                  </span>
+                </div>
+                <div className="carbon-item">
+                  <span className="carbon-label">Equivalent Trees Planted:</span>
+                  <span className="carbon-value">
+                    {result.carbon_footprint.monthly.trees_equivalent.toFixed(1)} trees
+                  </span>
+                </div>
+              </>
+            )}
+            {result.carbon_footprint.annual && (
+              <>
+                <div className="carbon-item">
+                  <span className="carbon-label">Annual CO₂ Avoided:</span>
+                  <span className="carbon-value">
+                    {result.carbon_footprint.annual.co2_avoided_tonnes.toFixed(3)} tonnes
+                  </span>
+                </div>
+                <div className="carbon-item">
+                  <span className="carbon-label">Equivalent Cars Removed:</span>
+                  <span className="carbon-value">
+                    {result.carbon_footprint.annual.cars_equivalent.toFixed(2)} cars
+                  </span>
+                </div>
+              </>
+            )}
+            {result.carbon_footprint.lifetime && (
+              <div className="carbon-item highlight">
+                <span className="carbon-label">Lifetime CO₂ Avoided (25 years):</span>
+                <span className="carbon-value">
+                  {result.carbon_footprint.lifetime.co2_avoided_tonnes.toFixed(2)} tonnes
+                </span>
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -279,10 +279,67 @@
   box-shadow: 0 10px 24px rgba(251, 191, 36, 0.45);
 }
 
+.carbon-footprint {
+  margin: 30px 0;
+  padding: 20px;
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+  border-radius: 8px;
+  border: 2px solid #10b981;
+}
+
+.carbon-footprint h3 {
+  margin: 0 0 15px 0;
+  color: #065f46;
+  font-size: 18px;
+}
+
+.carbon-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+.carbon-item {
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #10b981;
+}
+
+.carbon-item.highlight {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border-color: #059669;
+}
+
+.carbon-label {
+  font-size: 13px;
+  color: #065f46;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.carbon-item.highlight .carbon-label {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.carbon-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #059669;
+}
+
+.carbon-item.highlight .carbon-value {
+  color: white;
+}
+
 @media (max-width: 768px) {
   .summary-cards,
   .model-cards,
-  .details-grid {
+  .details-grid,
+  .carbon-grid {
     grid-template-columns: 1fr;
   }
   

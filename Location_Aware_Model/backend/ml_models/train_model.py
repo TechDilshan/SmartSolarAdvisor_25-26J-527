@@ -116,7 +116,7 @@ class HybridSolarModel:
     
       # Add month column if missing (default to January)
       if 'month' not in df.columns:
-        df['month'] = 1  # or assign based on your dataset
+        df['month'] = 1
     
       # Generate synthetic features
       df = self.generate_synthetic_features(df)
