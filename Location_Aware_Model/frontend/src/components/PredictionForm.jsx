@@ -46,13 +46,21 @@ function PredictionForm({ onPredictionComplete }) {
       const response = await weatherAPI.getWeatherData(lat, lon);
       const weather = response.data;
       
-      // Update form with weather data
+      // Update form with weather data - ensure values are valid numbers
       setFormData(prev => ({
         ...prev,
-        allsky_sfc_sw_dwn: weather.solar_irradiance || prev.allsky_sfc_sw_dwn,
-        rh2m: weather.humidity || prev.rh2m,
-        t2m: weather.temperature || prev.t2m,
-        ws2m: weather.wind_speed || prev.ws2m
+        allsky_sfc_sw_dwn: (weather.solar_irradiance != null && !isNaN(weather.solar_irradiance)) 
+          ? parseFloat(weather.solar_irradiance) 
+          : prev.allsky_sfc_sw_dwn,
+        rh2m: (weather.humidity != null && !isNaN(weather.humidity)) 
+          ? parseFloat(weather.humidity) 
+          : prev.rh2m,
+        t2m: (weather.temperature != null && !isNaN(weather.temperature)) 
+          ? parseFloat(weather.temperature) 
+          : prev.t2m,
+        ws2m: (weather.wind_speed != null && !isNaN(weather.wind_speed)) 
+          ? parseFloat(weather.wind_speed) 
+          : prev.ws2m
       }));
       
       setWeatherData(weather);
@@ -89,7 +97,7 @@ function PredictionForm({ onPredictionComplete }) {
     // Auto-calculate optimal tilt and azimuth based on latitude
     if (formData.latitude) {
       // For Sri Lanka (5-10°N), optimal tilt is close to latitude
-      const optimalTilt = Math.min(Math.max(Math.abs(formData.latitude), 5), 15);
+      const optimalTilt = Math.min(Math.max(Math.abs(formData.tilt_deg), 5), 15);
       const optimalAzimuth = 180; // Always south-facing in Northern hemisphere
       
       // Only update if still at default values
@@ -99,7 +107,7 @@ function PredictionForm({ onPredictionComplete }) {
         azimuth_deg: prev.azimuth_deg === 180.0 ? optimalAzimuth : prev.azimuth_deg
       }));
     }
-  }, [formData.latitude]);
+  }, [formData]);
 
   useEffect(() => {
     if (!hasMounted.current && formData.latitude && formData.longitude) {
@@ -139,7 +147,7 @@ function PredictionForm({ onPredictionComplete }) {
 
   return (
     <div className="prediction-form-container">
-      <h2>🔮 Solar Energy Prediction - Sri Lanka</h2>
+      <h2> Solar Energy Prediction - Sri Lanka</h2>
       
       <div className="prediction-type-selector">
         <button
@@ -255,10 +263,10 @@ function PredictionForm({ onPredictionComplete }) {
                 )}
               </div>
               <div className="weather-metrics">
-                <span> {weatherData.temperature?.toFixed(1)}°C</span>
-                <span> {weatherData.humidity?.toFixed(1)}%</span>
-                <span> {weatherData.solar_irradiance?.toFixed(2)} kWh/m²/day</span>
-                <span> {weatherData.wind_speed?.toFixed(1)} m/s</span>
+                <span>{weatherData.temperature != null ? weatherData.temperature.toFixed(1) : 'N/A'}°C</span>
+                <span>{weatherData.humidity != null ? weatherData.humidity.toFixed(1) : 'N/A'}%</span>
+                <span>{weatherData.solar_irradiance != null ? weatherData.solar_irradiance.toFixed(2) : 'N/A'} kWh/m²/day</span>
+                <span>{weatherData.wind_speed != null ? weatherData.wind_speed.toFixed(1) : 'N/A'} m/s</span>
               </div>
             </div>
           )}
@@ -273,7 +281,6 @@ function PredictionForm({ onPredictionComplete }) {
                 step="0.1"
                 required
               />
-              <small style={{color: '#666', fontSize: '0.85em'}}>Sri Lanka: 4.5-6.5 kWh/m²/day</small>
             </div>
             <div className="form-group">
               <label>Relative Humidity (%)</label>
@@ -296,7 +303,7 @@ function PredictionForm({ onPredictionComplete }) {
                 step="0.1"
                 required
               />
-              <small style={{color: '#666', fontSize: '0.85em'}}>Sri Lanka: 26-30°C average</small>
+           
             </div>
             <div className="form-group">
               <label>Wind Speed (m/s)</label>
@@ -327,7 +334,6 @@ function PredictionForm({ onPredictionComplete }) {
                 max="90"
                 required
               />
-              <small style={{color: '#666', fontSize: '0.85em'}}>Optimal for SL: 5-15° (≈latitude)</small>
             </div>
             <div className="form-group">
               <label>Azimuth Angle (degrees)</label>
@@ -341,7 +347,6 @@ function PredictionForm({ onPredictionComplete }) {
                 max="360"
                 required
               />
-              <small style={{color: '#666', fontSize: '0.85em'}}>180° = South (optimal for SL)</small>
             </div>
             <div className="form-group">
               <label>Installed Capacity (kW)</label>
@@ -367,7 +372,6 @@ function PredictionForm({ onPredictionComplete }) {
                 max="0.25"
                 required
               />
-              <small style={{color: '#666', fontSize: '0.85em'}}>Modern: 0.20-0.22 (20-22%)</small>
             </div>
             <div className="form-group">
               <label>System Loss (0-1)</label>
@@ -381,7 +385,6 @@ function PredictionForm({ onPredictionComplete }) {
                 max="0.5"
                 required
               />
-              <small style={{color: '#666', fontSize: '0.85em'}}>Typical: 0.10-0.15 (10-15%)</small>
             </div>
             <div className="form-group">
               <label>Shading Factor (0-1)</label>
@@ -395,7 +398,6 @@ function PredictionForm({ onPredictionComplete }) {
                 max="1"
                 required
               />
-              <small style={{color: '#666', fontSize: '0.85em'}}>Clear: 0.95-1.0, Partial: 0.80-0.90</small>
             </div>
           </div>
         </div>
@@ -414,7 +416,6 @@ function PredictionForm({ onPredictionComplete }) {
                 min="0"
                 placeholder="35.0"
               />
-              <small style={{color: '#666', fontSize: '0.85em'}}>2025: Residential 30-40, Commercial 45-55, Industrial 28-35</small>
             </div>
             <div className="form-group">
               <label>System Cost per kW (LKR)</label>

@@ -221,7 +221,7 @@ function Dashboard({ user, onLogout }) {
                                   {new Date(2000, pred.month - 1).toLocaleString('default', { month: 'short' })} {pred.year}
                                 </span>
                                 <span className="history-energy">
-                                  ⚡ {pred.predicted_energy_kwh.toFixed(2)} kWh
+                                   {pred.predicted_energy_kwh.toFixed(2)} kWh
                                 </span>
                               </div>
                               <div className="history-confidence">

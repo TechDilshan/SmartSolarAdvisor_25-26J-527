@@ -4,10 +4,12 @@ import requests
 import os
 from datetime import datetime
 import math
+from dotenv import load_dotenv
 
 weather_bp = Blueprint('weather', __name__)
 
-OPENWEATHER_API_KEY = os.environ.get('OPENWEATHER_API_KEY', '')
+load_dotenv()
+OPENWEATHER_API_KEY = os.getenv('OPENWEATHER_API_KEY')
 
 @weather_bp.route('/data', methods=['GET'])
 @jwt_required()
@@ -68,10 +70,11 @@ def get_weather_forecast():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-def calculate_solar_irradiance(lat, lon, cloud_coverage, elevation=0):
+def calculate_solar_irradiance(lat, lon, cloud_coverage, elevation=0, weather_main=None, humidity=None):
     """
     Calculate daily solar irradiance (kWh/m²/day) using improved formula
-    Based on location, date, elevation, and cloud coverage
+    Optimized for tropical regions like Sri Lanka
+    Uses actual OpenWeatherMap data for more accurate calculations
     """
     # Current date
     now = datetime.utcnow()
@@ -84,8 +87,17 @@ def calculate_solar_irradiance(lat, lon, cloud_coverage, elevation=0):
     lat_rad = math.radians(lat)
     dec_rad = math.radians(declination)
     
-    # Sunrise/sunset hour angle
-    hour_angle = math.acos(-math.tan(lat_rad) * math.tan(dec_rad))
+    # Handle edge cases for polar regions
+    tan_product = -math.tan(lat_rad) * math.tan(dec_rad)
+    if tan_product >= 1.0:
+        # Polar night - no sun
+        return 0.0
+    if tan_product <= -1.0:
+        # Polar day - 24 hours of sun
+        hour_angle = math.pi
+    else:
+        # Sunrise/sunset hour angle
+        hour_angle = math.acos(tan_product)
     
     # Day length in hours
     day_length = 2 * hour_angle * 12 / math.pi
@@ -108,27 +120,75 @@ def calculate_solar_irradiance(lat, lon, cloud_coverage, elevation=0):
     # Convert to kWh/m²/day
     h0_kwh = h0 / 1000
     
-    # Atmospheric transmittance factors
-    # Clear sky transmittance (typical values: 0.6-0.7 for clear days)
-    clear_sky_transmittance = 0.65
+    # Atmospheric transmittance factors - optimized for tropical regions
+    # For Sri Lanka and similar tropical regions, transmittance is higher
+    # Clear sky transmittance: 0.70-0.75 for tropical regions
+    is_sri_lanka = 5.0 <= lat <= 10.0
+    if is_sri_lanka:
+        # Higher base transmittance for tropical clear skies
+        base_transmittance = 0.75
+    else:
+        base_transmittance = 0.65
     
     # Elevation correction (higher elevation = less atmosphere = more irradiance)
-    # Rough approximation: +1% per 100m elevation
-    elevation_factor = 1 + (elevation / 10000)
+    elevation_factor = 1 + (elevation / 20000)
     
     # Clear sky irradiance
-    clear_sky_irradiance = h0_kwh * clear_sky_transmittance * elevation_factor
+    clear_sky_irradiance = h0_kwh * base_transmittance * elevation_factor
     
-    # Cloud coverage reduction
-    # More realistic: clouds reduce irradiance by 60-80% depending on type
-    cloud_reduction = 0.7  # 70% reduction for full cloud coverage
-    cloud_factor = 1 - (cloud_coverage / 100.0 * cloud_reduction)
+    # Enhanced cloud coverage reduction using actual weather conditions
+    # Use weather_main and humidity to better estimate actual solar conditions
+    effective_cloud_coverage = cloud_coverage
+    
+    # Adjust based on weather conditions from OpenWeatherMap
+    if weather_main:
+        weather_lower = weather_main.lower()
+        if 'clear' in weather_lower or 'sun' in weather_lower:
+            # Clear/sunny conditions - reduce effective cloud coverage
+            effective_cloud_coverage = max(0, cloud_coverage - 20)
+        elif 'rain' in weather_lower or 'drizzle' in weather_lower or 'thunderstorm' in weather_lower:
+            # Rainy conditions - increase effective cloud coverage
+            effective_cloud_coverage = min(100, cloud_coverage + 15)
+        elif 'fog' in weather_lower or 'mist' in weather_lower:
+            # Foggy conditions - significant reduction
+            effective_cloud_coverage = min(100, cloud_coverage + 25)
+    
+    # Adjust based on humidity (high humidity often means more clouds/moisture)
+    if humidity is not None:
+        if humidity > 90:
+            # Very high humidity - likely heavy clouds or fog
+            effective_cloud_coverage = min(100, effective_cloud_coverage + 10)
+        elif humidity > 80:
+            # High humidity - moderate cloud effect
+            effective_cloud_coverage = min(100, effective_cloud_coverage + 5)
+    
+    # Cloud coverage reduction - more realistic for tropical regions
+    # For Sri Lanka, even cloudy days have decent irradiance due to high sun angle
+    if effective_cloud_coverage < 20:
+        cloud_reduction = 0.10  # Very light clouds - minimal reduction
+    elif effective_cloud_coverage < 40:
+        cloud_reduction = 0.25  # Light clouds
+    elif effective_cloud_coverage < 60:
+        cloud_reduction = 0.40  # Moderate clouds
+    elif effective_cloud_coverage < 80:
+        cloud_reduction = 0.55  # Heavy clouds
+    else:
+        cloud_reduction = 0.65  # Very heavy clouds (reduced from 0.70 for tropics)
+    
+    cloud_factor = 1 - (effective_cloud_coverage / 100.0 * cloud_reduction)
     
     # Final solar irradiance
     solar_irradiance = clear_sky_irradiance * cloud_factor
     
-    # Clamp to reasonable values (1-8 kWh/m²/day)
-    solar_irradiance = max(1.0, min(8.0, solar_irradiance))
+    # For Sri Lanka, ensure realistic values even with high cloud coverage
+    # Typical range: 3.5-6.5 kWh/m²/day for most conditions
+    # Minimum should be higher due to tropical location
+    if is_sri_lanka:
+        # Even with heavy clouds, Sri Lanka gets decent irradiance
+        # Minimum should be around 3.0 kWh/m²/day, maximum up to 7.5
+        solar_irradiance = max(3.0, min(7.5, solar_irradiance))
+    else:
+        solar_irradiance = max(1.0, min(8.0, solar_irradiance))
     
     return round(solar_irradiance, 2)
 
@@ -155,24 +215,57 @@ def fetch_openweather_data(lat, lon):
         if response.status_code == 200:
             data = response.json()
             
-            # Extract weather data
-            temp = data['main']['temp']
-            humidity = data['main']['humidity']
-            wind_speed = data.get('wind', {}).get('speed', 0)
-            cloud_coverage = data.get('clouds', {}).get('all', 0)
-            pressure = data['main'].get('pressure', 1013)
+            # Extract weather data with proper error handling
+            main_data = data.get('main', {})
+            temp = main_data.get('temp', 27.0)
+            humidity = main_data.get('humidity', 75.0)
+            pressure = main_data.get('pressure', 1013.0)
             
-            # Get elevation if available (from weather station or geocoding)
-            elevation = 0  # Default, can be enhanced with elevation API
+            wind_data = data.get('wind', {})
+            wind_speed = wind_data.get('speed', 3.5)
             
-            # Calculate accurate solar irradiance
-            solar_irradiance = calculate_solar_irradiance(lat, lon, cloud_coverage, elevation)
+            clouds_data = data.get('clouds', {})
+            cloud_coverage = clouds_data.get('all', 30.0)  # Default to 30% if not available
+            
+            # Get elevation - try to estimate for Sri Lanka locations
+            elevation = 0
+            if 5.5 <= lat <= 10.0 and 79.0 <= lon <= 82.0:  # Sri Lanka bounds
+                # Estimate elevation based on coordinates
+                # Coastal areas: low elevation
+                # Central highlands: higher elevation
+                if 80.5 <= lon <= 81.5 and 6.8 <= lat <= 7.2:
+                    elevation = 1000  # Central highlands
+                elif lon < 80.5 or lon > 81.5 or lat < 6.5 or lat > 9.5:
+                    elevation = 10  # Coastal
+                else:
+                    elevation = 200  # Mid-elevation
+            
+            # Get weather main condition for better solar calculation
+            weather_main = None
+            weather_list = data.get('weather', [])
+            if weather_list and len(weather_list) > 0:
+                weather_main = weather_list[0].get('main', '')
+            
+            # Calculate accurate solar irradiance using actual OpenWeatherMap data
+            solar_irradiance = calculate_solar_irradiance(
+                lat, lon, cloud_coverage, elevation, 
+                weather_main=weather_main, 
+                humidity=humidity
+            )
             
             # Location name
             location_name = data.get('name', 'Unknown')
             country = data.get('sys', {}).get('country', '')
             if country:
                 location_name = f"{location_name}, {country}"
+            
+            # Ensure all values are within reasonable ranges for Sri Lanka
+            # Temperature: 18-35°C typical
+            temp = max(15.0, min(38.0, temp))
+            # Humidity: 60-95% typical
+            humidity = max(50.0, min(98.0, humidity))
+            # Wind speed: 0-15 m/s typical
+            wind_speed = max(0.0, min(20.0, wind_speed))
             
             return {
                 'location': location_name,
@@ -183,7 +276,8 @@ def fetch_openweather_data(lat, lon):
                 'cloud_coverage': round(cloud_coverage, 1),
                 'pressure': round(pressure, 1),
                 'timestamp': datetime.utcnow().isoformat(),
-                'source': 'OpenWeatherMap'
+                'source': 'OpenWeatherMap',
+                'elevation': elevation
             }
         elif response.status_code == 401:
             print(f"OpenWeatherMap API authentication failed - Invalid API key")
@@ -274,7 +368,13 @@ def estimate_weather_data(lat, lon):
                 solar_irradiance = 5.2 + (lat - 7) * 0.15
             
             location_name = f"Lat: {lat:.4f}, Lon: {lon:.4f}"
-            solar_irradiance = calculate_solar_irradiance(lat, lon, 50.0, elevation_estimate if 'elevation_estimate' in locals() else 0)
+            # Use estimated cloud coverage (50%) for fallback calculation
+            solar_irradiance = calculate_solar_irradiance(
+                lat, lon, 50.0, 
+                elevation_estimate if 'elevation_estimate' in locals() else 0,
+                weather_main=None,
+                humidity=humidity
+            )
     else:
         # Generic estimation for non-Sri Lanka locations
         location_name = f"Lat: {lat:.4f}, Lon: {lon:.4f}"
@@ -293,7 +393,7 @@ def estimate_weather_data(lat, lon):
             humidity = 55 + (lat_abs - 50) * 0.2
         
         # Calculate solar irradiance using improved formula (assuming 50% cloud coverage)
-        solar_irradiance = calculate_solar_irradiance(lat, lon, 50.0, 0)
+        solar_irradiance = calculate_solar_irradiance(lat, lon, 50.0, 0, weather_main=None, humidity=humidity)
     
     # Add seasonal variation for temperature (solar irradiance already accounts for season)
     month = datetime.utcnow().month
@@ -349,7 +449,16 @@ def fetch_weather_forecast(lat, lon):
             
             for item in data.get('list', [])[:5]:  # Next 5 forecasts
                 cloud_coverage = item.get('clouds', {}).get('all', 0)
-                solar_irradiance = calculate_solar_irradiance(lat, lon, cloud_coverage)
+                weather_main = None
+                weather_list = item.get('weather', [])
+                if weather_list and len(weather_list) > 0:
+                    weather_main = weather_list[0].get('main', '')
+                humidity = item.get('main', {}).get('humidity', 75.0)
+                solar_irradiance = calculate_solar_irradiance(
+                    lat, lon, cloud_coverage, 0, 
+                    weather_main=weather_main, 
+                    humidity=humidity
+                )
                 
                 forecast.append({
                     'datetime': item['dt_txt'],
