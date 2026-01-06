@@ -11,21 +11,18 @@ class IotSensorData(db.Model):
     latitude = db.Column(db.Float, nullable=False)
     longitude = db.Column(db.Float, nullable=False)
     
-    # Sensor readings
-    solar_irradiance = db.Column(db.Float, nullable=False)  # kWh/m²/day
-    temperature = db.Column(db.Float, nullable=False)  # °C
-    humidity = db.Column(db.Float, nullable=False)  # %
-    wind_speed = db.Column(db.Float, default=0)  # m/s
+    solar_irradiance = db.Column(db.Float, nullable=False)
+    temperature = db.Column(db.Float, nullable=False) 
+    humidity = db.Column(db.Float, nullable=False)  
+    wind_speed = db.Column(db.Float, default=0)  
     
-    # Additional IoT metrics
-    shading_level = db.Column(db.Float, default=0)  # 0-1
-    dust_level = db.Column(db.Float, default=0)  # 0-1
-    panel_voltage = db.Column(db.Float, default=0)  # V
-    panel_current = db.Column(db.Float, default=0)  # A
+    shading_level = db.Column(db.Float, default=0) 
+    dust_level = db.Column(db.Float, default=0)  
+    panel_voltage = db.Column(db.Float, default=0) 
+    panel_current = db.Column(db.Float, default=0)  
     
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    # Relationships
+
     user = db.relationship('User', backref='sensor_data')
     anomalies = db.relationship('AnomalyDetection', backref='sensor_data', lazy=True)
     

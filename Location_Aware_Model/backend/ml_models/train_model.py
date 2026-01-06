@@ -20,16 +20,14 @@ class HybridSolarModel:
         ]
     
     def generate_synthetic_features(self, df):
-        """Generate synthetic rooftop parameters if not present"""
+        """Generate rooftop parameters when missing"""
         np.random.seed(42)
         n = len(df)
         
         if 'tilt_deg' not in df.columns:
-            # Optimal tilt is typically close to latitude
             df['tilt_deg'] = df['latitude'].apply(lambda x: min(max(abs(x) + np.random.uniform(-5, 5), 0), 60))
         
         if 'azimuth_deg' not in df.columns:
-            # 180° for northern hemisphere, 0° for southern
             df['azimuth_deg'] = df['latitude'].apply(lambda x: 180 if x > 0 else 0)
         
         if 'installed_capacity_kw' not in df.columns:
@@ -47,37 +45,25 @@ class HybridSolarModel:
         return df
     
     def calculate_monthly_energy(self, row):
-        """
-        Physics-based calculation of monthly solar energy output
-        Formula: E = A * r * H * PR
-        where:
-        E = Energy (kWh)
-        A = Panel area (m²) = installed_capacity_kw / (panel_efficiency * 1)
-        r = Panel efficiency
-        H = Solar irradiance (kWh/m²/day) = ALLSKY_SFC_SW_DWN
-        PR = Performance ratio = (1 - system_loss) *  shading_factor
-        """
-        # Days in month
-        days_in_month = 30.44  # Average
+        """Physics-based monthly solar energy estimation"""
+        days_in_month = 30.44
         if row['month'] in [1, 3, 5, 7, 8, 10, 12]:
             days_in_month = 31
         elif row['month'] in [4, 6, 9, 11]:
             days_in_month = 30
         elif row['month'] == 2:
-            days_in_month = 28.25  # Account for leap years
+            days_in_month = 28.25
         
         # Panel area (m²)
         panel_area = row['installed_capacity_kw'] / (row['panel_efficiency'] * 1.0)
         
         # Performance ratio
         pr = (1 - row['system_loss']) * row['shading_factor']
-        
-        # Tilt and azimuth adjustment factor (simplified)
-        # Optimal tilt is approximately equal to latitude
+
         tilt_factor = 1 - abs(row['tilt_deg'] - abs(row['latitude'])) * 0.005
         tilt_factor = max(0.7, min(1.0, tilt_factor))
         
-        # Azimuth factor (180° is optimal in northern hemisphere, 0° in southern)
+        # Azimuth factor
         optimal_azimuth = 180 if row['latitude'] > 0 else 0
         azimuth_diff = abs(row['azimuth_deg'] - optimal_azimuth)
         azimuth_factor = 1 - (azimuth_diff / 180) * 0.3
@@ -97,13 +83,11 @@ class HybridSolarModel:
         return max(0, monthly_energy)
     
     def prepare_data(self, csv_path):
-      """Load and prepare data"""
+      """Load and prepare training data"""
       df = pd.read_csv(csv_path)
-    
-      # Strip spaces and lowercase
+
       df.columns = df.columns.str.strip().str.lower()
-    
-      # Rename columns to match expected names
+
       df.rename(columns={
         'lat': 'latitude',
         'lon': 'longitude',
@@ -113,18 +97,15 @@ class HybridSolarModel:
         'ws2m': 'ws2m',
         'allsky_sfc_sw_dwn': 'allsky_sfc_sw_dwn'
       }, inplace=True)
-    
-      # Add month column if missing (default to January)
+
       if 'month' not in df.columns:
         df['month'] = 1
     
-      # Generate synthetic features
       df = self.generate_synthetic_features(df)
-    
-      # Calculate target variable
+
       df['monthly_energy_kwh'] = df.apply(self.calculate_monthly_energy, axis=1)
     
-      # Remove any invalid rows
+      # Remove invalid rows
       df = df.dropna()
       df = df[df['monthly_energy_kwh'] > 0]
     
@@ -133,19 +114,17 @@ class HybridSolarModel:
 
     def train(self, csv_path, test_size=0.2):
         """Train hybrid KNN + XGBoost model"""
+
         print("Loading and preparing data...")
         df = self.prepare_data(csv_path)
         
-        # Prepare features and target
         X = df[self.feature_columns]
         y = df['monthly_energy_kwh']
         
-        # Split data
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, test_size=test_size, random_state=42
         )
         
-        # Scale features
         X_train_scaled = self.scaler.fit_transform(X_train)
         X_test_scaled = self.scaler.transform(X_test)
         

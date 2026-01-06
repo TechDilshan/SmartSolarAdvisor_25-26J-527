@@ -17,17 +17,17 @@ export_bp = Blueprint('export', __name__)
 @jwt_required()
 def export_predictions_csv():
     """
-    Export user's predictions to CSV format
+    Export user's predictions to CSV
     """
     try:
         user_id = get_jwt_identity()
         
-        # Get all user predictions
+        # Get all user predictions for user
         predictions = Prediction.query.filter_by(user_id=user_id).order_by(
             Prediction.created_at.desc()
         ).all()
         
-        # Create CSV in memory
+        # Create CSV file in memory
         output = io.StringIO()
         writer = csv.writer(output)
         
@@ -41,7 +41,7 @@ def export_predictions_csv():
             'Scenario Name'
         ])
         
-        # Write data
+        # Write prediction data
         for pred in predictions:
             writer.writerow([
                 pred.id,
@@ -74,6 +74,7 @@ def export_predictions_csv():
         
         filename = f'solar_predictions_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
         
+        # Send CSV as file download
         return send_file(
             mem,
             mimetype='text/csv',
@@ -88,17 +89,20 @@ def export_predictions_csv():
 @jwt_required()
 def export_predictions_json():
     """
-    Export user's predictions to JSON format
+    Export user's predictions to JSON
     """
     try:
         user_id = get_jwt_identity()
         
+        # Fetch all predictions
         predictions = Prediction.query.filter_by(user_id=user_id).order_by(
             Prediction.created_at.desc()
         ).all()
         
+        # Convert predictions to dict
         predictions_data = [p.to_dict() for p in predictions]
         
+        # Prepare JSON in memory
         output = io.BytesIO()
         import json
         output.write(json.dumps(predictions_data, indent=2).encode('utf-8'))
@@ -106,6 +110,7 @@ def export_predictions_json():
         
         filename = f'solar_predictions_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json'
         
+        # Send JSON as file download
         return send_file(
             output,
             mimetype='application/json',

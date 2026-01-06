@@ -1,19 +1,19 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { authAPI } from '../services/api';
-import '../styles/Register.css';
+import React, { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { authAPI } from "../services/api";
+import "../styles/Register.css";
 
 function Register() {
   // Form state
   const [formData, setFormData] = useState({
-    username: '',
-    email: '',
-    password: '',
-    confirmPassword: ''
+    username: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
   });
 
   // UI state
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
@@ -21,24 +21,24 @@ function Register() {
   // Handle input changes
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
-    setError('');
+    setError("");
   };
 
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
+    setError("");
 
     // Validate passwords
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
+      setError("Passwords do not match");
       setLoading(false);
       return;
     }
 
     if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters');
+      setError("Password must be at least 6 characters");
       setLoading(false);
       return;
     }
@@ -48,15 +48,14 @@ function Register() {
       await authAPI.register({
         username: formData.username,
         email: formData.email,
-        password: formData.password
+        password: formData.password,
       });
 
       // Redirect to login
-      navigate('/login');
+      navigate("/login");
     } catch (err) {
       setError(
-        err.response?.data?.error ||
-        'Registration failed. Please try again.'
+        err.response?.data?.error || "Registration failed. Please try again."
       );
     } finally {
       setLoading(false);
@@ -122,12 +121,8 @@ function Register() {
             />
           </div>
 
-          <button
-            type="submit"
-            className="btn-primary"
-            disabled={loading}
-          >
-            {loading ? 'Creating Account...' : 'Create Account'}
+          <button type="submit" className="btn-primary" disabled={loading}>
+            {loading ? "Creating Account..." : "Create Account"}
           </button>
         </form>
 

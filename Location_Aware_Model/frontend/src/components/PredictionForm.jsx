@@ -1,28 +1,29 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { predictionsAPI, weatherAPI } from '../services/api';
-import LocationMap from './LocationMap';
-import '../styles/PredictionForm.css';
+import React, { useState, useEffect, useRef } from "react";
+import { predictionsAPI, weatherAPI } from "../services/api";
+import LocationMap from "./LocationMap";
+import "../styles/PredictionForm.css";
 
 function PredictionForm({ onPredictionComplete }) {
   const [formData, setFormData] = useState({
-    latitude: 6.9271,  
-    longitude: 79.8612,
-    allsky_sfc_sw_dwn: 5.5,
+    latitude: 6.9,
+    longitude: 79.95,
+    solar_irradiance: 5.3,
+    allsky_sfc_sw_dwn: 5.3,
     rh2m: 75.0,
-    t2m: 27.5, 
-    ws2m: 3.5,
-    tilt_deg: 8.0, 
-    azimuth_deg: 180.0, 
+    t2m: 26.0,
+    ws2m: 6.0,
+    tilt_deg: 8.0,
+    azimuth_deg: 180.0,
     installed_capacity_kw: 5.0,
-    panel_efficiency: 0.21, 
-    system_loss: 0.12,  
-    shading_factor: 0.96,  
-    electricity_rate: 35.0, 
-    system_cost_per_kw: 220000  
+    panel_efficiency: 0.18,
+    system_loss: 0.14,
+    shading_factor: 0.96,
+    electricity_rate: 35.0,
+    system_cost_per_kw: 220000,
   });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [predictionType, setPredictionType] = useState('monthly');
+  const [error, setError] = useState("");
+  const [predictionType, setPredictionType] = useState("monthly");
   const [loadingWeather, setLoadingWeather] = useState(false);
   const [weatherData, setWeatherData] = useState(null);
   const [showMap, setShowMap] = useState(false);
@@ -30,42 +31,74 @@ function PredictionForm({ onPredictionComplete }) {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: parseFloat(value) || value
-    });
+    const parsedValue = parseFloat(value);
+
+    // Update both keys for solar irradiance
+    if (name === "solar_irradiance" || name === "allsky_sfc_sw_dwn") {
+      setFormData((prev) => ({
+        ...prev,
+        solar_irradiance: parsedValue,
+        allsky_sfc_sw_dwn: parsedValue,
+      }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: parsedValue || value,
+      }));
+    }
   };
 
   const fetchWeatherData = async (lat, lon) => {
-    if (lat === null || lat === undefined || lon === null || lon === undefined) return;
+    if (lat === null || lat === undefined || lon === null || lon === undefined)
+      return;
     if (isNaN(lat) || isNaN(lon)) return;
     if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return;
-    
+
     setLoadingWeather(true);
     try {
       const response = await weatherAPI.getWeatherData(lat, lon);
       const weather = response.data;
-      
-      // Update form with weather data - ensure values are valid numbers
-      setFormData(prev => ({
-        ...prev,
-        allsky_sfc_sw_dwn: (weather.solar_irradiance != null && !isNaN(weather.solar_irradiance)) 
-          ? parseFloat(weather.solar_irradiance) 
-          : prev.allsky_sfc_sw_dwn,
-        rh2m: (weather.humidity != null && !isNaN(weather.humidity)) 
-          ? parseFloat(weather.humidity) 
-          : prev.rh2m,
-        t2m: (weather.temperature != null && !isNaN(weather.temperature)) 
-          ? parseFloat(weather.temperature) 
-          : prev.t2m,
-        ws2m: (weather.wind_speed != null && !isNaN(weather.wind_speed)) 
-          ? parseFloat(weather.wind_speed) 
-          : prev.ws2m
-      }));
-      
+
+      console.log("Weather data received:", weather);
+
+      // Update form with weather data
+      setFormData((prev) => {
+        const solarIrr =
+          weather.solar_irradiance != null && !isNaN(weather.solar_irradiance)
+            ? parseFloat(weather.solar_irradiance)
+            : 5.3;
+
+        const humidityVal =
+          weather.humidity != null && !isNaN(weather.humidity)
+            ? parseFloat(weather.humidity)
+            : 75.0;
+
+        const tempVal =
+          weather.temperature != null && !isNaN(weather.temperature)
+            ? parseFloat(weather.temperature)
+            : 27.5;
+
+        const windVal =
+          weather.wind_speed != null && !isNaN(weather.wind_speed)
+            ? parseFloat(weather.wind_speed)
+            : 3.5;
+
+        return {
+          ...prev,
+          // Update both keys for compatibility
+          solar_irradiance: solarIrr,
+          allsky_sfc_sw_dwn: solarIrr,
+          rh2m: humidityVal,
+          rh: humidityVal,
+          t2m: tempVal,
+          ws2m: windVal,
+        };
+      });
+
       setWeatherData(weather);
     } catch (err) {
-      console.error('Failed to fetch weather data:', err);
+      console.error("Failed to fetch weather data:", err);
+      setError("Failed to fetch weather data. Using default values.");
     } finally {
       setLoadingWeather(false);
     }
@@ -73,41 +106,39 @@ function PredictionForm({ onPredictionComplete }) {
 
   const handleLocationChange = (lat, lon) => {
     if (isNaN(lat) || isNaN(lon)) {
-      console.error('Invalid coordinates: NaN values', lat, lon);
+      console.error("Invalid coordinates: NaN values", lat, lon);
       return;
     }
     if (lat < -90 || lat > 90 || lon < -180 || lon > 180) {
-      console.error('Invalid coordinates: out of range', lat, lon);
+      console.error("Invalid coordinates: out of range", lat, lon);
       return;
     }
-    
+
     const roundedLat = Math.round(lat * 10000) / 10000;
     const roundedLon = Math.round(lon * 10000) / 10000;
-    
-    setFormData(prev => ({
+
+    setFormData((prev) => ({
       ...prev,
       latitude: roundedLat,
-      longitude: roundedLon
+      longitude: roundedLon,
     }));
-    
+
     fetchWeatherData(roundedLat, roundedLon);
   };
 
   useEffect(() => {
-    // Auto-calculate optimal tilt and azimuth based on latitude
-    if (formData.latitude) {
-      // For Sri Lanka (5-10°N), optimal tilt is close to latitude
-      const optimalTilt = Math.min(Math.max(Math.abs(formData.tilt_deg), 5), 15);
-      const optimalAzimuth = 180; // Always south-facing in Northern hemisphere
-      
-      // Only update if still at default values
-      setFormData(prev => ({
+    // Auto-calculate optimal tilt based on latitude
+    if (formData.latitude && formData.tilt_deg === 8.0) {
+      const optimalTilt = Math.min(
+        Math.max(Math.abs(formData.latitude), 5),
+        15
+      );
+      setFormData((prev) => ({
         ...prev,
-        tilt_deg: prev.tilt_deg === 8.0 ? optimalTilt : prev.tilt_deg,
-        azimuth_deg: prev.azimuth_deg === 180.0 ? optimalAzimuth : prev.azimuth_deg
+        tilt_deg: optimalTilt,
       }));
     }
-  }, [formData]);
+  }, [formData.latitude, formData.tilt_deg]);
 
   useEffect(() => {
     if (!hasMounted.current && formData.latitude && formData.longitude) {
@@ -119,18 +150,31 @@ function PredictionForm({ onPredictionComplete }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
+    setError("");
 
     try {
       let response;
-      if (predictionType === 'annual') {
-        response = await predictionsAPI.predictAnnual(formData);
+      // Ensure both solar irradiance keys are present
+      const submitData = {
+        ...formData,
+        solar_irradiance:
+          formData.solar_irradiance || formData.allsky_sfc_sw_dwn,
+        allsky_sfc_sw_dwn:
+          formData.solar_irradiance || formData.allsky_sfc_sw_dwn,
+      };
+
+      if (predictionType === "annual") {
+        response = await predictionsAPI.predictAnnual(submitData);
+      } else if (predictionType === "daily") {
+        response = await predictionsAPI.predictDaily(submitData);
       } else {
-        response = await predictionsAPI.predict(formData);
+        response = await predictionsAPI.predict(submitData);
       }
       onPredictionComplete(response.data, predictionType);
     } catch (err) {
-      setError(err.response?.data?.error || 'Prediction failed. Please try again.');
+      setError(
+        err.response?.data?.error || "Prediction failed. Please try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -138,27 +182,33 @@ function PredictionForm({ onPredictionComplete }) {
 
   // Preset locations for Sri Lanka
   const sriLankaPresets = [
-    { name: 'Colombo', lat: 6.9271, lon: 79.8612 },
-    { name: 'Kandy', lat: 7.2906, lon: 80.6337 },
-    { name: 'Galle', lat: 6.0535, lon: 80.2210 },
-    { name: 'Jaffna', lat: 9.6615, lon: 80.0255 },
-    { name: 'Trincomalee', lat: 8.5874, lon: 81.2152 }
+    { name: "Colombo", lat: 6.9271, lon: 79.8612 },
+    { name: "Malabe", lat: 6.9, lon: 79.95 },
+    { name: "Kandy", lat: 7.2906, lon: 80.6337 },
+    { name: "Galle", lat: 6.0535, lon: 80.221 },
+    { name: "Jaffna", lat: 9.6615, lon: 80.0255 },
   ];
 
   return (
     <div className="prediction-form-container">
       <h2> Solar Energy Prediction - Sri Lanka</h2>
-      
+
       <div className="prediction-type-selector">
         <button
-          className={predictionType === 'monthly' ? 'active' : ''}
-          onClick={() => setPredictionType('monthly')}
+          className={predictionType === "monthly" ? "active" : ""}
+          onClick={() => setPredictionType("monthly")}
         >
           Monthly Prediction
         </button>
         <button
-          className={predictionType === 'annual' ? 'active' : ''}
-          onClick={() => setPredictionType('annual')}
+          className={predictionType === "daily" ? "active" : ""}
+          onClick={() => setPredictionType("daily")}
+        >
+          Daily Prediction
+        </button>
+        <button
+          className={predictionType === "annual" ? "active" : ""}
+          onClick={() => setPredictionType("annual")}
         >
           Annual Prediction
         </button>
@@ -175,27 +225,35 @@ function PredictionForm({ onPredictionComplete }) {
               className="toggle-map-btn"
               onClick={() => setShowMap(!showMap)}
             >
-              {showMap ? ' Hide Map' : ' Show Map'}
+              {showMap ? "Hide Map" : " Show Map"}
             </button>
           </div>
 
-          {/* Quick location presets */}
           <div className="location-presets">
-            <label style={{fontSize: '0.9em', color: '#666'}}>Quick Select:</label>
-            <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px'}}>
-              {sriLankaPresets.map(preset => (
+            <label style={{ fontSize: "0.9em", color: "#666" }}>
+              Quick Select:
+            </label>
+            <div
+              style={{
+                display: "flex",
+                gap: "8px",
+                flexWrap: "wrap",
+                marginTop: "8px",
+              }}
+            >
+              {sriLankaPresets.map((preset) => (
                 <button
                   key={preset.name}
                   type="button"
                   className="preset-btn"
                   onClick={() => handleLocationChange(preset.lat, preset.lon)}
                   style={{
-                    padding: '6px 12px',
-                    fontSize: '0.85em',
-                    background: '#f0f0f0',
-                    border: '1px solid #ddd',
-                    borderRadius: '4px',
-                    cursor: 'pointer'
+                    padding: "6px 12px",
+                    fontSize: "0.85em",
+                    background: "#f0f0f0",
+                    border: "1px solid #ddd",
+                    borderRadius: "4px",
+                    cursor: "pointer",
                   }}
                 >
                   {preset.name}
@@ -203,7 +261,7 @@ function PredictionForm({ onPredictionComplete }) {
               ))}
             </div>
           </div>
-          
+
           {showMap && (
             <div className="map-section">
               <LocationMap
@@ -214,24 +272,24 @@ function PredictionForm({ onPredictionComplete }) {
               />
             </div>
           )}
-          
-          <div className="form-grid" style={{marginTop: '16px'}}>
+
+          <div className="form-grid" style={{ marginTop: "16px" }}>
             <div className="form-group">
               <label>Latitude</label>
               <input
                 type="number"
-                value={formData.latitude?.toFixed(4) || ''}
+                value={formData.latitude?.toFixed(4) || ""}
                 readOnly
-                style={{background: '#f5f5f5'}}
+                style={{ background: "#f5f5f5" }}
               />
             </div>
             <div className="form-group">
               <label>Longitude</label>
               <input
                 type="number"
-                value={formData.longitude?.toFixed(4) || ''}
+                value={formData.longitude?.toFixed(4) || ""}
                 readOnly
-                style={{background: '#f5f5f5'}}
+                style={{ background: "#f5f5f5" }}
               />
             </div>
           </div>
@@ -239,46 +297,35 @@ function PredictionForm({ onPredictionComplete }) {
 
         <div className="form-section">
           <div className="section-header">
-            <h3> Climate Data</h3>
-            {loadingWeather && <span className="loading-badge">Loading weather...</span>}
+            <h3>Climate Data</h3>
+            {loadingWeather && (
+              <span className="loading-badge">Loading weather...</span>
+            )}
             {weatherData && (
               <button
                 type="button"
                 className="refresh-weather-btn"
-                onClick={() => fetchWeatherData(formData.latitude, formData.longitude)}
+                onClick={() =>
+                  fetchWeatherData(formData.latitude, formData.longitude)
+                }
                 title="Refresh weather data"
               >
-                 Refresh
+                Refresh
               </button>
             )}
           </div>
-          {weatherData && (
-            <div className="weather-info">
-              <div className="weather-info-header">
-                <span> {weatherData.location || `Lat: ${formData.latitude?.toFixed(4)}, Lon: ${formData.longitude?.toFixed(4)}`}</span>
-                {weatherData.source && (
-                  <span className="weather-source">
-                    {weatherData.source === 'OpenWeatherMap' ? 'Live Data' : 'Estimated'}
-                  </span>
-                )}
-              </div>
-              <div className="weather-metrics">
-                <span>{weatherData.temperature != null ? weatherData.temperature.toFixed(1) : 'N/A'}°C</span>
-                <span>{weatherData.humidity != null ? weatherData.humidity.toFixed(1) : 'N/A'}%</span>
-                <span>{weatherData.solar_irradiance != null ? weatherData.solar_irradiance.toFixed(2) : 'N/A'} kWh/m²/day</span>
-                <span>{weatherData.wind_speed != null ? weatherData.wind_speed.toFixed(1) : 'N/A'} m/s</span>
-              </div>
-            </div>
-          )}
+
           <div className="form-grid">
             <div className="form-group">
               <label>Solar Irradiance (kWh/m²/day)</label>
               <input
                 type="number"
-                name="allsky_sfc_sw_dwn"
-                value={formData.allsky_sfc_sw_dwn}
+                name="solar_irradiance"
+                value={formData.solar_irradiance}
                 onChange={handleChange}
                 step="0.1"
+                min="3.0"
+                max="7.0"
                 required
               />
             </div>
@@ -303,7 +350,6 @@ function PredictionForm({ onPredictionComplete }) {
                 step="0.1"
                 required
               />
-           
             </div>
             <div className="form-group">
               <label>Wind Speed (m/s)</label>
@@ -320,7 +366,7 @@ function PredictionForm({ onPredictionComplete }) {
         </div>
 
         <div className="form-section">
-          <h3>System Configuration</h3>
+          <h3> System Configuration</h3>
           <div className="form-grid">
             <div className="form-group">
               <label>Tilt Angle (degrees)</label>
@@ -347,6 +393,7 @@ function PredictionForm({ onPredictionComplete }) {
                 max="360"
                 required
               />
+              <small>180° = South (optimal)</small>
             </div>
             <div className="form-group">
               <label>Installed Capacity (kW)</label>
@@ -368,7 +415,7 @@ function PredictionForm({ onPredictionComplete }) {
                 value={formData.panel_efficiency}
                 onChange={handleChange}
                 step="0.01"
-                min="0.15"
+                min="0.10"
                 max="0.25"
                 required
               />
@@ -381,8 +428,8 @@ function PredictionForm({ onPredictionComplete }) {
                 value={formData.system_loss}
                 onChange={handleChange}
                 step="0.01"
-                min="0"
-                max="0.5"
+                min="0.05"
+                max="0.30"
                 required
               />
             </div>
@@ -398,12 +445,13 @@ function PredictionForm({ onPredictionComplete }) {
                 max="1"
                 required
               />
+              <small>1.0 = No shading</small>
             </div>
           </div>
         </div>
 
         <div className="form-section">
-          <h3> Financial Parameters</h3>
+          <h3>Financial Parameters</h3>
           <div className="form-grid">
             <div className="form-group">
               <label>Electricity Rate (LKR/kWh)</label>
@@ -428,13 +476,12 @@ function PredictionForm({ onPredictionComplete }) {
                 min="0"
                 placeholder="220000"
               />
-            
             </div>
           </div>
         </div>
 
         <button type="submit" className="predict-button" disabled={loading}>
-          {loading ? ' Predicting...' : ' Generate Prediction'}
+          {loading ? "Predicting..." : "Generate Prediction"}
         </button>
       </form>
     </div>

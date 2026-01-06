@@ -1,84 +1,107 @@
 import calendar
+from datetime import datetime
+
+# Typical daily solar irradiance in kWh/m²/day for Sri Lanka (by month)
+SRILANKA_SOLAR_IRRADIANCE = {
+    1: 5.0, 2: 5.5, 3: 5.8, 4: 5.8, 5: 5.5, 6: 5.0,
+    7: 5.0, 8: 5.2, 9: 5.3, 10: 5.5, 11: 5.2, 12: 4.8
+}
 
 def compute_shading(rh):
-    """
-    Compute shading factor based on relative humidity.
-    shading = 1 - (rh - 60) / 200
-    Result is clamped between 0.75 and 1.0.
-    """
-    shading = 1 - (rh - 60) / 200
-    return max(0.75, min(1.0, shading))
+    """Compute shading factor based on relative humidity (clamp 0.85–1.0)"""
+    # High humidity can indicate cloud cover/haze
+    shading = 1 - (rh - 60) / 250
+    return max(0.85, min(1.0, shading))
 
+def _sanitize_inputs(input_data):
+    """Normalize and validate inputs"""
+    month = int(input_data.get('month') or datetime.now().month)
+    month = max(1, min(12, month))
+    year = int(input_data.get('year') or datetime.now().year)
+    year = max(2000, min(2100, year))
+    days_in_month = calendar.monthrange(year, month)[1]
 
-def calculate_monthly_energy_physics(input_data):
-    """
-    Calculate monthly solar energy (kWh)  -> Estimated monthly energy in kWh
-        energy = ALLSKY_SFC_SW_DWN * days_in_month * installed_capacity_kw *
-                 panel_efficiency * (1 - system_loss) * shading_factor
-    """
-    # Extract input values with defaults and validation
-    solar_irradiance = input_data.get('allsky_sfc_sw_dwn') or input_data.get('ALLSKY_SFC_SW_DWN', 5.0)
-    if solar_irradiance is None or not isinstance(solar_irradiance, (int, float)) or solar_irradiance <= 0:
-        solar_irradiance = 5.0  # Default for Sri Lanka
+    # Priority: use solar_irradiance from weather API, then allsky_sfc_sw_dwn, then monthly default
+    solar_irradiance = input_data.get('solar_irradiance')
+    if solar_irradiance is None:
+        solar_irradiance = input_data.get('allsky_sfc_sw_dwn')
+    if solar_irradiance is None:
+        solar_irradiance = SRILANKA_SOLAR_IRRADIANCE[month]
+    solar_irradiance = float(solar_irradiance)
     
-    rh = input_data.get('rh2m') or input_data.get('RH2M', 75.0)
-    if rh is None or not isinstance(rh, (int, float)):
-        rh = 75.0
-    
-    installed_capacity_kw = input_data.get('installed_capacity_kw', 5.0)
-    if installed_capacity_kw is None or not isinstance(installed_capacity_kw, (int, float)) or installed_capacity_kw <= 0:
-        installed_capacity_kw = 5.0
-    
-    panel_efficiency = input_data.get('panel_efficiency', 0.18)
-    if panel_efficiency is None or not isinstance(panel_efficiency, (int, float)) or panel_efficiency <= 0:
-        panel_efficiency = 0.18
-    # Clamp efficiency to reasonable range
-    panel_efficiency = max(0.15, min(0.25, panel_efficiency))
-    
-    system_loss = input_data.get('system_loss', 0.14)
-    if system_loss is None or not isinstance(system_loss, (int, float)):
-        system_loss = 0.14
-    # Clamp system loss to reasonable range
-    system_loss = max(0.0, min(0.5, system_loss))
+    # Ensure realistic bounds for Sri Lanka
+    solar_irradiance = max(3.5, min(6.5, solar_irradiance))
 
-    # Compute shading factor if not provided
+    # Humidity
+    rh = float(input_data.get('rh') or input_data.get('rh2m') or 75.0)
+    rh = max(40.0, min(100.0, rh))
+    
+    # System parameters
+    installed_capacity_kw = float(input_data.get('installed_capacity_kw') or 5.0)
+    installed_capacity_kw = max(0.1, min(1000.0, installed_capacity_kw))
+    
+    panel_efficiency = float(input_data.get('panel_efficiency') or 0.18)
+    panel_efficiency = max(0.10, min(0.25, panel_efficiency))
+    
+    system_loss = float(input_data.get('system_loss') or 0.14)
+    system_loss = max(0.05, min(0.30, system_loss))
+    
     shading_factor = input_data.get('shading_factor')
-    if shading_factor is None or not isinstance(shading_factor, (int, float)):
+    if shading_factor is None:
         shading_factor = compute_shading(rh)
-    # Clamp shading factor to valid range
-    shading_factor = max(0.0, min(1.0, shading_factor))
+    shading_factor = max(0.50, min(1.0, float(shading_factor)))
 
-    # Determine days in month with validation
-    year = input_data.get('year', 2024)
-    month = input_data.get('month', 1)
-    try:
-        year = int(year) if year else 2024
-        month = int(month) if month else 1
-        # Validate month range
-        month = max(1, min(12, month))
-        # Validate year range (reasonable solar system lifetime)
-        year = max(2000, min(2100, year))
-        days_in_month = calendar.monthrange(year, month)[1]
-    except (ValueError, TypeError, calendar.IllegalMonthError):
-        # Fallback to current month
-        from datetime import datetime
-        now = datetime.now()
-        days_in_month = calendar.monthrange(now.year, now.month)[1]
+    return {
+        'solar_irradiance': solar_irradiance,
+        'rh': rh,
+        'installed_capacity_kw': installed_capacity_kw,
+        'panel_efficiency': panel_efficiency,
+        'system_loss': system_loss,
+        'shading_factor': shading_factor,
+        'year': year,
+        'month': month,
+        'days_in_month': days_in_month
+    }
 
-    # Monthly energy calculation with validation
-    try:
-        monthly_energy = (
-            float(solar_irradiance) *
-            days_in_month *
-            float(installed_capacity_kw) *
-            float(panel_efficiency) *
-            (1 - float(system_loss)) *
-            float(shading_factor)
-        )
-        # Ensure non-negative result
-        monthly_energy = max(0.0, monthly_energy)
-    except (ValueError, TypeError) as e:
-        # Return a safe default if calculation fails
-        monthly_energy = 100.0  # Reasonable default monthly energy
+def calculate_daily_energy_physics(input_data, return_context=False):
+    """
+    Calculate realistic daily energy in kWh for a PV system.
+    
+    Formula: daily_energy = capacity_kw * solar_irradiance * (1 - system_loss) * shading_factor
+    
+    For a 5kW system in Sri Lanka with typical conditions:
+    - Solar irradiance: 5.3 kWh/m²/day
+    - System loss: 14% (0.14)
+    - Shading factor: 0.96
+    - Result: 5 * 5.3 * (1 - 0.14) * 0.96 = 21.9 kWh/day
+    
+    Monthly: 21.9 * 30 = 657 kWh/month
+    """
+    params = _sanitize_inputs(input_data)
+    
+    # Daily energy calculation
+    # This treats solar_irradiance as "sun-hours" or peak-sun-hours equivalent
+    daily_energy = (
+        params['installed_capacity_kw']
+        * params['solar_irradiance']
+        * (1 - params['system_loss'])
+        * params['shading_factor']
+    )
+    
+    daily_energy = round(max(0, daily_energy), 2)
+    
+    if return_context:
+        params['daily_energy_kwh'] = daily_energy
+        return daily_energy, params
+    return daily_energy
 
-    return round(monthly_energy, 2)
+def calculate_monthly_energy_physics(input_data, return_context=False):
+    """Calculate monthly energy by multiplying daily energy by days in month"""
+    daily_energy, params = calculate_daily_energy_physics(input_data, return_context=True)
+    monthly_energy = round(daily_energy * params['days_in_month'], 2)
+    
+    if return_context:
+        params['monthly_energy_kwh'] = monthly_energy
+        params['daily_energy_kwh'] = daily_energy
+        return monthly_energy, params
+    return monthly_energy

@@ -45,17 +45,18 @@ def login():
     try:
         data = request.get_json()
         
-        # Validate input
+        # Validate credentials
         if not data.get('username') or not data.get('password'):
             return jsonify({'error': 'Missing username or password'}), 400
         
-        # Find user
+        # Fetch user
         user = User.query.filter_by(username=data['username']).first()
         
+        # Verify password
         if not user or not user.check_password(data['password']):
             return jsonify({'error': 'Invalid credentials'}), 401
         
-        # Create access token
+        # Generate JWT
         access_token = create_access_token(
             identity=str(user.id),
             additional_claims={'is_admin': user.is_admin}
@@ -73,6 +74,7 @@ def login():
 @jwt_required()
 def get_current_user():
     try:
+        # Get logged-in user
         user_id = get_jwt_identity()
         user = User.query.get(user_id)
         

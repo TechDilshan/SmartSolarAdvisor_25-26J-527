@@ -7,7 +7,7 @@ from sqlalchemy import func
 admin_bp = Blueprint('admin', __name__)
 
 def admin_required():
-    """Decorator to check if user is admin"""
+    """Check if user is admin"""
     def wrapper(fn):
         @jwt_required()
         def decorator(*args, **kwargs):
@@ -22,6 +22,7 @@ def admin_required():
 @admin_bp.route('/users', methods=['GET'])
 @admin_required()
 def get_all_users():
+    """Retrieve all registered users"""
     try:
         users = User.query.all()
         return jsonify({
@@ -33,12 +34,12 @@ def get_all_users():
 @admin_bp.route('/users/<int:user_id>', methods=['DELETE'])
 @admin_required()
 def delete_user(user_id):
+    """Delete user accounts"""
     try:
         user = User.query.get(user_id)
         if not user:
             return jsonify({'error': 'User not found'}), 404
-        
-        # Don't allow deleting yourself
+    
         current_user_id = get_jwt_identity()
         if user_id == current_user_id:
             return jsonify({'error': 'Cannot delete your own account'}), 400
@@ -54,6 +55,7 @@ def delete_user(user_id):
 @admin_bp.route('/predictions', methods=['GET'])
 @admin_required()
 def get_all_predictions():
+    """Retrieve recent predictions for monitoring"""
     try:
         predictions = Prediction.query.order_by(
             Prediction.created_at.desc()
@@ -125,7 +127,7 @@ def toggle_admin(user_id):
         if not user:
             return jsonify({'error': 'User not found'}), 404
         
-        # Don't allow changing your own admin status
+        # Cannot modify own admin status
         current_user_id = get_jwt_identity()
         if user_id == current_user_id:
             return jsonify({'error': 'Cannot modify your own admin status'}), 400

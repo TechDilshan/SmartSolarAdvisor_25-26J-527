@@ -1,12 +1,10 @@
-import React from 'react';
-import '../styles/Footer.css';
+import React from "react";
+import "../styles/Footer.css";
 
 function Footer() {
   return (
     <footer className="app-footer">
-      <div className="footer-brand">
-         Smart Solar Advisor
-      </div>
+      <div className="footer-brand">Smart Solar Advisor</div>
 
       <div className="footer-links">
         <span>About</span>

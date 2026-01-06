@@ -9,12 +9,7 @@ class SolarPredictor:
     
     def predict(self, input_data):
         """
-        Make prediction using hybrid KNN + XGBoost model ->  dict with prediction and confidence score
-            inputs
-                - latitude, longitude, year, month
-                - ALLSKY_SFC_SW_DWN, RH2M, T2M, WS2M
-                - tilt_deg, azimuth_deg, installed_capacity_kw
-                - panel_efficiency, system_loss, shading_factor
+        Return hybrid prediction and confidence score
         """
         try:
             # Create feature array
@@ -24,11 +19,11 @@ class SolarPredictor:
             # Scale features
             features_scaled = self.model.scaler.transform(features)
             
-            # Get predictions from both models
+            # Model Predictions
             knn_pred = self.model.knn_model.predict(features_scaled)[0]
             xgb_pred = self.model.xgb_model.predict(features_scaled)[0]
             
-            # Hybrid prediction (weighted average)
+            # Weighted hybrid prediction
             hybrid_pred = 0.3 * knn_pred + 0.7 * xgb_pred
             
             # Calculate confidence score (based on agreement between models)
@@ -46,7 +41,7 @@ class SolarPredictor:
             raise Exception(f"Prediction error: {str(e)}")
     
     def predict_annual(self, input_data):
-        """Predict energy for all 12 months"""
+        """Predict monthly and annual energy output"""
         predictions = []
         total_energy = 0
         

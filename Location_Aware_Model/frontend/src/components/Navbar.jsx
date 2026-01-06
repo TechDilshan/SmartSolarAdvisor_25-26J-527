@@ -1,6 +1,6 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import '../styles/Navbar.css';
+import React from "react";
+import { Link } from "react-router-dom";
+import "../styles/Navbar.css";
 
 function Navbar({ user, onLogout }) {
   return (
@@ -12,16 +12,13 @@ function Navbar({ user, onLogout }) {
       </div>
 
       <div className="app-navbar__actions">
-        {/* Profile Button */}
         <Link to="/profile" className="profile-btn">
           <span className="profile-icon">👤</span>
           <span>{user.username}</span>
         </Link>
 
         {user.is_admin && (
-          <span className="user-role-badge user-role-badge--admin">
-            Admin
-          </span>
+          <span className="user-role-badge user-role-badge--admin">Admin</span>
         )}
 
         <button onClick={onLogout} className="btn-logout">
