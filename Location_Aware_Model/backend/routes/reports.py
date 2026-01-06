@@ -26,6 +26,7 @@ def get_month_name(month_num):
     """Get month name from number"""
     return calendar.month_name[month_num]
 
+# Monthly PDF Report Generation
 @reports_bp.route("/prediction/<int:prediction_id>/pdf", methods=["GET"])
 @jwt_required()
 def generate_prediction_pdf(prediction_id):
@@ -216,6 +217,7 @@ def generate_prediction_pdf(prediction_id):
         download_name=filename
     )
 
+# Annual PDF Report Generation
 @reports_bp.route("/prediction/annual/<int:year>/pdf", methods=["GET"])
 @jwt_required()
 def generate_annual_prediction_pdf(year):
@@ -247,7 +249,7 @@ def generate_annual_prediction_pdf(year):
         if month_key not in monthly_predictions:
             monthly_predictions[month_key] = pred
         else:
-            # Keep the most recent prediction (highest ID)
+            # Keep the most recent prediction
             if pred.id > monthly_predictions[month_key].id:
                 monthly_predictions[month_key] = pred
     
@@ -304,7 +306,7 @@ def generate_annual_prediction_pdf(year):
     total_annual_savings = sum(p.monthly_savings_usd or 0 for p in predictions)
     avg_monthly_savings = total_annual_savings / num_months if num_months > 0 else 0
     
-    # Executive Summary
+    #  Summary
     summary_style = ParagraphStyle(
         'SummaryStyle',
         parent=styles['Heading2'],

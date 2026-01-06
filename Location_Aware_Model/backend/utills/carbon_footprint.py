@@ -4,28 +4,16 @@ Calculates CO2 emissions avoided by using solar energy
 """
 
 # Average CO2 emission factor for Sri Lanka grid electricity (kg CO2/kWh)
-# Source: Based on CEB (Ceylon Electricity Board) data
-SRI_LANKA_GRID_CO2_FACTOR = 0.65  # kg CO2 per kWh (2025 estimate)
+SRI_LANKA_GRID_CO2_FACTOR = 0.65
 
 # Average CO2 emission factor for global grid (kg CO2/kWh)
-GLOBAL_GRID_CO2_FACTOR = 0.5  # kg CO2 per kWh (global average)
+GLOBAL_GRID_CO2_FACTOR = 0.5
 
 def calculate_carbon_savings(energy_kwh, country='LK'):
     """
-    Calculate carbon dioxide (CO2) emissions avoided by solar energy generation
-    
-    Args:
-        energy_kwh: Energy generated in kWh (monthly or annual)
-        country: Country code ('LK' for Sri Lanka, 'GLOBAL' for global average)
-    
-    Returns:
-        dict with:
-            - co2_avoided_kg: CO2 emissions avoided in kilograms
-            - co2_avoided_tonnes: CO2 emissions avoided in metric tonnes
-            - trees_equivalent: Equivalent number of trees planted (1 tree absorbs ~21 kg CO2/year)
-            - cars_equivalent: Equivalent cars removed from road (1 car emits ~4.6 tonnes CO2/year)
+     Calculate CO2 emissions avoided by solar energy generation
     """
-    # Select appropriate CO2 factor
+    # Select appropriate CO2 factor based on country
     if country == 'LK':
         co2_factor = SRI_LANKA_GRID_CO2_FACTOR
     else:
@@ -35,12 +23,10 @@ def calculate_carbon_savings(energy_kwh, country='LK'):
     co2_avoided_kg = energy_kwh * co2_factor
     co2_avoided_tonnes = co2_avoided_kg / 1000
     
-    # Calculate equivalent metrics
-    # Average tree absorbs ~21 kg CO2 per year
+    # Convert CO2 savings into equivalent number of trees
     trees_equivalent = co2_avoided_kg / 21 if co2_avoided_kg > 0 else 0
     
-    # Average car emits ~4.6 tonnes CO2 per year (or ~4600 kg)
-    # For monthly: divide by 12, for annual: use directly
+     # Convert CO2 savings into equivalent number of cars removed
     cars_equivalent = co2_avoided_tonnes / 4.6 if co2_avoided_tonnes > 0 else 0
     
     return {
@@ -53,15 +39,10 @@ def calculate_carbon_savings(energy_kwh, country='LK'):
 
 def calculate_lifetime_carbon_savings(annual_energy_kwh, system_lifetime_years=25):
     """
-    Calculate lifetime carbon savings for a solar system
-    
-    Args:
-        annual_energy_kwh: Annual energy generation in kWh
-        system_lifetime_years: Expected lifetime of solar system (default 25 years)
-    
-    Returns:
-        dict with lifetime carbon savings metrics
+    Calculate total CO2 savings over the system lifetime
     """
+    
+    # Total energy produced during system lifetime
     lifetime_energy = annual_energy_kwh * system_lifetime_years
     savings = calculate_carbon_savings(lifetime_energy)
     

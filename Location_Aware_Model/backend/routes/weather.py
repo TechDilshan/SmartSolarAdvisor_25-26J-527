@@ -11,6 +11,7 @@ weather_bp = Blueprint('weather', __name__)
 load_dotenv()
 OPENWEATHER_API_KEY = os.getenv('OPENWEATHER_API_KEY')
 
+# Get real-time or estimated weather data
 @weather_bp.route('/data', methods=['GET'])
 @jwt_required()
 def get_weather_data():
@@ -49,14 +50,13 @@ def get_weather_data():
 
 def calculate_solar_irradiance(lat, lon, cloud_coverage, month=None):
     """
-    Calculate realistic daily solar irradiance (kWh/m²/day) for Sri Lanka
+    Calculate daily solar irradiance (kWh/m²/day)
     """
     # Use current month if not provided
     if month is None:
         month = datetime.utcnow().month
     
-    # Baseline solar irradiance for Sri Lanka by month (kWh/m²/day)
-    # These are realistic values for Sri Lanka's tropical location
+    # Average monthly solar irradiance values for Sri Lanka
     MONTHLY_BASELINE = {
         1: 5.0, 2: 5.5, 3: 5.8, 4: 5.8, 5: 5.5, 6: 5.0,
         7: 5.0, 8: 5.2, 9: 5.3, 10: 5.5, 11: 5.2, 12: 4.8
@@ -64,20 +64,18 @@ def calculate_solar_irradiance(lat, lon, cloud_coverage, month=None):
     
     base_irradiance = MONTHLY_BASELINE.get(month, 5.3)
     
-    # Cloud reduction factor (more realistic for tropics)
-    # Even with clouds, Sri Lanka gets good solar radiation
+    # Reduce irradiance based on cloud coverage
     if cloud_coverage < 20:
-        cloud_factor = 0.95  # Minimal reduction for clear skies
+        cloud_factor = 0.95
     elif cloud_coverage < 40:
-        cloud_factor = 0.85  # Light clouds
+        cloud_factor = 0.85
     elif cloud_coverage < 60:
-        cloud_factor = 0.70  # Moderate clouds
+        cloud_factor = 0.70
     elif cloud_coverage < 80:
-        cloud_factor = 0.55  # Heavy clouds
+        cloud_factor = 0.55
     else:
-        cloud_factor = 0.40  # Very heavy clouds
+        cloud_factor = 0.40
     
-    # Calculate final irradiance
     solar_irradiance = base_irradiance * cloud_factor
     
     # Ensure realistic bounds for Sri Lanka (3.5-6.5 kWh/m²/day)
@@ -88,7 +86,7 @@ def calculate_solar_irradiance(lat, lon, cloud_coverage, month=None):
 def fetch_openweather_data(lat, lon):
     """Fetch real-time weather data from OpenWeatherMap API"""
     try:
-        # Check if API key is provided
+        # API key check
         if not OPENWEATHER_API_KEY or OPENWEATHER_API_KEY.strip() == '':
             print("OpenWeatherMap API key not configured")
             return None
@@ -118,10 +116,10 @@ def fetch_openweather_data(lat, lon):
             clouds_data = data.get('clouds', {})
             cloud_coverage = clouds_data.get('all', 30.0)
             
-            # Get current month for seasonal calculation
+            # Get current month for calculation
             current_month = datetime.utcnow().month
             
-            # Calculate realistic solar irradiance based on clouds and season
+            # Calculate solar irradiance based on clouds and season
             solar_irradiance = calculate_solar_irradiance(lat, lon, cloud_coverage, current_month)
             
             # Location name
@@ -162,7 +160,6 @@ def fetch_openweather_data(lat, lon):
 
 def estimate_weather_data(lat, lon):
     """Estimate weather data based on location (fallback)"""
-    # Major Sri Lankan cities with typical conditions
     sri_lanka_cities = [
         ('Colombo', (6.8, 7.0), (79.7, 79.9), 29.0, 78.0, 5.3),
         ('Malabe', (6.88, 6.92), (79.94, 79.98), 28.5, 77.0, 5.4),

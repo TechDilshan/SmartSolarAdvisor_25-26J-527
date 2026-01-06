@@ -1,15 +1,15 @@
 import calendar
 from datetime import datetime
 
-# Typical daily solar irradiance in kWh/m²/day for Sri Lanka (by month)
+# Average daily solar irradiance in kWh/m²/day for Sri Lanka by month
 SRILANKA_SOLAR_IRRADIANCE = {
     1: 5.0, 2: 5.5, 3: 5.8, 4: 5.8, 5: 5.5, 6: 5.0,
     7: 5.0, 8: 5.2, 9: 5.3, 10: 5.5, 11: 5.2, 12: 4.8
 }
 
 def compute_shading(rh):
-    """Compute shading factor based on relative humidity (clamp 0.85–1.0)"""
-    # High humidity can indicate cloud cover/haze
+    """Compute shading factor based on relative humidity"""
+    # High humidity - more clouds
     shading = 1 - (rh - 60) / 250
     return max(0.85, min(1.0, shading))
 
@@ -19,9 +19,11 @@ def _sanitize_inputs(input_data):
     month = max(1, min(12, month))
     year = int(input_data.get('year') or datetime.now().year)
     year = max(2000, min(2100, year))
+
+    # Days in selected month
     days_in_month = calendar.monthrange(year, month)[1]
 
-    # Priority: use solar_irradiance from weather API, then allsky_sfc_sw_dwn, then monthly default
+    # Solar irradiance priority
     solar_irradiance = input_data.get('solar_irradiance')
     if solar_irradiance is None:
         solar_irradiance = input_data.get('allsky_sfc_sw_dwn')
@@ -32,11 +34,11 @@ def _sanitize_inputs(input_data):
     # Ensure realistic bounds for Sri Lanka
     solar_irradiance = max(3.5, min(6.5, solar_irradiance))
 
-    # Humidity
+    # Relative Humidity
     rh = float(input_data.get('rh') or input_data.get('rh2m') or 75.0)
     rh = max(40.0, min(100.0, rh))
     
-    # System parameters
+    # Solar system capacity (kW)
     installed_capacity_kw = float(input_data.get('installed_capacity_kw') or 5.0)
     installed_capacity_kw = max(0.1, min(1000.0, installed_capacity_kw))
     
@@ -65,22 +67,11 @@ def _sanitize_inputs(input_data):
 
 def calculate_daily_energy_physics(input_data, return_context=False):
     """
-    Calculate realistic daily energy in kWh for a PV system.
-    
-    Formula: daily_energy = capacity_kw * solar_irradiance * (1 - system_loss) * shading_factor
-    
-    For a 5kW system in Sri Lanka with typical conditions:
-    - Solar irradiance: 5.3 kWh/m²/day
-    - System loss: 14% (0.14)
-    - Shading factor: 0.96
-    - Result: 5 * 5.3 * (1 - 0.14) * 0.96 = 21.9 kWh/day
-    
-    Monthly: 21.9 * 30 = 657 kWh/month
+    Calculate daily energy production (kWh) of the solar system.
     """
     params = _sanitize_inputs(input_data)
     
     # Daily energy calculation
-    # This treats solar_irradiance as "sun-hours" or peak-sun-hours equivalent
     daily_energy = (
         params['installed_capacity_kw']
         * params['solar_irradiance']

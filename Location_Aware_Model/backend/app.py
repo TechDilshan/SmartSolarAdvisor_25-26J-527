@@ -20,23 +20,26 @@ logging.basicConfig(
     format='[%(asctime)s] %(levelname)s in %(module)s: %(message)s'
 )
 
-# Disable Flask's default logging
+# Disable default Flask request logs
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)  # Only show errors
 log.disabled = True
 logging.getLogger('flask.app').disabled = True
 
 def create_app():
+    """Create and configure Flask application"""
     app = Flask(__name__)
     app.config.from_object(Config)
 
-    # Initialize extensions
+    # Enable CORS for frontend access
     CORS(
         app,
         resources={r"/api/*": {"origins": "http://localhost:3000"}},
         supports_credentials=True,
         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"]
     )
+
+    # Initialize extensions
     db.init_app(app)
     bcrypt.init_app(app)
     jwt = JWTManager(app)
@@ -54,7 +57,7 @@ def create_app():
     def missing_token_callback(error):
         return jsonify({'error': 'Authorization token is missing'}), 401
 
-    # Register blueprints
+    # Register API routes
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(predictions_bp, url_prefix='/api/predictions')
     app.register_blueprint(admin_bp, url_prefix='/api/admin')
@@ -68,11 +71,11 @@ def create_app():
     def health_check():
         return jsonify({'status': 'healthy', 'message': 'Smart Solar Advisor API'}), 200
 
-    # Database setup
+    # Database initialization and setup
     with app.app_context():
         db.create_all()
 
-        # Ensure missing columns exist in predictions table
+        # Add missing columns to predictions table if needed
         try:
             inspector = inspect(db.engine)
             if inspector.has_table('predictions'):

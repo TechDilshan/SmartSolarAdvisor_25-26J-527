@@ -3,11 +3,7 @@ from datetime import datetime
 import pandas as pd
 
 def get_days_in_month(year, month):
-    """
-    Get the number of days in a specific month
-        year: Year (int)
-        month: Month (1-12) -> Number of days in the month
-    """
+    """Return number of days in a given month"""
     if month in [1, 3, 5, 7, 8, 10, 12]:
         return 31
     elif month in [4, 6, 9, 11]:
@@ -20,26 +16,17 @@ def get_days_in_month(year, month):
     return 30
 
 def calculate_optimal_tilt(latitude):
-    """
-    Calculate optimal tilt angle for solar panels based on latitude
-        latitude: Location latitude in degrees ->Optimal tilt angle in degrees
-    """
+    """Calculate optimal panel tilt using latitude"""
     return min(max(abs(latitude), 0), 60)
 
 def calculate_optimal_azimuth(latitude):
-    """
-    Calculate optimal azimuth angle based on hemisphere
-        latitude: Location latitude in degrees -> Optimal azimuth angle in degrees
-    """
+    """Calculate best panel direction based on hemisphere"""
     # Northern hemisphere: face south (180°)
     # Southern hemisphere: face north (0°)
     return 180 if latitude > 0 else 0
 
 def validate_prediction_input(data):
-    """
-    Validate prediction input data
-        data: Dictionary with prediction parameters -> Tuple of (is_valid, error_message)
-    """
+    """Validate required fields and value ranges"""
     required_fields = [
         'latitude', 'longitude', 'year', 'month',
         'ALLSKY_SFC_SW_DWN', 'RH2M', 'T2M', 'WS2M',
@@ -52,7 +39,7 @@ def validate_prediction_input(data):
         if field not in data:
             return False, f"Missing required field: {field}"
     
-    # Validate ranges
+    # Validate value ranges
     validations = [
         (data['latitude'], -90, 90, "Latitude must be between -90 and 90"),
         (data['longitude'], -180, 180, "Longitude must be between -180 and 180"),
@@ -77,10 +64,7 @@ def validate_prediction_input(data):
     return True, None
 
 def format_prediction_result(prediction, details=None):
-    """
-    Format prediction result for API response
-        prediction: Prediction model instance -> Prediction Results
-    """
+    """Format prediction output for API response"""
     result = {
         'id': prediction.id,
         'predicted_energy_kwh': round(prediction.predicted_energy_kwh, 2),
@@ -115,7 +99,7 @@ def format_prediction_result(prediction, details=None):
 
 def calculate_roi(monthly_energy_kwh, electricity_rate=0.15, system_cost_per_kw=1000):
     """
-    Calculate simple ROI for solar installation
+    Calculate ROI for solar installation
     """
     annual_energy = monthly_energy_kwh * 12
     annual_savings = annual_energy * electricity_rate
@@ -146,10 +130,7 @@ def load_csv_safely(filepath):
         return None
 
 def get_month_name(month_number):
-    """
-    Get month name from number
-        month_number: Month number (1-12) -> Month name string
-    """
+    """Convert month number to month name"""
     months = [
         'January', 'February', 'March', 'April', 'May', 'June',
         'July', 'August', 'September', 'October', 'November', 'December'
@@ -160,10 +141,7 @@ def get_month_name(month_number):
     return 'Unknown'
 
 def sanitize_filename(filename):
-    """
-    Sanitize filename to prevent directory traversal
-        filename: Original filename -> Sanitized filename
-    """
+    """Sanitize filename to prevent security issues"""
     # Remove path components and keep only the filename
     filename = os.path.basename(filename)
     
@@ -174,9 +152,7 @@ def sanitize_filename(filename):
     return filename
 
 def parse_coordinates(coord_string):
-    """
-    Parse coordinate string to latitude/longitude
-    """
+    """Parse coordinate string to latitude/longitude"""
     try:
         parts = coord_string.replace(' ', '').split(',')
         if len(parts) != 2:
