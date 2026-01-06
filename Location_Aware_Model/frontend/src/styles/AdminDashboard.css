@@ -188,6 +188,23 @@ tbody tr:hover {
   background-color: #fef3c7;
 }
 
+/* Selected row highlight */
+tbody tr.selected-row {
+  background-color: #fef3c7;
+}
+
+tbody tr.selected-row:hover {
+  background-color: #fde68a;
+}
+
+/* Checkbox styling */
+input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #fbbf24;
+}
+
 .rank { font-weight: 700; color: #f59e0b; }
 .predictions-count,
 .energy-value { font-weight: 700; color: #10b981; }
@@ -277,6 +294,31 @@ tbody tr:hover {
 .delete-icon-btn:hover {
   background: #fecaca;
   transform: scale(1.1);
+}
+
+/* Delete selected button */
+.delete-selected-btn {
+  padding: 12px 20px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  white-space: nowrap;
+}
+
+.delete-selected-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.3);
+}
+
+.delete-selected-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
 }
 
 /* ===== Toolbar ===== */
@@ -457,7 +499,6 @@ tbody tr:hover {
   }
 }
 
-/* ===== Responsive ===== */
 @media (max-width: 1024px) {
   .charts-grid {
     grid-template-columns: 1fr;
@@ -491,7 +532,8 @@ tbody tr:hover {
   }
 
   .export-btn,
-  .view-btn {
+  .view-btn,
+  .delete-selected-btn {
     width: 100%;
   }
 }

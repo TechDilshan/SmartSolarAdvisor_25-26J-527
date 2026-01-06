@@ -21,10 +21,16 @@ function AdminDashboard({ user, onLogout }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   const [viewMode, setViewMode] = useState('grouped');
+  const [selectedPredictions, setSelectedPredictions] = useState([]);
 
   useEffect(() => {
     loadData();
   }, []);
+
+  // Clear selections when switching views
+  useEffect(() => {
+    setSelectedPredictions([]);
+  }, [viewMode]);
 
   const loadData = async () => {
     try {
@@ -69,11 +75,51 @@ function AdminDashboard({ user, onLogout }) {
     if (window.confirm('Are you sure you want to delete this prediction?')) {
       try {
         await adminAPI.deletePrediction(predictionId);
-        alert(' Prediction Deleted Successfully');
+        alert('Prediction Deleted Successfully');
         loadData();
       } catch (error) {
         alert(error.response?.data?.error || 'Failed to delete prediction');
       }
+    }
+  };
+
+  const togglePredictionSelection = (id) => {
+    setSelectedPredictions(prev =>
+      prev.includes(id)
+        ? prev.filter(pid => pid !== id)
+        : [...prev, id]
+    );
+  };
+
+  const selectAllPredictions = (list) => {
+    const ids = list.map(p => p.id);
+    if (selectedPredictions.length === ids.length && ids.every(id => selectedPredictions.includes(id))) {
+      setSelectedPredictions([]);
+    } else {
+      setSelectedPredictions(ids);
+    }
+  };
+
+  const handleDeleteSelectedPredictions = async () => {
+    if (selectedPredictions.length === 0) {
+      alert('No predictions selected');
+      return;
+    }
+
+    if (!window.confirm(`Delete ${selectedPredictions.length} prediction${selectedPredictions.length > 1 ? 's' : ''}?`)) {
+      return;
+    }
+
+    try {
+      await Promise.all(
+        selectedPredictions.map(id => adminAPI.deletePrediction(id))
+      );
+
+      alert('Selected predictions deleted successfully');
+      setSelectedPredictions([]);
+      loadData();
+    } catch (error) {
+      alert('Failed to delete selected predictions');
     }
   };
 
@@ -167,7 +213,7 @@ function AdminDashboard({ user, onLogout }) {
   predictions.forEach(p => {
     let monthStr;
     if (typeof p.month === 'string') {
-     monthStr = p.month.split(' ')[0];
+      monthStr = p.month.split(' ')[0];
     } else {
       monthStr = new Date(p.created_at).toLocaleString('default', { month: 'short' });
     }
@@ -177,7 +223,6 @@ function AdminDashboard({ user, onLogout }) {
       monthlyCounts[monthIndex] += 1;
     }
   });
-
 
   const monthlyPredictionsData = {
     labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
@@ -191,7 +236,6 @@ function AdminDashboard({ user, onLogout }) {
       }
     ]
   };
-
 
   const userTypeData = {
     labels: ['Regular Users', 'Admin Users'],
@@ -327,7 +371,7 @@ function AdminDashboard({ user, onLogout }) {
             </div>
 
             <div className="table-card">
-              <h3> User Management</h3>
+              <h3>User Management</h3>
               <div className="table-wrapper">
                 <table>
                   <thead>
@@ -366,6 +410,7 @@ function AdminDashboard({ user, onLogout }) {
                             >
                               {u.is_admin ? '⬇️' : '⬆️'}
                             </button>
+
                             <button
                               className="delete-btn"
                               onClick={() => handleDeleteUser(u.id)}
@@ -408,15 +453,33 @@ function AdminDashboard({ user, onLogout }) {
               >
                 Export CSV
               </button>
+              {selectedPredictions.length > 0 && (
+                <button
+                  className="delete-selected-btn"
+                  onClick={handleDeleteSelectedPredictions}
+                >
+                  Delete Selected ({selectedPredictions.length})
+                </button>
+              )}
             </div>
 
             <div className="table-card">
-              <h3> Recent Predictions</h3>
+              <h3>Recent Predictions</h3>
               <div className="table-wrapper">
                 {viewMode === 'all' ? (
                   <table>
                     <thead>
                       <tr>
+                        <th>
+                          <input
+                            type="checkbox"
+                            checked={
+                              predictions.slice(0, 50).length > 0 &&
+                              predictions.slice(0, 50).every(p => selectedPredictions.includes(p.id))
+                            }
+                            onChange={() => selectAllPredictions(predictions.slice(0, 50))}
+                          />
+                        </th>
                         <th>ID</th>
                         <th>User ID</th>
                         <th>Username</th>
@@ -430,7 +493,14 @@ function AdminDashboard({ user, onLogout }) {
                     </thead>
                     <tbody>
                       {predictions.slice(0, 50).map(p => (
-                        <tr key={p.id}>
+                        <tr key={p.id} className={selectedPredictions.includes(p.id) ? 'selected-row' : ''}>
+                          <td>
+                            <input
+                              type="checkbox"
+                              checked={selectedPredictions.includes(p.id)}
+                              onChange={() => togglePredictionSelection(p.id)}
+                            />
+                          </td>
                           <td>{p.id}</td>
                           <td>{p.user_id}</td>
                           <td>{p.username}</td>
@@ -473,6 +543,16 @@ function AdminDashboard({ user, onLogout }) {
                         <table>
                           <thead>
                             <tr>
+                              <th>
+                                <input
+                                  type="checkbox"
+                                  checked={
+                                    group.predictions.length > 0 &&
+                                    group.predictions.every(p => selectedPredictions.includes(p.id))
+                                  }
+                                  onChange={() => selectAllPredictions(group.predictions)}
+                                />
+                              </th>
                               <th>ID</th>
                               <th>Location</th>
                               <th>Date</th>
@@ -484,7 +564,14 @@ function AdminDashboard({ user, onLogout }) {
                           </thead>
                           <tbody>
                             {group.predictions.map(p => (
-                              <tr key={p.id}>
+                              <tr key={p.id} className={selectedPredictions.includes(p.id) ? 'selected-row' : ''}>
+                                <td>
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedPredictions.includes(p.id)}
+                                    onChange={() => togglePredictionSelection(p.id)}
+                                  />
+                                </td>
                                 <td>{p.id}</td>
                                 <td>{p.latitude.toFixed(2)}, {p.longitude.toFixed(2)}</td>
                                 <td>
