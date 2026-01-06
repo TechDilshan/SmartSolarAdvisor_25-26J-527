@@ -3,12 +3,10 @@ from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from config import Config
 from models.user import db, bcrypt, User
-from models.iot_sensor import IotSensorData, AnomalyDetection
 from routes.auth import auth_bp
 from routes.predictions import predictions_bp
 from routes.admin import admin_bp
 from routes.weather import weather_bp
-from routes.iot import iot_bp
 from routes.export import export_bp
 from routes.profile import profile_bp
 from routes.reports import reports_bp
@@ -61,7 +59,6 @@ def create_app():
     app.register_blueprint(predictions_bp, url_prefix='/api/predictions')
     app.register_blueprint(admin_bp, url_prefix='/api/admin')
     app.register_blueprint(weather_bp, url_prefix='/api/weather')
-    app.register_blueprint(iot_bp, url_prefix='/api/iot')
     app.register_blueprint(export_bp, url_prefix='/api/export')
     app.register_blueprint(profile_bp, url_prefix='/api/profile')
     app.register_blueprint(reports_bp, url_prefix="/api/reports")
