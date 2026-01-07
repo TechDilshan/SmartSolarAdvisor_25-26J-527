@@ -1,7 +1,7 @@
-const express = require("express");
-const router = express.Router();
-const { getRealtimeSolarData } = require("../Controllers/solarController");
+// const express = require("express");
+// const router = express.Router();
+// const { getRealtimeSolarData } = require("../Controllers/solarController");
 
-router.get("/realtime", getRealtimeSolarData);
+// router.get("/realtime", getRealtimeSolarData);
 
-module.exports = router;
+// module.exports = router;

@@ -11,7 +11,7 @@ router.post('/login', userController.userLogin);
 // router.post('/:userId/:token', userController.changePassword);
 
 // Protected routes that require authentication
-router.get('/all-users', authMiddleware, userController.getAllUsers);
-router.post('/logout', authMiddleware, userController.logout);
+// router.get('/all-users', authMiddleware, userController.getAllUsers);
+// router.post('/logout', authMiddleware, userController.logout);
 
 module.exports = router;
