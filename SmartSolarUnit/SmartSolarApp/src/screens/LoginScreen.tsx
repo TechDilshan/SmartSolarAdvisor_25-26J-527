@@ -85,9 +85,6 @@ export default function LoginScreen() {
                 <Text style={[styles.buttonText, { color: colors.white }]}>Login</Text>
               )}
             </TouchableOpacity>
-            <Text style={[styles.hint, { color: colors.gray }]}>
-              Demo: owner@solar.com / solar123
-            </Text>
           </View>
         </View>
       </KeyboardAvoidingView>
