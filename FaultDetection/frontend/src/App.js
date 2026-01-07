@@ -219,7 +219,7 @@ function App() {
     const inactiveClasses = "text-slate-600 hover:bg-slate-50 hover:text-blue-600 border-r-0";
     return activeTab === tabName ? `${baseClasses} ${activeClasses}` : `${baseClasses} ${inactiveClasses}`;
   };
-  
+
   useEffect(() => {
     const token = localStorage.getItem('token');
     const userEmail = localStorage.getItem('userEmail');
@@ -443,25 +443,19 @@ function App() {
                       <div className="relative w-72 h-48 mb-4">
                         <svg className="w-72 h-48" viewBox="0 0 280 140">
                           <defs>
-                            {/* Gradient for gauge track */}
-                            <linearGradient id="gaugeTrack" x1="0%" y1="0%" x2="100%" y2="0%">
-                              <stop offset="0%" stopColor="#10b981" stopOpacity="0.8" />
-                              <stop offset="50%" stopColor="#fbbf24" stopOpacity="0.8" />
-                              <stop offset="100%" stopColor="#ef4444" stopOpacity="0.8" />
-                            </linearGradient>
-                            
+
                             {/* Shadow filter */}
                             <filter id="shadow">
-                              <feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.3"/>
+                              <feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.3" />
                             </filter>
-                            
+
                             {/* Gradient for background arc */}
                             <linearGradient id="bgArc" x1="0%" y1="0%" x2="100%" y2="0%">
                               <stop offset="0%" stopColor="#f1f5f9" />
                               <stop offset="100%" stopColor="#e2e8f0" />
                             </linearGradient>
                           </defs>
-                          
+
                           {/* Background semicircle with gradient */}
                           <path
                             d="M 24 128 A 112 112 0 0 1 256 128"
@@ -471,9 +465,9 @@ function App() {
                             strokeLinecap="round"
                             filter="url(#shadow)"
                           />
-                          
+
                           {/* Colored zone indicators */}
-                          {[...Array(6)].map((_, i) => {
+                          {/* {[...Array(6)].map((_, i) => {
                             const startAngle = Math.PI - ((i + 1) * Math.PI / 6);
                             const endAngle = Math.PI - (i * Math.PI / 6);
                             const startX = 140 + 112 * Math.cos(startAngle);
@@ -493,8 +487,8 @@ function App() {
                                 opacity="0.3"
                               />
                             );
-                          })}
-                          
+                          })} */}
+
                           {/* Main divisions (6 parts) - thicker and more visible */}
                           {[...Array(7)].map((_, i) => {
                             const angle = Math.PI - (i * Math.PI / 6);
@@ -515,7 +509,7 @@ function App() {
                               />
                             );
                           })}
-                          
+
                           {/* Subdivisions (10 parts per main division = 60 total) */}
                           {[...Array(61)].map((_, i) => {
                             if (i % 10 === 0) return null; // Skip main divisions
@@ -538,7 +532,7 @@ function App() {
                               />
                             );
                           })}
-                          
+
                           {/* Progress arc with gradient */}
                           {(() => {
                             const powerValue = Math.min(solarData.acpower / 1000, 6);
@@ -549,7 +543,7 @@ function App() {
                               <path
                                 d={`M 24 128 A 112 112 0 0 1 ${endX} ${endY}`}
                                 fill="none"
-                                stroke="url(#gaugeTrack)"
+                                stroke="#3b82f6"   
                                 strokeWidth="14"
                                 strokeLinecap="round"
                                 style={{
@@ -559,7 +553,7 @@ function App() {
                               />
                             );
                           })()}
-                          
+
                           {/* Needle */}
                           {(() => {
                             const powerValue = Math.min(solarData.acpower / 1000, 6);
@@ -567,7 +561,7 @@ function App() {
                             const needleLength = 85;
                             const x = 140 + needleLength * Math.cos(angle);
                             const y = 128 - needleLength * Math.sin(angle);
-                            
+
                             // Calculate needle polygon (arrow shape)
                             const perpAngle = angle + Math.PI / 2;
                             const tipX = x;
@@ -581,7 +575,7 @@ function App() {
                             const p2y = baseY - width * Math.sin(perpAngle);
                             const p3x = tipX - 3 * Math.cos(angle);
                             const p3y = tipY + 3 * Math.sin(angle);
-                            
+
                             return (
                               <g>
                                 {/* Needle shadow */}
@@ -604,7 +598,7 @@ function App() {
                               </g>
                             );
                           })()}
-                          
+
                           {/* Labels for 6 main divisions */}
                           {[...Array(7)].map((_, i) => {
                             const angle = Math.PI - (i * Math.PI / 6);
@@ -623,7 +617,7 @@ function App() {
                               </text>
                             );
                           })}
-                          
+
                           {/* Unit label */}
                           <text
                             x="140"
