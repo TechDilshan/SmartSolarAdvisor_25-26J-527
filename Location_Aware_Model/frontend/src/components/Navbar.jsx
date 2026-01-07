@@ -1,13 +1,20 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import "../styles/Navbar.css";
+import logo from "../assets/logo.png";
+
 
 function Navbar({ user, onLogout }) {
   return (
     <nav className="app-navbar">
       <div className="app-navbar__brand">
         <Link to="/" className="brand-link">
-          ☀ Smart Solar Advisor
+          <img
+            src={logo}
+            alt="Smart Solar Advisor Logo"
+            className="navbar-logo"
+          />
+          <span>Smart Solar Advisor</span>
         </Link>
       </div>
 
