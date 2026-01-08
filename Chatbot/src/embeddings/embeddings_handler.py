@@ -1,7 +1,7 @@
 from sentence_transformers import SentenceTransformer
 import chromadb
 from chromadb.config import Settings
-from typing import List, Dict
+from typing import List, Dict, Any
 import logging
 from pathlib import Path
 import json
@@ -26,6 +26,7 @@ class EmbeddingsHandler:
         self.model_name = model_name
         self.db_path = Path(db_path)
         self.db_path.mkdir(parents=True, exist_ok=True)
+        self.logger = logger
         
         logger.info(f"Loading embedding model: {model_name}...")
         self.model = SentenceTransformer(model_name)
@@ -45,6 +46,28 @@ class EmbeddingsHandler:
             }
         )
         logger.info(f"✓ ChromaDB initialized at {self.db_path}")
+    
+    def _sanitize_metadata(self, metadata: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Sanitize metadata to ensure all values are ChromaDB-compatible types.
+        Converts lists to comma-separated strings and handles nested structures.
+        """
+        sanitized = {}
+        for key, value in metadata.items():
+            if value is None:
+                sanitized[key] = None
+            elif isinstance(value, (str, int, float, bool)):
+                sanitized[key] = value
+            elif isinstance(value, list):
+                # Convert list to comma-separated string
+                sanitized[key] = ", ".join(str(v) for v in value)
+            elif isinstance(value, dict):
+                # Convert dict to JSON string
+                sanitized[key] = json.dumps(value)
+            else:
+                # Convert other types to string
+                sanitized[key] = str(value)
+        return sanitized
     
     def create_embeddings(self, texts: List[str], batch_size: int = 32) -> List[List[float]]:
         """
@@ -91,21 +114,31 @@ class EmbeddingsHandler:
             # Extract texts and prepare data
             texts = [chunk["text"] for chunk in batch_chunks]
             ids = [chunk["chunk_id"] for chunk in batch_chunks]
-            metadatas = [chunk["metadata"] for chunk in batch_chunks]
+            # Sanitize metadata before adding to ChromaDB
+            metadatas = [self._sanitize_metadata(chunk["metadata"]) for chunk in batch_chunks]
             
             # Create embeddings for this batch
             embeddings = self.create_embeddings(texts, batch_size=32)
             
-            # Add to ChromaDB
-            self.collection.add(
-                embeddings=embeddings,
-                documents=texts,
-                metadatas=metadatas,
-                ids=ids
-            )
-            
-            current_batch = (batch_idx // batch_size) + 1
-            logger.info(f"✓ Processed batch {current_batch}/{total_batches}")
+            try:
+                # Add to ChromaDB
+                self.collection.add(
+                    embeddings=embeddings,
+                    documents=texts,
+                    metadatas=metadatas,
+                    ids=ids
+                )
+                
+                current_batch = (batch_idx // batch_size) + 1
+                logger.info(f"✓ Processed batch {current_batch}/{total_batches}")
+            except Exception as e:
+                self.logger.error(f"✗ Error adding batch: {str(e)}")
+                # Log problematic metadata for debugging
+                for i, meta in enumerate(metadatas):
+                    for k, v in meta.items():
+                        if not isinstance(v, (str, int, float, bool, type(None))):
+                            self.logger.error(f"  Invalid metadata in chunk {i}: {k} = {v} (type: {type(v)})")
+                raise
         
         logger.info(f"✓ Successfully added all chunks to vector database")
         logger.info(f"  Total items in collection: {self.collection.count()}")
