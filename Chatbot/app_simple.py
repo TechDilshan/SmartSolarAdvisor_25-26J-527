@@ -9,6 +9,7 @@ sys.path.append(str(Path(__file__).parent / "src"))
 from config import Config
 from embeddings.embeddings_handler import EmbeddingsHandler
 from utils.translator import LanguageTranslator
+from rag.answer_generator import AnswerGenerator
 
 # Page configuration
 st.set_page_config(
@@ -102,8 +103,70 @@ def is_solar_related(text: str, query: str) -> bool:
     
     return has_solar_content and (query_is_solar or is_general_energy_query)
 
-def generate_answer(query: str, embeddings_handler, translator):
-    """Generate answer with translation support - improved version"""
+def extract_relevant_sentences(text: str, query: str, max_sentences: int = 5) -> str:
+    """Extract only the most relevant sentences from the text"""
+    import re
+    
+    # Split into sentences
+    sentences = re.split(r'[.!?]+', text)
+    sentences = [s.strip() for s in sentences if len(s.strip()) > 20]
+    
+    if not sentences:
+        return text
+    
+    # Score sentences based on query word overlap
+    query_words = set(query.lower().split())
+    scored_sentences = []
+    
+    for sentence in sentences:
+        sentence_words = set(sentence.lower().split())
+        overlap = len(query_words & sentence_words)
+        scored_sentences.append((overlap, sentence))
+    
+    # Sort by relevance and take top sentences
+    scored_sentences.sort(reverse=True, key=lambda x: x[0])
+    top_sentences = [s[1] for s in scored_sentences[:max_sentences]]
+    
+    # Return in original order
+    result = []
+    for sentence in sentences:
+        if sentence in top_sentences:
+            result.append(sentence)
+    
+    return '. '.join(result) + '.'
+
+def clean_retrieved_text(text: str) -> str:
+    """
+    Clean retrieved text by removing citations, URLs, and unnecessary formatting.
+    This is applied BEFORE generating the answer.
+    """
+    import re
+    
+    # Remove citations like [1], [2], [1,2,3]
+    text = re.sub(r'\[[\d,\s]+\]', '', text)
+    text = re.sub(r'\[\d+\]', '', text)
+    
+    # Remove URLs and "Available :" patterns
+    text = re.sub(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', '', text)
+    text = re.sub(r'\[online\]\s*Available\s*:\s*https?://[^\s]+', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'Available\s*:\s*https?://[^\s]+', '', text, flags=re.IGNORECASE)
+    
+    # Remove file references like "file.pdf [23]"
+    text = re.sub(r'[\w\-]+\.pdf\s*\[\d+\]', '', text)
+    
+    # Remove "online" and "Available" patterns
+    text = re.sub(r'\[online\]', '', text, flags=re.IGNORECASE)
+    
+    # Remove page references
+    text = re.sub(r'Page\s+\d+\s+of\s+\d+', '', text)
+    
+    # Clean up multiple spaces and newlines
+    text = re.sub(r'\s+', ' ', text).strip()
+    
+    return text
+
+def generate_answer(query: str, embeddings_handler, translator, answer_generator):
+    """Generate concise answer with translation support and proper formatting"""
     # Detect query language
     query_language = translator.detect_language(query)
     original_query = query
@@ -115,9 +178,10 @@ def generate_answer(query: str, embeddings_handler, translator):
         query = translated_query
         
         # Debug: Show translation
-        st.info(f"🔄 Translation: {original_query} → {translated_query}")
+        if st.session_state.show_debug:
+            st.info(f"🔄 Translation: {original_query} → {translated_query}")
     
-    # Search using English query
+    # Search using English query - retrieve top 5 results
     results = embeddings_handler.search(query, n_results=5)
     
     documents = results.get('documents', [[]])[0]
@@ -125,7 +189,7 @@ def generate_answer(query: str, embeddings_handler, translator):
     distances = results.get('distances', [[]])[0]
     
     # Debug: Show distances
-    if distances:
+    if distances and st.session_state.show_debug:
         st.info(f"📊 Top result distance: {distances[0]:.4f}")
     
     if not documents:
@@ -140,85 +204,31 @@ def generate_answer(query: str, embeddings_handler, translator):
             "translated_query": translated_query
         }
     
-    # Filter solar-related documents with more lenient matching
-    solar_docs = []
-    solar_meta = []
+    # Use AnswerGenerator to create a natural, clean answer
+    final_answer = answer_generator.generate_answer(query, documents)
     
-    for doc, meta in zip(documents, metadatas):
-        # For Sinhala queries, be more lenient with matching
-        if query_language == 'sinhala':
-            # Check if document has any solar content at all
-            if any(word in doc.lower() for word in ['solar', 'panel', 'energy', 'sun', 'renewable']):
-                solar_docs.append(doc)
-                solar_meta.append(meta)
-        else:
-            # For English queries, use stricter matching
-            if is_solar_related(doc, query):
-                solar_docs.append(doc)
-                solar_meta.append(meta)
-    
-    if not solar_docs:
-        # If no solar docs found, but we have results, still show something
-        if documents and query_language == 'sinhala':
-            # For Sinhala queries, be even more lenient - use top result anyway
-            solar_docs = documents[:1]
-            solar_meta = metadatas[:1]
-        else:
-            no_answer = "❌ I don't have relevant solar energy information to answer that question. Please ask about solar panels, solar energy benefits, installation costs, or CEB net metering."
-            if query_language == 'sinhala':
-                no_answer = translator.translate_to_sinhala(no_answer)
-            return {
-                "answer": no_answer,
-                "sources": [],
-                "chunks_used": 0,
-                "language": query_language,
-                "translated_query": translated_query
-            }
-    
-    # Use top 3 chunks
-    answer_parts = []
+    # Prepare sources
     sources = []
-    
-    for doc, meta in zip(solar_docs[:3], solar_meta[:3]):
-        sections = doc.split('\n\n')
-        query_words = set(query.lower().split())
-        
-        best_section = doc
-        max_overlap = 0
-        
-        for section in sections:
-            if len(section.strip()) < 50:
-                continue
-            section_words = set(section.lower().split())
-            overlap = len(query_words & section_words)
-            if overlap > max_overlap:
-                max_overlap = overlap
-                best_section = section
-        
-        if best_section.strip():
-            answer_parts.append(best_section.strip())
-        
+    for meta in metadatas[:3]:
         source_info = {
             "filename": meta.get('filename', 'Unknown'),
             "source_type": meta.get('source_type', 'Unknown')
         }
         if 'page_number' in meta:
             source_info['page'] = meta['page_number']
-        
-        sources.append(source_info)
-    
-    # Combine answer (in English)
-    final_answer = "\n\n".join(answer_parts)
+        if source_info not in sources:
+            sources.append(source_info)
     
     # Translate answer to Sinhala if query was in Sinhala
     if query_language == 'sinhala':
-        st.info("🔄 Translating answer to Sinhala...")
+        if st.session_state.show_debug:
+            st.info("🔄 Translating answer to Sinhala...")
         final_answer = translator.translate_to_sinhala(final_answer)
     
     return {
         "answer": final_answer,
         "sources": sources,
-        "chunks_used": len(answer_parts),
+        "chunks_used": len(documents),
         "language": query_language,
         "translated_query": translated_query
     }
@@ -239,6 +249,7 @@ if 'embeddings_handler' not in st.session_state:
                 db_path=str(config.VECTORDB_DIR)
             )
             st.session_state.translator = LanguageTranslator()
+            st.session_state.answer_generator = AnswerGenerator()  # Add this line
             st.session_state.system_ready = True
         except Exception as e:
             st.error(f"Error initializing system: {str(e)}")
@@ -261,7 +272,7 @@ with st.sidebar:
             <b>Status:</b> ✅ Ready<br>
             <b>Knowledge Base:</b> {info['total_chunks']} chunks<br>
             <b>Embedding Model:</b> {info['model']}<br>
-            <b>Mode:</b> Direct Search + Translation<br>
+            <b>Mode:</b> Concise Answers + Translation<br>
             <b>Languages:</b> English, සිංහල
             </div>
             """, unsafe_allow_html=True)
@@ -312,13 +323,13 @@ with st.sidebar:
         st.session_state.show_sources = True
     
     if 'show_translation' not in st.session_state:
-        st.session_state.show_translation = True
+        st.session_state.show_translation = False  # Changed default to False
     
     if 'show_debug' not in st.session_state:
         st.session_state.show_debug = False
     
     st.session_state.show_sources = st.checkbox("Show Sources", value=st.session_state.show_sources)
-    st.session_state.show_translation = st.checkbox("Show Translation", value=st.session_state.show_translation)
+    st.session_state.show_translation = st.checkbox("Show Translation Info", value=st.session_state.show_translation)
     st.session_state.show_debug = st.checkbox("Show Debug Info", value=st.session_state.show_debug)
     
     if st.button("🗑️ Clear Chat History"):
@@ -413,7 +424,8 @@ if user_input:
                 response = generate_answer(
                     user_input, 
                     st.session_state.embeddings_handler,
-                    st.session_state.translator
+                    st.session_state.translator,
+                    st.session_state.answer_generator  # Add this parameter
                 )
                 
                 # Add assistant message
@@ -430,8 +442,9 @@ if user_input:
                 
             except Exception as e:
                 st.error(f"Error generating response: {str(e)}")
-                import traceback
-                st.code(traceback.format_exc())
+                if st.session_state.show_debug:
+                    import traceback
+                    st.code(traceback.format_exc())
         
         # Rerun to show new messages
         st.rerun()
