@@ -102,10 +102,60 @@ python main.py
 An intelligent fault detection system that monitors solar panel performance in real-time and identifies anomalies, faults, and performance degradation using machine learning algorithms.
 
 **Key Features:**
-
+-AI-based Anomaly Fault Detection using a Random Forest machine learning model
+-Real-time analysis of inverter data to detect performance deviations instantly
+-Benchmark dataset comparison using validated South Asian solar PV data
+-Accurate fault classification including partial shading, panel degradation, and wiring faults
+-Predictive maintenance support through early fault identification
+-Dashboard-based fault visualization for easy monitoring and decision-making
+-Historical fault logging and report generation for performance analysis
+-Automated alert notifications for detected anomalies
 
 **Technologies:**
+Machine Learning & Data Processing
 
+-Python – Data preprocessing and machine learning model development
+-Scikit-learn – Random Forest model implementation and evaluation
+-Pandas & NumPy – Data cleaning, transformation, and feature analysis
+
+Backend & Data Management
+
+-Node.js – Backend services for data handling and API integration
+-Heyleys Inverter API – Real-time solar inverter data retrieval
+-MongoDB – Storage of real-time data, benchmark datasets, and fault logs
+
+Frontend & Visualization
+
+-React.js – Dashboard interface for real-time monitoring
+-Chart.js / Recharts – Visualization of faults, trends, and anomalies
+
+Communication & Security
+
+-REST APIs (HTTPS) – Secure data transmission
+-JWT / Role-based access control – Secure dashboard access
+
+
+---
+
+## Installation & Run Instructions
+
+### Backend (Node.js API)
+
+```bash
+cd FaultDetection/backend
+npm install
+npm run dev 
+```
+
+---
+
+### Frontend (React.js Web App)
+
+```bash
+cd FaultDetection/frontend
+npm install
+npm start
+```
 
 **Location:** `FaultDetection/`
 
