@@ -115,10 +115,42 @@ An intelligent fault detection system that monitors solar panel performance in r
 
 A domain-specific conversational AI assistant powered by Retrieval-Augmented Generation (RAG) technology, providing intelligent solar energy consultation in both Sinhala and English.
 
-**Key Features:**
-
+- RAG (Retrieval-Augmented Generation) System
+- Multi-Source Data Integration
+- Multiple Application Modes
+- Data Processing Pipeline
 
 **Technologies:**
+- LLM Integration
+- Vector Databases
+- Embeddings
+
+---
+
+## Installation & Run Instructions
+```bash
+# Navigate to project
+cd C:\Users\vihan\OneDrive\Desktop\Projects\SmartSolarAdvisor_25-26J-527\Chatbot
+
+# Activate virtual environment
+.\.venv\Scripts\Activate.ps1
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Process data (after adding files to data/ folders)
+python run_pipeline.py
+
+# Test search
+python test_search.py
+
+# Run web app
+python -m streamlit run app_simple.py
+
+# Stop app
+Ctrl + C
+
+```
 
 
 **Location:** `Chatbot/`
