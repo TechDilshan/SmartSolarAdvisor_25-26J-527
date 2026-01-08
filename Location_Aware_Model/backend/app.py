@@ -34,7 +34,7 @@ def create_app():
     # Enable CORS for frontend access
     CORS(
         app,
-        resources={r"/api/*": {"origins": "http://localhost:3000"}},
+        resources={r"/api/*": {"origins": "http://localhost:3001"}},
         supports_credentials=True,
         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"]
     )
@@ -123,7 +123,7 @@ MODEL_METRICS = {
 }
 
 if __name__ == '__main__':
-    PORT = 5000
+    PORT = 5009
     app = create_app()
 
     logging.info("Model Performance Metrics")
