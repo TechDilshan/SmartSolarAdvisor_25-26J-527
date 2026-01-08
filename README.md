@@ -207,20 +207,100 @@ Ctrl + C
 
 ---
 
-### 4. Nearby Site-Based Forecasting
+#### 4. Nearby Site-Based Forecasting
 
-A real-time solar energy prediction system that uses IoT sensor data and machine learning to provide 5-minute interval energy forecasts, leveraging nearby site data for improved accuracy.
+The IoT-Enabled Hybrid ML for Location-Aware Solar Prediction system estimates solar energy potential for any selected location using a combination of:
+
+  # Hybrid machine learning models (Weighted KNN + XGBoost)
+  # IoT-based solar monitoring
+  # GIS-based interactive map selection
+This system enables accurate solar predictions even in data-scarce regions by integrating satellite irradiance data with real-time environmental inputs.
+
+System Integration Overview
+
+The solution integrates the following components:
+XGBoost-based predictive modeling for high-accuracy regression
+NASA POWER Solar Irradiance API for satellite-derived solar data
+Interactive map-based coordinates
+IoT device simulation for real-time irradiance and temperature data
+Roof-based feature engineering, including:
+   Tilt angle
+   Direction (azimuth)
+   Orientation score
+   Roof area
 
 **Key Features:**
+ 1.Interactive Map Location Selection
+# Users can click any geographic location on the map
+# Latitude and longitude are automatically extracted and populated
 
+2.Automatic Solar Irradiance Fetching
+# Fetches 30-day average solar irradiance using the NASA POWER API
+# Converts irradiance values into kWh/m²/day with proper unit normalization
+
+3.Hybrid ML Model
+# Combines:
+   KNN (30%) – captures spatial similarity using nearby locations
+   XGBoost (70%) – models nonlinear relationships and complex interaction
+   Inputs:
+    # Latitude
+    # Longitude
+    # Roof area
+    # Panel efficiency
+    # Tilt
+    # Direction
+    # Orientation score
+    # Solar irradiance
+  Output:
+   # Predicted daily solar energy generation (kWh/day)
+
+4.IoT Data Integration
+# Simulated IoT sensors provide:
+
+Real-time solar irradiance
+
+Ambient temperature
+
+Enables short-term (5-minute interval) forecasting and adaptive predictions
+
+5.Modern Frontend
+# Clean, responsive, and user-friendly UI
+# Real-time input validation and feedback
+# Instant solar energy prediction results
 
 **Key Sub-components:**
-
+# Location selection and GIS mapping module
+# Satellite data acquisition and preprocessing module
+# Hybrid ML prediction engine
+# Frontend visualization and user interaction layer
 
 **Technologies:**
+# Backend: Flask (Python)
+# Machine Learning: Scikit-learn, XGBoost
+# Data Sources: NASA POWER API
+# Frontend: React.js
 
+**Location:** `Location_Aware_Model/ `
 
-**Location:** `SmartSolarUnit/`
+## Installation & Run Instructions
+
+### Backend (Flask API)
+
+```bash
+cd Location_Aware_Model/backend
+pip install -r requirements.txt
+python app.py
+```
+
+---
+
+### Frontend (React.js Web App)
+
+```bash
+cd Location_Aware_Model/frontend
+npm install
+npm start
+```
 
 ---
 
