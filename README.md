@@ -17,17 +17,179 @@ The research focuses on developing a holistic solution that combines:
 
 ---
 
+## Research Description
+
+Smart Solar Advisor is a comprehensive research project that proposes an IoT-enabled and AI-driven system to support solar energy planning, monitoring, and decision-making in Sri Lanka. The research addresses key limitations in existing solar solutions by combining site-specific environmental sensing, machine learning-based forecasting, intelligent fault detection, location-aware prediction, and an AI-powered conversational assistant. The system is designed to support users across the full solar lifecycle, from pre-installation feasibility analysis to operational monitoring and user guidance.
+
+---
+
+## Research Objectives
+
+### Main Objective
+To develop an intelligent, IoT-based solar advisory system that uses real-time environmental data and advanced AI techniques to accurately forecast solar energy generation, detect system faults, and provide reliable user guidance.
+
+### Specific Objectives
+- To collect site-specific environmental data using IoT sensors prior to solar installation.
+- To predict daily and monthly solar energy generation (kWh) using hybrid machine learning models.
+- To detect anomalies and faults in solar panel and inverter performance using machine learning.
+- To improve prediction accuracy in data-scarce regions using nearby site-based and location-aware modeling.
+- To provide intelligent, domain-specific solar consultation using an LLM-powered chatbot.
+- To present predictions, system status, and insights through user-friendly web and mobile dashboards.
+
+---
+
+## Research Team
+
+- **S.C. Dilshan (IT22118318)**  
+  Component: IoT-based Monthly and Daily Solar Energy Prediction System  
+
+- **L.A.V.U. Liyanaarachchi (IT22120502)**  
+  Component: LLM-Powered Solar Chatbot with Retrieval-Augmented Generation (RAG)  
+
+- **K.G.L. Madusarani (IT22569868)**  
+  Component: AI-Based Anomaly Fault Detection Module for Solar Systems  
+
+- **K. Rangana Malmi Nadee (IT22341204)**  
+  Component: Nearby Site-Based and Location-Aware Solar Energy Forecasting System  
+
+---
+
+## Supervisors
+
+- **Supervisor:** Mrs. Thilini Jayalath  
+- **Co-Supervisor:** Mr. Nushkan Nismi  
+
+---
+
+## Problem Statement and Solutions
+
+### Problem Statement
+Despite the growing adoption of solar energy in Sri Lanka, users face major challenges when planning and managing solar PV systems. Existing tools rely on generalized weather or satellite data, which ignore site-specific factors such as microclimate variations, dust accumulation, and shading. As a result, users cannot accurately estimate monthly energy generation before installation. Additionally, most systems lack intelligent fault detection, provide limited decision support, and do not offer accessible guidance for non-technical users. These gaps lead to poor investment decisions, undetected performance losses, and reduced user confidence in solar technology.
+
+### Proposed Solutions
+The Smart Solar Advisor addresses these challenges through an integrated, multi-component approach:
+
+- **IoT-Based Pre-Installation Forecasting:**  
+  Collects real environmental data at the site before installation to generate accurate daily and monthly energy predictions.
+
+- **AI-Based Anomaly Fault Detection:**  
+  Uses machine learning models to detect faults such as panel degradation, wiring issues, and partial shading in real time.
+
+- **Location-Aware Nearby Site Forecasting:**  
+  Improves prediction accuracy in areas with limited data by learning from geographically and climatically similar solar installations.
+
+- **LLM-Powered Solar Chatbot:**  
+  Provides reliable, domain-specific solar guidance using retrieval-augmented generation, ensuring accurate and explainable responses.
+
+Together, these solutions form a unified intelligent system that enhances accuracy, transparency, and user trust across the solar energy lifecycle.
+
+## System Overview Diagram
+
+![Smart Solar Advisor – System Overview](docs/overview_diagram.png)
+
+
 ## System Components
 
 ### 1. Monthly Unit Prediction System
 
-A Smart Solar Unit solar energy prediction system that uses hybrid machine learning models to estimate monthly and daily solar energy generation for any selected location.
+An IoT-based solar energy prediction system that collects real environmental data at the site before installation and uses machine learning models to estimate daily and monthly solar energy generation in kilowatt-hours (kWh).
 
 **Key Features:**
-- Interactive map-based location selection with automatic coordinate detection
-- Hybrid ML model combining XGBoost (70%) for accurate predictions
-- Integration with NASA POWER API for automatic solar irradiance data fetching
-- Real-time prediction dashboard with monthly, daily, and hourly forecasts
+### Key Features
+
+- **Pre-installation solar energy forecasting**  
+  Predicts daily and monthly solar energy generation (kWh) before panel installation using site-specific environmental data.
+
+- **Real-time IoT sensor data collection**  
+  Collects live environmental parameters such as solar irradiance, temperature, dust level, and rainfall through an ESP32-based IoT device.
+
+- **Cloud-based data storage and processing**  
+  Securely stores real-time and historical sensor data to support continuous monitoring and long-term analysis.
+
+- **30-day monitoring period tracking**  
+  Tracks completed and remaining days in the monitoring cycle, helping users understand data collection progress toward monthly prediction.
+
+- **Day-by-day progress visualization**  
+  Displays daily data availability and system status through progress charts for better transparency and trend analysis.
+
+- **Device status monitoring**  
+  Shows device active or inactive status and last sensor reading time to quickly identify connectivity or power issues.
+
+- **Hybrid machine learning prediction engine**  
+  Uses regression-based ML models to learn from real environmental data and generate accurate energy forecasts.
+
+- **User-friendly dashboard interface**  
+  Presents predictions, progress indicators, and historical trends in a clear and easy-to-understand format for non-technical users.
+
+- **Report generation for decision-making**  
+  Enables users to review daily and monthly summaries to support solar investment and system sizing decisions.
+
+
+## IoT Device Description
+
+The Smart Solar Advisor IoT device is a custom-built, low-cost environmental monitoring unit designed to collect real-world site data **before solar panel installation**. The device operates independently and continuously records environmental conditions that directly affect solar energy generation.
+
+The device is installed at the proposed solar installation site and acts as the primary data source for accurate daily and monthly energy forecasting.
+
+### Device Purpose
+- Capture **site-specific environmental conditions**
+- Eliminate reliance on generalized weather or satellite-only data
+- Provide reliable inputs for machine learning–based solar energy prediction
+- Enable progress tracking and device health monitoring
+
+---
+
+## Hardware Components
+
+- **ESP32 Microcontroller**  
+  Acts as the central controller with built-in Wi-Fi for real-time data transmission.
+
+- **BH1750 Light Sensors (×2)**  
+  Measure solar irradiance to capture sunlight intensity accurately.
+
+- **DHT22 Sensors (×2)**  
+  Measure ambient temperature and humidity affecting panel efficiency.
+
+- **GP2Y1010AU0F Dust Sensor (×1)**  
+  Detects dust accumulation, a major factor in solar performance degradation.
+
+- **Rain Sensors (×2)**  
+  Detect rainfall events that influence irradiance and dust conditions.
+
+- **Power Management System**  
+  Includes battery pack, charging module, and BMS for stable outdoor operation.
+
+- **Weatherproof Enclosure**  
+  Protects electronics from rain, dust, and direct sunlight for long-term outdoor use.
+
+---
+
+## Device Functionality
+
+1. Sensors collect environmental readings at fixed intervals.
+2. ESP32 aggregates sensor values and performs basic validation.
+3. Data is transmitted securely to the cloud server via Wi-Fi.
+4. The backend stores readings for processing and prediction.
+5. Device status and last reading time are reflected on the user dashboard.
+
+---
+
+## IoT Device Photo
+
+![Smart Solar Advisor IoT Device](docs/device_photo.png)
+
+*Figure: Custom-built IoT device used for collecting environmental data prior to solar installation.*
+
+---
+
+## Device Deployment Notes
+
+- The device should be mounted in an **unshaded, open area** near the planned panel location.
+- Orientation should allow accurate sunlight exposure.
+- Stable Wi-Fi or GSM connectivity is required for continuous data logging.
+- The device operates autonomously once powered on.
+
+
 
 **Technologies:**
 - Backend: Node.js (Express)
@@ -211,9 +373,9 @@ Ctrl + C
 
 The IoT-Enabled Hybrid ML for Location-Aware Solar Prediction system estimates solar energy potential for any selected location using a combination of:
 
-  # Hybrid machine learning models (Weighted KNN + XGBoost)
-  # IoT-based solar monitoring
-  # GIS-based interactive map selection
+  - Hybrid machine learning models (Weighted KNN + XGBoost)
+  - IoT-based solar monitoring
+  - GIS-based interactive map selection
 This system enables accurate solar predictions even in data-scarce regions by integrating satellite irradiance data with real-time environmental inputs.
 
 System Integration Overview
@@ -231,31 +393,31 @@ Roof-based feature engineering, including:
 
 **Key Features:**
  1.Interactive Map Location Selection
-# Users can click any geographic location on the map
-# Latitude and longitude are automatically extracted and populated
+- Users can click any geographic location on the map
+- Latitude and longitude are automatically extracted and populated
 
 2.Automatic Solar Irradiance Fetching
-# Fetches 30-day average solar irradiance using the NASA POWER API
-# Converts irradiance values into kWh/m²/day with proper unit normalization
+- Fetches 30-day average solar irradiance using the NASA POWER API
+- Converts irradiance values into kWh/m²/day with proper unit normalization
 
 3.Hybrid ML Model
-# Combines:
+- Combines:
    KNN (30%) – captures spatial similarity using nearby locations
    XGBoost (70%) – models nonlinear relationships and complex interaction
    Inputs:
-    # Latitude
-    # Longitude
-    # Roof area
-    # Panel efficiency
-    # Tilt
-    # Direction
-    # Orientation score
-    # Solar irradiance
+    - Latitude
+    - Longitude
+    - Roof area
+    -  Panel efficiency
+    -  Tilt
+    -  Direction
+    -  Orientation score
+    -  Solar irradiance
   Output:
-   # Predicted daily solar energy generation (kWh/day)
+   - Predicted daily solar energy generation (kWh/day)
 
 4.IoT Data Integration
-# Simulated IoT sensors provide:
+- Simulated IoT sensors provide:
 
 Real-time solar irradiance
 
@@ -264,21 +426,21 @@ Ambient temperature
 Enables short-term (5-minute interval) forecasting and adaptive predictions
 
 5.Modern Frontend
-# Clean, responsive, and user-friendly UI
-# Real-time input validation and feedback
-# Instant solar energy prediction results
+- Clean, responsive, and user-friendly UI
+-  Real-time input validation and feedback
+-  Instant solar energy prediction results
 
 **Key Sub-components:**
-# Location selection and GIS mapping module
-# Satellite data acquisition and preprocessing module
-# Hybrid ML prediction engine
-# Frontend visualization and user interaction layer
+- Location selection and GIS mapping module
+- Satellite data acquisition and preprocessing module
+- Hybrid ML prediction engine
+- Frontend visualization and user interaction layer
 
 **Technologies:**
-# Backend: Flask (Python)
-# Machine Learning: Scikit-learn, XGBoost
-# Data Sources: NASA POWER API
-# Frontend: React.js
+- Backend: Flask (Python)
+- Machine Learning: Scikit-learn, XGBoost
+- Data Sources: NASA POWER API
+- Frontend: React.js
 
 **Location:** `Location_Aware_Model/ `
 
@@ -308,7 +470,7 @@ npm start
 
 ```
 SmartSolarAdvisor_25-26J-527/
-├── Location_Aware_Model/      # Monthly Unit Prediction System
+├── Location_Aware_Model/      # Nearby Site-Based Forecasting
 │   ├── backend/               # Flask API with ML models
 │   └── frontend/              # React.js dashboard
 │
@@ -321,8 +483,8 @@ SmartSolarAdvisor_25-26J-527/
 │   ├── src/                   # RAG system implementation
 │   └── data/                  # Knowledge base
 │
-└── SmartSolarUnit/            # Nearby Site-Based Forecasting
-    ├── Arduino_System/        # ESP32 IoT sensors
+└── SmartSolarUnit/            # Monthly Unit Prediction System
+    ├── Arduino_System/        # ESP32 IoT with sensors
     ├── solar_python_engine/   # ML prediction engine
     ├── SmartSolar_Backend/    # Node.js API
     ├── SmartSolar_WebApp/     # React web dashboard
@@ -337,10 +499,10 @@ Each component has its own setup instructions. Please refer to the individual RE
 
 ### Quick Start Links
 
-- **Monthly Prediction System:** See `Location_Aware_Model/README.md`
+- **Monthly Prediction System:** See `SmartSolarUnit/SmartSolar_WebApp/` and `SmartSolarUnit/SmartSolarApp/README.md`
 - **Fault Detection:** See `FaultDetection/frontend/README.md`
 - **Chatbot:** See `Chatbot/README.md`
-- **Real-time Forecasting:** See `SmartSolarUnit/SmartSolar_WebApp/` and `SmartSolarUnit/SmartSolarApp/README.md`
+- **Location Aware Forecasting:** See `Location_Aware_Model/README.md`
 
 ---
 
@@ -355,19 +517,34 @@ Each component has its own setup instructions. Please refer to the individual RE
 - **APIs:** NASA POWER, Weather APIs
 
 ---
-
 ## Contributors
 
-**Project ID:** 25-26J-527
+This project was collaboratively developed as part of the final-year research project under Project ID **25-26J-527**.
 
----
+- **S.C. Dilshan (IT22118318)**  
+  IoT-Based Monthly and Daily Solar Energy Prediction System,  
+  IoT device development, cloud data pipeline, machine learning forecasting, dashboard integration.
 
-## License
+- **L.A.V.U. Liyanaarachchi (IT22120502)**  
+  LLM-Powered Solar Chatbot with Retrieval-Augmented Generation (RAG),  
+  knowledge base construction, AI-driven user guidance.
 
-[Add your license information here]
+- **K.G.L. Madusarani (IT22569868)**  
+  AI-Based Anomaly Fault Detection Module,  
+  machine learning model development for fault detection and system monitoring.
+
+- **K. Rangana Malmi Nadee (IT22341204)**  
+  Nearby Site-Based and Location-Aware Solar Energy Forecasting,  
+  hybrid ML modeling and GIS-based prediction support.
 
 ---
 
 ## Acknowledgments
 
-This project integrates multiple advanced technologies to provide a comprehensive solar energy management solution for Sri Lanka.
+The authors would like to express their sincere gratitude to **Sri Lanka Institute of Information Technology (SLIIT)** for providing the academic environment and resources required to conduct this research.
+
+Special thanks are extended to **Mrs. Thilini Jayalath**, Supervisor, and **Mr. Nushkan Nismi**, Co-Supervisor, for their continuous guidance, constructive feedback, and academic support throughout the project.
+
+The team also acknowledges all industry professionals and users who provided valuable feedback during system evaluation, which contributed to improving the usability and practical relevance of the Smart Solar Advisor system.
+
+Finally, appreciation is given to open-source communities and publicly available datasets and APIs that supported the development and validation of this research.
