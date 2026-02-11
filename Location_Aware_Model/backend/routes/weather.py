@@ -56,7 +56,7 @@ def calculate_solar_irradiance(lat, lon, cloud_coverage, month=None):
     if month is None:
         month = datetime.utcnow().month
     
-    # Average monthly solar irradiance values for Sri Lanka
+    # Average monthly clear-sky solar irradiance values for Sri Lanka (kWh/m²/day)
     MONTHLY_BASELINE = {
         1: 5.0, 2: 5.5, 3: 5.8, 4: 5.8, 5: 5.5, 6: 5.0,
         7: 5.0, 8: 5.2, 9: 5.3, 10: 5.5, 11: 5.2, 12: 4.8
@@ -64,7 +64,15 @@ def calculate_solar_irradiance(lat, lon, cloud_coverage, month=None):
     
     base_irradiance = MONTHLY_BASELINE.get(month, 5.3)
     
-    # Reduce irradiance based on cloud coverage
+    # Normalize cloud coverage and reduce irradiance based on it
+    try:
+        cloud_coverage = float(cloud_coverage)
+    except (TypeError, ValueError):
+        # If API gives an unexpected value, assume moderate cloudiness
+        cloud_coverage = 40.0
+
+    cloud_coverage = max(0.0, min(100.0, cloud_coverage))
+
     if cloud_coverage < 20:
         cloud_factor = 0.95
     elif cloud_coverage < 40:
@@ -79,7 +87,9 @@ def calculate_solar_irradiance(lat, lon, cloud_coverage, month=None):
     solar_irradiance = base_irradiance * cloud_factor
     
     # Ensure realistic bounds for Sri Lanka (3.5-6.5 kWh/m²/day)
-    solar_irradiance = max(5.3, min(6.5, solar_irradiance))
+    # This keeps values around ~5.3 for typical conditions, but allows
+    # slightly lower values on very cloudy days and higher in clear-sky months.
+    solar_irradiance = max(3.5, min(6.5, solar_irradiance))
     
     return round(solar_irradiance, 2)
 

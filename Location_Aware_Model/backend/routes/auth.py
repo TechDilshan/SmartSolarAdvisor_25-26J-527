@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
-from models.user import db, User
+from models.user import User
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -14,22 +14,21 @@ def register():
             return jsonify({'error': 'Missing required fields'}), 400
         
         # Check if user exists
-        if User.query.filter_by(username=data['username']).first():
+        if User.find_by_username(data['username']):
             return jsonify({'error': 'Username already exists'}), 400
         
-        if User.query.filter_by(email=data['email']).first():
+        if User.find_by_email(data['email']):
             return jsonify({'error': 'Email already exists'}), 400
         
         # Create new user
         user = User(
             username=data['username'],
             email=data['email'],
+            password='',
             is_admin=data.get('is_admin', False)
         )
         user.set_password(data['password'])
-        
-        db.session.add(user)
-        db.session.commit()
+        user.save()
         
         return jsonify({
             'message': 'User registered successfully',
@@ -37,7 +36,6 @@ def register():
         }), 201
     
     except Exception as e:
-        db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
 @auth_bp.route('/login', methods=['POST'])
@@ -50,7 +48,7 @@ def login():
             return jsonify({'error': 'Missing username or password'}), 400
         
         # Fetch user
-        user = User.query.filter_by(username=data['username']).first()
+        user = User.find_by_username(data['username'])
         
         # Verify password
         if not user or not user.check_password(data['password']):
@@ -74,9 +72,9 @@ def login():
 @jwt_required()
 def get_current_user():
     try:
-        # Get logged-in user
+        # Get logged-in user details
         user_id = get_jwt_identity()
-        user = User.query.get(user_id)
+        user = User.find_by_id(user_id)
         
         if not user:
             return jsonify({'error': 'User not found'}), 404

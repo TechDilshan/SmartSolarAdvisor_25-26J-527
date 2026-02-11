@@ -1,6 +1,5 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models.user import db
 from models.prediction import Prediction
 from ml_models.predictor import SolarPredictor
 from utills.helpers import calculate_roi
@@ -163,9 +162,7 @@ def predict():
             payback_period_years=payback_period,
             scenario_name=data.get('scenario_name')
         )
-        
-        db.session.add(prediction)
-        db.session.commit()
+        prediction.save()
         
         # Calculate carbon footprint savings
         carbon_daily = calculate_carbon_savings(daily_energy_physics, country='LK')
@@ -200,7 +197,6 @@ def predict():
         }), 200
     
     except Exception as e:
-        db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
 @predictions_bp.route('/predict/annual', methods=['POST'])
@@ -272,10 +268,8 @@ def predict_annual():
                 payback_period_years=payback_period,
                 scenario_name=data.get('scenario_name')
             )
-            db.session.add(prediction)
+            prediction.save()
             saved_predictions.append(prediction)
-        
-        db.session.commit()
         
         # Calculate carbon footprint for annual prediction
         carbon_annual = calculate_carbon_savings(total_annual_energy, country='LK')
@@ -301,7 +295,6 @@ def predict_annual():
         }), 200
     
     except Exception as e:
-        db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
 
@@ -396,9 +389,7 @@ def get_history():
         if not user_id:
             return jsonify({'error': 'Invalid user ID'}), 401
         
-        predictions = Prediction.query.filter_by(user_id=user_id).order_by(
-            Prediction.created_at.desc()
-        ).all()
+        predictions = Prediction.find_by_user_id(user_id)
         
         return jsonify({
             'predictions': [p.to_dict() for p in predictions]
@@ -407,28 +398,24 @@ def get_history():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+"""Delete user's own prediction"""
 @predictions_bp.route('/history/<int:prediction_id>', methods=['DELETE'])
 @jwt_required()
 def delete_prediction(prediction_id):
     try:
         user_id = get_jwt_identity()
-        prediction = Prediction.query.filter_by(
-            id=prediction_id,
-            user_id=user_id
-        ).first()
+        prediction = Prediction.find_one_by_id_and_user(prediction_id, user_id)
         
         if not prediction:
             return jsonify({'error': 'Prediction not found'}), 404
         
-        db.session.delete(prediction)
-        db.session.commit()
-        
+        prediction.delete()
         return jsonify({'message': 'Prediction deleted successfully'}), 200
     
     except Exception as e:
-        db.session.rollback()
         return jsonify({'error': str(e)}), 500
     
+"""Admin can delete any prediction - best energy, best ROI, average values"""
 @predictions_bp.route('/admin/<int:prediction_id>', methods=['DELETE'])
 @jwt_required()
 def admin_delete_prediction(prediction_id):
@@ -436,19 +423,18 @@ def admin_delete_prediction(prediction_id):
 
     # check admin
     from models.user import User
-    admin = User.query.get(user_id)
+    admin = User.find_by_id(user_id)
     if not admin or not admin.is_admin:
         return jsonify({'error': 'Admin access required'}), 403
 
-    prediction = Prediction.query.get(prediction_id)
+    prediction = Prediction.find_by_id(prediction_id)
     if not prediction:
         return jsonify({'error': 'Prediction not found'}), 404
 
-    db.session.delete(prediction)
-    db.session.commit()
-
+    prediction.delete()
     return jsonify({'message': 'Prediction deleted by admin'}), 200
 
+"""Compare multiple predictions by ID"""
 @predictions_bp.route('/compare', methods=['POST'])
 @jwt_required()
 def compare_predictions():

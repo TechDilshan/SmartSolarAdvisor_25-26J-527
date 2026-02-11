@@ -1,6 +1,5 @@
 from flask import Blueprint, jsonify, request, send_file
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models.user import db
 from models.prediction import Prediction
 from datetime import datetime
 import csv

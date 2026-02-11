@@ -1,8 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models.user import db, User
+from models.user import User
 from models.prediction import Prediction
-from sqlalchemy import func
 
 profile_bp = Blueprint('profile', __name__)
 
@@ -14,31 +13,21 @@ def get_profile():
     """
     try:
         user_id = get_jwt_identity()
-        user = User.query.get(user_id)
+        user = User.find_by_id(user_id)
         
         if not user:
             return jsonify({'error': 'User not found'}), 404
         
         # Get user statistics
-        total_predictions = Prediction.query.filter_by(user_id=user_id).count()
-        avg_energy = db.session.query(
-            func.avg(Prediction.predicted_energy_kwh)
-        ).filter_by(user_id=user_id).scalar()
-        avg_confidence = db.session.query(
-            func.avg(Prediction.confidence_score)
-        ).filter_by(user_id=user_id).scalar()
-        
-        total_savings = db.session.query(
-            func.sum(Prediction.annual_savings_usd)
-        ).filter_by(user_id=user_id).scalar() or 0
+        stats = Prediction.get_user_statistics(user_id)
         
         return jsonify({
             'user': user.to_dict(),
             'statistics': {
-                'total_predictions': total_predictions,
-                'average_energy_kwh': float(avg_energy) if avg_energy else 0,
-                'average_confidence': float(avg_confidence) if avg_confidence else 0,
-                'total_potential_savings_lkr': float(total_savings)
+                'total_predictions': stats['total_predictions'],
+                'average_energy_kwh': stats['average_energy_kwh'],
+                'average_confidence': stats['average_confidence'],
+                'total_potential_savings_lkr': stats['total_potential_savings_lkr']
             }
         }), 200
     
@@ -53,7 +42,7 @@ def update_profile():
     """
     try:
         user_id = get_jwt_identity()
-        user = User.query.get(user_id)
+        user = User.find_by_id(user_id)
         
         if not user:
             return jsonify({'error': 'User not found'}), 404
@@ -69,13 +58,13 @@ def update_profile():
                 return jsonify({'error': 'Invalid email format'}), 400
             
             # Check if email already exists
-            existing_user = User.query.filter_by(email=email).first()
-            if existing_user and existing_user.id != user_id:
+            existing_user = User.find_by_email(email)
+            if existing_user and str(existing_user.id) != str(user_id):
                 return jsonify({'error': 'Email already in use'}), 400
             
             user.email = email
         
-        db.session.commit()
+        user.save()
         
         return jsonify({
             'message': 'Profile updated successfully',
@@ -83,7 +72,6 @@ def update_profile():
         }), 200
     
     except Exception as e:
-        db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
 @profile_bp.route('/change-password', methods=['POST'])
@@ -94,7 +82,7 @@ def change_password():
     """
     try:
         user_id = get_jwt_identity()
-        user = User.query.get(user_id)
+        user = User.find_by_id(user_id)
         
         if not user:
             return jsonify({'error': 'User not found'}), 404
@@ -117,11 +105,10 @@ def change_password():
         
         # Update password
         user.set_password(data['new_password'])
-        db.session.commit()
+        user.save()
         
         return jsonify({'message': 'Password changed successfully'}), 200
     
     except Exception as e:
-        db.session.rollback()
         return jsonify({'error': str(e)}), 500
 

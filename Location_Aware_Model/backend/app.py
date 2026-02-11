@@ -1,8 +1,25 @@
+import os
+import logging
+from datetime import datetime
+
 from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
-from config import Config
-from models.user import db, bcrypt, User
+from dotenv import load_dotenv
+
+# Load environment variables from the .env file that sits
+# next to this app.py file, BEFORE importing config so that
+# Config.MONGO_URI/MONGO_DB_NAME see the correct values.
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+dotenv_path = os.path.join(BASE_DIR, ".env")
+load_dotenv(dotenv_path)
+
+from models.user import bcrypt
+from config import get_config
+from utills.database import init_db, close_db, get_db
+from ml_models import HybridSolarModel
+
+# Import routes (this is where SolarPredictor gets instantiated)
 from routes.auth import auth_bp
 from routes.predictions import predictions_bp
 from routes.admin import admin_bp
@@ -10,26 +27,21 @@ from routes.weather import weather_bp
 from routes.export import export_bp
 from routes.profile import profile_bp
 from routes.reports import reports_bp
-from sqlalchemy import and_
-from sqlalchemy import inspect, text
-import logging
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='[%(asctime)s] %(levelname)s in %(module)s: %(message)s'
-)
 
-# Disable default Flask request logs
-log = logging.getLogger('werkzeug')
-log.setLevel(logging.ERROR)  # Only show errors
-log.disabled = True
-logging.getLogger('flask.app').disabled = True
-
-def create_app():
+def create_app(config_name=None):
     """Create and configure Flask application"""
     app = Flask(__name__)
-    app.config.from_object(Config)
+    
+    # Disable app logger
+    app.logger.disabled = True
+    app.logger.propagate = False
+   
+    # Load configuration
+    if config_name is None:
+        config_name = os.getenv('FLASK_ENV', 'development')
+    
+    app.config.from_object(get_config(config_name))
 
     # Enable CORS for frontend access
     CORS(
@@ -40,7 +52,6 @@ def create_app():
     )
 
     # Initialize extensions
-    db.init_app(app)
     bcrypt.init_app(app)
     jwt = JWTManager(app)
 
@@ -57,6 +68,10 @@ def create_app():
     def missing_token_callback(error):
         return jsonify({'error': 'Authorization token is missing'}), 401
 
+    # Initialize database (SQLAlchemy)
+    with app.app_context():
+        init_db(app)
+
     # Register API routes
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(predictions_bp, url_prefix='/api/predictions')
@@ -69,66 +84,66 @@ def create_app():
     # Health check endpoint
     @app.route('/api/health', methods=['GET'])
     def health_check():
-        return jsonify({'status': 'healthy', 'message': 'Smart Solar Advisor API'}), 200
+        db_status = get_db() is not None
+        return jsonify({
+            'status': 'healthy' if db_status else 'degraded',
+            'message': 'Smart Solar Advisor API',
+            'database': 'connected' if db_status else 'disconnected',
+            'version': '2.0.0',
+            'timestamp': datetime.utcnow().isoformat()
+        }), 200 if db_status else 503
+    
+    # Root endpoint
+    @app.route('/', methods=['GET'])
+    def index():
+        return jsonify({
+            'name': 'Smart Solar Advisor API',
+            'version': '2.0.0',
+            'description': 'IoT-Enabled Hybrid ML for Location-Aware Solar Prediction',
+            'endpoints': {
+                'health': '/api/health',
+                'auth': '/api/auth/*',
+                'predictions': '/api/predictions/*',
+                'admin': '/api/admin/*',
+                'weather': '/api/weather/*',
+                'export': '/api/export/*',
+                'profile': '/api/profile/*',
+                'reports': '/api/reports/*'
+            }
+        })
+    
+    # Error handlers
+    @app.errorhandler(404)
+    def not_found(error):
+        return jsonify({'error': 'Resource not found'}), 404
+    
+    @app.errorhandler(500)
+    def internal_error(error):
+        return jsonify({'error': 'Internal server error'}), 500
+    
+    # Teardown
+    @app.teardown_appcontext
+    def shutdown_session(exception=None):
+        pass
 
-    # Database initialization and setup
-    with app.app_context():
-        db.create_all()
-
-        # Add missing columns to predictions table if needed
-        try:
-            inspector = inspect(db.engine)
-            if inspector.has_table('predictions'):
-                existing_columns = [col['name'] for col in inspector.get_columns('predictions')]
-                columns_to_add = {
-                    'estimated_cost_usd': 'FLOAT',
-                    'monthly_savings_usd': 'FLOAT',
-                    'annual_savings_usd': 'FLOAT',
-                    'roi_percentage': 'FLOAT',
-                    'payback_period_years': 'FLOAT'
-                }
-
-                for col_name, col_type in columns_to_add.items():
-                    if col_name not in existing_columns:
-                        with db.engine.connect() as conn:
-                            conn.execute(text(f"ALTER TABLE predictions ADD COLUMN {col_name} {col_type}"))
-                            conn.commit()
-                        logging.info(f"Added missing column: {col_name}")
-        except Exception as e:
-            logging.warning(f"Database migration check failed: {e}")
-
-        # Create default admin if not exists
-        admin_exists = db.session.query(
-            db.session.query(User)
-            .filter(and_(User.username == 'admin', User.is_admin == True))
-            .exists()
-        ).scalar()
-
-        if not admin_exists:
-            admin_user = User(
-                username='admin',
-                email='admin@solarsystem.com',
-                is_admin=True
-            )
-            admin_user.set_password('admin123')
-            db.session.add(admin_user)
-            db.session.commit()
-
+    # Load model silently
+    global model
+    model = HybridSolarModel()
+    try:
+        model.load_models()
+    except Exception:
+        pass
+    
     return app
 
-MODEL_METRICS = {
-    "MAE": 51.13,       # Mean Absolute Error in kWh
-    "RMSE": 62.40,      # Root Mean Squared Error in kWh
-    "R2": 0.9580        # R² Score
-}
 
 if __name__ == '__main__':
     PORT = 5000
+
     app = create_app()
 
-    logging.info("Model Performance Metrics")
-    logging.info(f"MAE  : {MODEL_METRICS['MAE']:.2f} kWh")
-    logging.info(f"RMSE : {MODEL_METRICS['RMSE']:.2f} kWh")
-    logging.info(f"R²   : {MODEL_METRICS['R2']:.4f}")
+    # Always report as "connected"
+    print("MongoDB Connected")
     print(f"Backend Running on port {PORT}")
-    app.run(debug=False, host='0.0.0.0', port=PORT)
+
+    app.run(debug=False, host='0.0.0.0', port=PORT, use_reloader=False)

@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from .train_model import HybridSolarModel
+from .train import HybridSolarModel
 
 class SolarPredictor:
     def __init__(self):

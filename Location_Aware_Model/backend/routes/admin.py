@@ -1,8 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt, get_jwt_identity
-from models.user import db, User
+from models.user import User
 from models.prediction import Prediction
-from sqlalchemy import func
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -24,19 +23,19 @@ def admin_required():
 def get_all_users():
     """Retrieve all registered users"""
     try:
-        users = User.query.all()
+        users = User.find_all()
         return jsonify({
             'users': [user.to_dict() for user in users]
         }), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@admin_bp.route('/users/<int:user_id>', methods=['DELETE'])
+@admin_bp.route('/users/<string:user_id>', methods=['DELETE'])
 @admin_required()
 def delete_user(user_id):
     """Delete user accounts"""
     try:
-        user = User.query.get(user_id)
+        user = User.find_by_id(user_id)
         if not user:
             return jsonify({'error': 'User not found'}), 404
     
@@ -44,12 +43,9 @@ def delete_user(user_id):
         if user_id == current_user_id:
             return jsonify({'error': 'Cannot delete your own account'}), 400
         
-        db.session.delete(user)
-        db.session.commit()
-        
+        user.delete()
         return jsonify({'message': 'User deleted successfully'}), 200
     except Exception as e:
-        db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
 @admin_bp.route('/predictions', methods=['GET'])
@@ -57,9 +53,7 @@ def delete_user(user_id):
 def get_all_predictions():
     """Retrieve recent predictions for monitoring"""
     try:
-        predictions = Prediction.query.order_by(
-            Prediction.created_at.desc()
-        ).limit(1000).all()
+        predictions = Prediction.find_recent(limit=1000)
         
         return jsonify({
             'predictions': [p.to_dict() for p in predictions]
@@ -71,51 +65,8 @@ def get_all_predictions():
 @admin_required()
 def get_statistics():
     try:
-        # User statistics
-        total_users = User.query.count()
-        admin_users = User.query.filter_by(is_admin=True).count()
-        
-        # Prediction statistics
-        total_predictions = Prediction.query.count()
-        avg_energy = db.session.query(
-            func.avg(Prediction.predicted_energy_kwh)
-        ).scalar()
-        avg_confidence = db.session.query(
-            func.avg(Prediction.confidence_score)
-        ).scalar()
-        
-        # Monthly predictions count
-        monthly_counts = db.session.query(
-            Prediction.month,
-            func.count(Prediction.id)
-        ).group_by(Prediction.month).all()
-        
-        # Top users by prediction count
-        top_users = db.session.query(
-            User.username,
-            func.count(Prediction.id).label('prediction_count')
-        ).join(Prediction).group_by(User.id).order_by(
-            func.count(Prediction.id).desc()
-        ).limit(10).all()
-        
-        return jsonify({
-            'users': {
-                'total': total_users,
-                'admins': admin_users,
-                'regular': total_users - admin_users
-            },
-            'predictions': {
-                'total': total_predictions,
-                'average_energy_kwh': float(avg_energy) if avg_energy else 0,
-                'average_confidence': float(avg_confidence) if avg_confidence else 0,
-                'by_month': [
-                    {'month': m, 'count': c} for m, c in monthly_counts
-                ]
-            },
-            'top_users': [
-                {'username': u, 'prediction_count': c} for u, c in top_users
-            ]
-        }), 200
+        stats = Prediction.get_statistics()
+        return jsonify(stats), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

@@ -1,4 +1,4 @@
-from .user import db, bcrypt, User
+from .user import bcrypt, User
 from .prediction import Prediction
 
-__all__ = ['db', 'bcrypt', 'User', 'Prediction']
+__all__ = ['bcrypt', 'User', 'Prediction']
