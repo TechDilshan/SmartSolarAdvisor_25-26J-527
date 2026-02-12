@@ -67,7 +67,8 @@ export const adminAPI = {
   getAllPredictions: () => api.get("/admin/predictions"),
   getStatistics: () => api.get("/admin/statistics"),
   toggleAdmin: (id) => api.patch(`/admin/users/${id}/toggle-admin`),
-  deletePrediction: (id) => api.delete(`/predictions/admin/${id}`),
+  // Admin delete prediction (correct URL prefix: /api/admin/...)
+  deletePrediction: (id) => api.delete(`/admin/predictions/${id}`),
 };
 
 // Weather API

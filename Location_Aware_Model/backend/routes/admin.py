@@ -61,6 +61,21 @@ def get_all_predictions():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
+@admin_bp.route('/predictions/<string:prediction_id>', methods=['DELETE'])
+@admin_required()
+def delete_prediction(prediction_id):
+    """Delete a prediction by ID (admin only)."""
+    try:
+        prediction = Prediction.find_by_id(prediction_id)
+        if not prediction:
+            return jsonify({'error': 'Prediction not found'}), 404
+
+        prediction.delete()
+        return jsonify({'message': 'Prediction deleted successfully'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @admin_bp.route('/statistics', methods=['GET'])
 @admin_required()
 def get_statistics():
