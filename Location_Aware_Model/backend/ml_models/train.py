@@ -44,6 +44,28 @@ class HybridSolarModel:
         
         return df
     
+    def clean_outliers(self, df, z_thresh: float = 3.5):
+        """
+        Basic anomaly / outlier cleaning using z-score clipping.
+        This helps remove extreme synthetic or erroneous values
+        that would otherwise hurt regression accuracy.
+        """
+        numeric_cols = df.select_dtypes(include=[np.number]).columns
+        for col in numeric_cols:
+            col_values = df[col].values
+            col_mean = np.nanmean(col_values)
+            col_std = np.nanstd(col_values)
+            if col_std == 0 or np.isnan(col_std):
+                continue
+            z_scores = (col_values - col_mean) / col_std
+            mask = np.abs(z_scores) > z_thresh
+            if not np.any(mask):
+                continue
+            # Clip outliers to percentile range instead of dropping rows
+            low, high = np.percentile(col_values[~mask], [1, 99])
+            df.loc[mask, col] = np.clip(col_values[mask], low, high)
+        return df
+    
     def calculate_monthly_energy(self, row):
         """Physics-based monthly solar energy estimation"""
         days_in_month = 30.44
@@ -104,7 +126,10 @@ class HybridSolarModel:
       df = self.generate_synthetic_features(df)
 
       df['monthly_energy_kwh'] = df.apply(self.calculate_monthly_energy, axis=1)
-    
+      
+      # Clean obvious numeric outliers to stabilize training
+      df = self.clean_outliers(df)
+
       # Remove invalid rows
       df = df.dropna()
       df = df[df['monthly_energy_kwh'] > 0]

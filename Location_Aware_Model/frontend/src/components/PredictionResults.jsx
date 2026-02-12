@@ -9,6 +9,7 @@ import {
   Title,
   Tooltip,
   Legend,
+  Filler,
 } from "chart.js";
 import "../styles/PredictionResults.css";
 import { reportsAPI } from "../services/api";
@@ -20,7 +21,8 @@ ChartJS.register(
   LineElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  Filler
 );
 
 function PredictionResults({ result, type }) {
@@ -269,15 +271,11 @@ function PredictionResults({ result, type }) {
     const handleDownloadPDF = async () => {
       try {
         const firstPrediction =
-          sortedMonthlyData[0]?.prediction || sortedMonthlyData[0];
-
-        if (!firstPrediction?.id) {
-          alert("No prediction ID available");
-          return;
-        }
+          monthlyData[0]?.prediction || monthlyData[0] || {};
 
         const year =
-          firstPrediction.year || summary.year || new Date().getFullYear();
+          summary.year || firstPrediction.year || new Date().getFullYear();
+
         const response = await reportsAPI.downloadAnnualPDF(
           year,
           firstPrediction.latitude,
@@ -618,24 +616,6 @@ function PredictionResults({ result, type }) {
                 </span>
               </div>
             )}
-          </div>
-        </div>
-      )}
-
-      {details.knn_prediction && details.xgb_prediction && (
-        <div className="model-comparison">
-          <h3> Model Breakdown</h3>
-          <div className="model-cards">
-            <div className="model-card">
-              <h4>KNN Model</h4>
-              <p>{details.knn_prediction.toFixed(2)} kWh</p>
-              <span className="weight">Weight: 30%</span>
-            </div>
-            <div className="model-card">
-              <h4>XGBoost Model</h4>
-              <p>{details.xgb_prediction.toFixed(2)} kWh</p>
-              <span className="weight">Weight: 70%</span>
-            </div>
           </div>
         </div>
       )}

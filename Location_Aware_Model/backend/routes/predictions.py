@@ -96,22 +96,37 @@ def predict():
         if not is_valid:
             return coord_error
         
-        # Make prediction using monthly calculation
+        # 1. Physics-based baseline calculation
         monthly_energy_physics, context = calculate_monthly_energy_physics(data, return_context=True)
         daily_energy_physics = context.get('daily_energy_kwh', round(monthly_energy_physics / max(context.get('days_in_month', 30), 1), 2))
         days_in_month = context.get('days_in_month', 30)
         shading_factor_used = context.get('shading_factor') or compute_shading(data.get('rh2m') or data.get('RH2M', 75.0))
         
-        # ML based prediction for comparison/confidence
+        # 2. ML-based prediction (hybrid KNN + XGBoost)
+        ml_energy = None
+        knn_prediction = None
+        xgb_prediction = None
         try:
             ml_result = predictor.predict(data)
-            ml_energy = ml_result['predicted_energy_kwh']
-            monthly_energy = monthly_energy_physics
+            ml_energy = ml_result.get('predicted_energy_kwh')
+            knn_prediction = ml_result.get('knn_prediction')
+            xgb_prediction = ml_result.get('xgb_prediction')
             confidence_score = ml_result.get('confidence_score', 0.85)
         except Exception as ml_error:
             logging.warning(f"ML prediction failed, using physics-based: {str(ml_error)}")
-            monthly_energy = monthly_energy_physics
             confidence_score = 0.80
+        
+        # 3. Final blended prediction
+        # If ML is available, blend physics + ML (gives you "hybrid" behaviour).
+        # If ML fails, fall back to pure physics.
+        if ml_energy is not None:
+            # Slightly higher weight on ML since it is trained on data,
+            # but still anchored to physics-based estimate.
+            monthly_energy = 0.4 * monthly_energy_physics + 0.6 * ml_energy
+            prediction_method = 'hybrid_physics_ml'
+        else:
+            monthly_energy = monthly_energy_physics
+            prediction_method = 'physics_only'
         
         annual_energy = monthly_energy * 12
         
@@ -175,10 +190,15 @@ def predict():
             'prediction': prediction.to_dict(),
             'details': {
                 'predicted_energy_kwh': monthly_energy,
+                'physics_energy_kwh': monthly_energy_physics,
+                'ml_energy_kwh': ml_energy,
                 'daily_energy_kwh': daily_energy_physics,
                 'confidence_score': confidence_score,
-                'calculation_method': 'physics-based',
-                'days_in_month': days_in_month
+                'calculation_method': prediction_method,
+                'days_in_month': days_in_month,
+                # Model breakdown for frontend explainability
+                'knn_prediction': knn_prediction,
+                'xgb_prediction': xgb_prediction
             },
             'financial': {
                 'system_cost_lkr': system_cost_lkr,
