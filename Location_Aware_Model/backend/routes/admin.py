@@ -85,26 +85,25 @@ def get_statistics():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@admin_bp.route('/users/<int:user_id>/toggle-admin', methods=['PATCH'])
+@admin_bp.route('/users/<string:user_id>/toggle-admin', methods=['PATCH'])
 @admin_required()
 def toggle_admin(user_id):
+    """Toggle admin role for a user (MongoDB)."""
     try:
-        user = User.query.get(user_id)
+        user = User.find_by_id(user_id)
         if not user:
             return jsonify({'error': 'User not found'}), 404
-        
-        # Cannot modify own admin status
+
         current_user_id = get_jwt_identity()
-        if user_id == current_user_id:
+        if str(user.id) == str(current_user_id):
             return jsonify({'error': 'Cannot modify your own admin status'}), 400
-        
+
         user.is_admin = not user.is_admin
-        db.session.commit()
-        
+        user.save()
+
         return jsonify({
             'message': 'Admin status updated',
             'user': user.to_dict()
         }), 200
     except Exception as e:
-        db.session.rollback()
         return jsonify({'error': str(e)}), 500
