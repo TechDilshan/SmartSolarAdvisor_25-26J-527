@@ -25,6 +25,7 @@ function Dashboard({ user, onLogout }) {
       setHistory(response.data.predictions || []);
     } catch (error) {
       console.error("Failed to load history:", error);
+      alert("Error: Failed to load prediction history.");
     } finally {
       setLoading(false);
     }
@@ -41,9 +42,11 @@ function Dashboard({ user, onLogout }) {
     if (window.confirm("Are you sure you want to delete this prediction?")) {
       try {
         await predictionsAPI.deletePrediction(id);
+        alert("Success: Prediction deleted successfully.");
         loadHistory();
       } catch (error) {
         console.error("Failed to delete prediction:", error);
+        alert("Error: Failed to delete prediction.");
       }
     }
   };
@@ -61,8 +64,9 @@ function Dashboard({ user, onLogout }) {
       document.body.appendChild(link);
       link.click();
       link.remove();
+      alert("Success: Predictions exported to CSV.");
     } catch (error) {
-      alert("Failed to export predictions");
+      alert("Error: Failed to export predictions to CSV.");
       console.error("Export error:", error);
     }
   };
@@ -80,8 +84,9 @@ function Dashboard({ user, onLogout }) {
       document.body.appendChild(link);
       link.click();
       link.remove();
+      alert("Success: Predictions exported to JSON.");
     } catch (error) {
-      alert("Failed to export predictions");
+      alert("Error: Failed to export predictions to JSON.");
       console.error("Export error:", error);
     }
   };

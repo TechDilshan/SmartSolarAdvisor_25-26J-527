@@ -35,7 +35,9 @@ function Profile({ user, onLogout }) {
       setProfileData(response.data);
       setEmail(response.data.user.email || "");
     } catch (err) {
-      setError(err.response?.data?.error || "Failed to load profile");
+      const msg = err.response?.data?.error || "Failed to load profile";
+      setError(msg);
+      alert("Error: " + msg);
     } finally {
       setLoading(false);
     }
@@ -47,18 +49,24 @@ function Profile({ user, onLogout }) {
     setSuccess("");
 
     if (!email || !email.includes("@")) {
-      setError("Please enter a valid email address");
+      const msg = "Please enter a valid email address";
+      setError(msg);
+      alert("Error: " + msg);
       return;
     }
 
     try {
       await profileAPI.updateProfile({ email });
-      setSuccess("Profile updated successfully!");
+      const msg = "Profile updated successfully!";
+      setSuccess(msg);
+      alert("Success: " + msg);
       setShowUpdateForm(false);
       loadProfile(); // Reload to get updated data
       setTimeout(() => setSuccess(""), 3000);
     } catch (err) {
-      setError(err.response?.data?.error || "Failed to update profile");
+      const msg = err.response?.data?.error || "Failed to update profile";
+      setError(msg);
+      alert("Error: " + msg);
     }
   };
 
@@ -68,17 +76,23 @@ function Profile({ user, onLogout }) {
     setSuccess("");
 
     if (!passwordData.current_password || !passwordData.new_password) {
-      setError("Please fill in all password fields");
+      const msg = "Please fill in all password fields";
+      setError(msg);
+      alert("Error: " + msg);
       return;
     }
 
     if (passwordData.new_password.length < 6) {
-      setError("New password must be at least 6 characters");
+      const msg = "New password must be at least 6 characters";
+      setError(msg);
+      alert("Error: " + msg);
       return;
     }
 
     if (passwordData.new_password !== passwordData.confirm_password) {
-      setError("New passwords do not match");
+      const msg = "New passwords do not match";
+      setError(msg);
+      alert("Error: " + msg);
       return;
     }
 
@@ -87,7 +101,9 @@ function Profile({ user, onLogout }) {
         current_password: passwordData.current_password,
         new_password: passwordData.new_password,
       });
-      setSuccess("Password changed successfully!");
+      const msg = "Password changed successfully!";
+      setSuccess(msg);
+      alert("Success: " + msg);
       setShowPasswordForm(false);
       setPasswordData({
         current_password: "",
@@ -96,7 +112,9 @@ function Profile({ user, onLogout }) {
       });
       setTimeout(() => setSuccess(""), 3000);
     } catch (err) {
-      setError(err.response?.data?.error || "Failed to change password");
+      const msg = err.response?.data?.error || "Failed to change password";
+      setError(msg);
+      alert("Error: " + msg);
     }
   };
 

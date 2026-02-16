@@ -65,6 +65,7 @@ function ScenarioSimulator({ baseFormData, onScenarioComplete }) {
       };
 
       setScenarios((prev) => [...prev, newScenario]);
+      alert("Success: Scenario '" + scenario.name + "' completed successfully.");
 
       if (onScenarioComplete) {
         onScenarioComplete(newScenario);
@@ -72,9 +73,8 @@ function ScenarioSimulator({ baseFormData, onScenarioComplete }) {
     } catch (error) {
       console.error("Scenario simulation failed:", error);
       alert(
-        `Failed to run scenario: ${
-          error.response?.data?.error || error.message
-        }`
+        "Error: Failed to run scenario: " +
+          (error.response?.data?.error || error.message)
       );
     } finally {
       setLoading(false);
@@ -105,10 +105,17 @@ function ScenarioSimulator({ baseFormData, onScenarioComplete }) {
         });
       } catch (error) {
         console.error(`Scenario ${scenario.name} failed:`, error);
+        alert(
+          "Error: Scenario '" + scenario.name + "' failed: " +
+            (error.response?.data?.error || error.message)
+        );
       }
     }
 
     setScenarios(results);
+    if (results.length > 0) {
+      alert("Success: " + results.length + " scenario(s) completed successfully.");
+    }
     setLoading(false);
     setActiveScenario(null);
   };

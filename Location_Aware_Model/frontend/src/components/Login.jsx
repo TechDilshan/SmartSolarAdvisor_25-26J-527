@@ -33,18 +33,22 @@ function Login({ onLogin }) {
       const token = response.data.access_token || response.data.token;
 
       if (!token) {
-        setError("Authentication failed. Please try again.");
+        const msg = "Authentication failed. Please try again.";
+        setError(msg);
+        alert("Error: " + msg);
         return;
       }
 
+      alert("Login successful! Welcome back.");
       onLogin(response.data.user, token);
       navigate("/");
     } catch (err) {
-      setError(
+      const msg =
         err.response?.data?.error ||
-          err.message ||
-          "Login failed. Please try again."
-      );
+        err.message ||
+        "Login failed. Please try again.";
+      setError(msg);
+      alert("Error: " + msg);
     } finally {
       setLoading(false);
     }

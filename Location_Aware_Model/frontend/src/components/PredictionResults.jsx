@@ -289,9 +289,10 @@ function PredictionResults({ result, type }) {
         document.body.appendChild(link);
         link.click();
         link.remove();
+        alert("Success: Annual PDF report downloaded.");
       } catch (error) {
         console.error("PDF download error:", error);
-        alert("Failed to download PDF. Please try again.");
+        alert("Error: Failed to download PDF. Please try again.");
       }
     };
 
@@ -396,8 +397,9 @@ function PredictionResults({ result, type }) {
               document.body.appendChild(link);
               link.click();
               link.remove();
+              alert("Success: PDF report downloaded.");
             } catch {
-              alert("Failed to download PDF");
+              alert("Error: Failed to download PDF.");
             }
           }}
         >

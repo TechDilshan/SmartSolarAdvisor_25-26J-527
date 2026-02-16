@@ -98,7 +98,9 @@ function PredictionForm({ onPredictionComplete }) {
       setWeatherData(weather);
     } catch (err) {
       console.error("Failed to fetch weather data:", err);
-      setError("Failed to fetch weather data. Using default values.");
+      const msg = "Failed to fetch weather data. Using default values.";
+      setError(msg);
+      alert("Warning: " + msg);
     } finally {
       setLoadingWeather(false);
     }
@@ -170,11 +172,13 @@ function PredictionForm({ onPredictionComplete }) {
       } else {
         response = await predictionsAPI.predict(submitData);
       }
+      alert("Success: Prediction completed successfully!");
       onPredictionComplete(response.data, predictionType);
     } catch (err) {
-      setError(
-        err.response?.data?.error || "Prediction failed. Please try again."
-      );
+      const msg =
+        err.response?.data?.error || "Prediction failed. Please try again.";
+      setError(msg);
+      alert("Error: " + msg);
     } finally {
       setLoading(false);
     }

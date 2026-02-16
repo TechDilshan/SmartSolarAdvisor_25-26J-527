@@ -32,13 +32,17 @@ function Register() {
 
     // Validate passwords
     if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match");
+      const msg = "Passwords do not match";
+      setError(msg);
+      alert("Error: " + msg);
       setLoading(false);
       return;
     }
 
     if (formData.password.length < 6) {
-      setError("Password must be at least 6 characters");
+      const msg = "Password must be at least 6 characters";
+      setError(msg);
+      alert("Error: " + msg);
       setLoading(false);
       return;
     }
@@ -51,12 +55,13 @@ function Register() {
         password: formData.password,
       });
 
-      // Redirect to login
+      alert("Account created successfully! Redirecting to login.");
       navigate("/login");
     } catch (err) {
-      setError(
-        err.response?.data?.error || "Registration failed. Please try again."
-      );
+      const msg =
+        err.response?.data?.error || "Registration failed. Please try again.";
+      setError(msg);
+      alert("Error: " + msg);
     } finally {
       setLoading(false);
     }

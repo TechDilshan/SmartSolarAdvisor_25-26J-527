@@ -46,6 +46,7 @@ function AdminDashboard({ user, onLogout }) {
       setPredictions(predsRes.data.predictions || []);
     } catch (error) {
       console.error('Failed to load admin data:', error);
+      alert('Error: Failed to load admin data.');
     } finally {
       setLoading(false);
     }
@@ -55,9 +56,10 @@ function AdminDashboard({ user, onLogout }) {
     if (window.confirm('Are you sure you want to delete this user?')) {
       try {
         await adminAPI.deleteUser(userId);
+        alert('Success: User deleted successfully.');
         loadData();
       } catch (error) {
-        alert(error.response?.data?.error || 'Failed to delete user');
+        alert('Error: ' + (error.response?.data?.error || 'Failed to delete user'));
       }
     }
   };
@@ -65,9 +67,10 @@ function AdminDashboard({ user, onLogout }) {
   const handleToggleAdmin = async (userId) => {
     try {
       await adminAPI.toggleAdmin(userId);
+      alert('Success: Admin status updated successfully.');
       loadData();
     } catch (error) {
-      alert(error.response?.data?.error || 'Failed to update admin status');
+      alert('Error: ' + (error.response?.data?.error || 'Failed to update admin status'));
     }
   };
 
@@ -75,10 +78,10 @@ function AdminDashboard({ user, onLogout }) {
     if (window.confirm('Are you sure you want to delete this prediction?')) {
       try {
         await adminAPI.deletePrediction(predictionId);
-        alert('Prediction Deleted Successfully');
+        alert('Success: Prediction deleted successfully.');
         loadData();
       } catch (error) {
-        alert(error.response?.data?.error || 'Failed to delete prediction');
+        alert('Error: ' + (error.response?.data?.error || 'Failed to delete prediction'));
       }
     }
   };
@@ -115,11 +118,11 @@ function AdminDashboard({ user, onLogout }) {
         selectedPredictions.map(id => adminAPI.deletePrediction(id))
       );
 
-      alert('Selected predictions deleted successfully');
+      alert('Success: Selected predictions deleted successfully.');
       setSelectedPredictions([]);
       loadData();
     } catch (error) {
-      alert('Failed to delete selected predictions');
+      alert('Error: Failed to delete selected predictions.');
     }
   };
 
