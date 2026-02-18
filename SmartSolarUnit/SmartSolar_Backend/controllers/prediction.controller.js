@@ -138,6 +138,24 @@ export const getMonthlyTotal = async (req, res) => {
   }
 };
 
+export const getMonthlyBreakdown = async (req, res) => {
+  try {
+    const { customerName, siteId } = req.params;
+    const breakdown = await PredictionModel.getLast12MonthsBreakdown(customerName, siteId);
+    res.json({
+      success: true,
+      data: breakdown,
+      count: breakdown.length
+    });
+  } catch (error) {
+    console.error('Get monthly breakdown error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch monthly breakdown'
+    });
+  }
+};
+
 export const getSummary = async (req, res) => {
   try {
     const { customerName, siteId } = req.params;

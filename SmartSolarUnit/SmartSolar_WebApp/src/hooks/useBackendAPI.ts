@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { sitesAPI, sensorsAPI, predictionsAPI } from "@/lib/api";
-import { SensorData, PredictionData, SolarSite } from "@/types/solar";
+import { sitesAPI, sensorsAPI, predictionsAPI, weatherAPI } from "@/lib/api";
+import { SensorData, PredictionData, SolarSite, WeatherSeasonal, PredictionMonthlyBreakdownItem } from "@/types/solar";
 
 // Hook for all solar sites with realtime polling
 export const useSolarSites = (pollInterval: number = 5000) => {
@@ -105,8 +105,8 @@ export const useSensorData = (deviceId: string | null, pollInterval: number = 50
         timestamp: reading.timestamp,
         ...reading,
       }));
-      
-      setData(formattedData.sort((a, b) => 
+
+      setData(formattedData.sort((a, b) =>
         new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
       ));
       setError(null);
@@ -162,10 +162,10 @@ export const usePredictionData = (
     try {
       // Fetch summary which includes daily, monthly, and latest
       const summary = await predictionsAPI.getSummary(customerName, siteId);
-      
+
       // Fetch recent predictions for chart data
       const allPredictions = await predictionsAPI.getAll(customerName, siteId);
-      
+
       // Transform API response
       const formattedData: PredictionData[] = allPredictions
         .slice(-288) // Last 24 hours at 5-min intervals
@@ -176,6 +176,13 @@ export const usePredictionData = (
           unit: pred.unit || "kWh",
           device_id: pred.device_id || "",
           panel_area_m2: pred.panel_area_m2 || 0,
+          features_used: pred.features_used || {
+            dust_level: 0,
+            humidity: 0,
+            irradiance: 0,
+            rainfall: 0,
+            temperature: 0,
+          },
         }));
 
       setData(formattedData);
@@ -212,5 +219,74 @@ export const usePredictionData = (
   }, [customerName, siteId, pollInterval]);
 
   return { data, dailyTotal, monthlyTotal, loading, error };
+};
+
+// Hook for weather seasonal trends (last 12 months temperature/precipitation by month)
+export const useWeatherSeasonal = (
+  lat: number | null | undefined,
+  lon: number | null | undefined,
+  pollInterval: number = 300000 // 5 min
+) => {
+  const [data, setData] = useState<WeatherSeasonal | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  const fetchSeasonal = async () => {
+    try {
+      const result = await weatherAPI.getSeasonal(lat ?? undefined, lon ?? undefined);
+      setData(result);
+      setError(null);
+    } catch (err: any) {
+      setError(err.message || "Failed to fetch seasonal weather");
+      setData(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSeasonal();
+    intervalRef.current = setInterval(fetchSeasonal, pollInterval);
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [lat, lon, pollInterval]);
+
+  return { data, loading, error };
+};
+
+// Hook for prediction monthly breakdown (last 12 months kWh per month)
+export const usePredictionMonthlyBreakdown = (
+  customerName: string | null,
+  siteId: string | null
+) => {
+  const [data, setData] = useState<PredictionMonthlyBreakdownItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!customerName || !siteId) {
+      setData([]);
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    predictionsAPI
+      .getMonthlyBreakdown(customerName, siteId)
+      .then((res) => {
+        if (!cancelled) setData(res);
+      })
+      .catch((err: any) => {
+        if (!cancelled) setError(err.message || "Failed to fetch monthly breakdown");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [customerName, siteId]);
+
+  return { data, loading, error };
 };
 

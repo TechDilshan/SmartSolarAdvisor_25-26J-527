@@ -206,5 +206,40 @@ export const predictionsAPI = {
       `/predictions/${customerName}/${siteId}/range?startDate=${startDate}&endDate=${endDate}`
     );
   },
+  getMonthlyBreakdown: async (customerName: string, siteId: string) => {
+    return apiRequest<Array<{
+      yearMonth: string;
+      yearMonthLabel: string;
+      month: number;
+      year: number;
+      totalKwh: number;
+      readingsCount: number;
+    }>>(`/predictions/${customerName}/${siteId}/monthly-breakdown`);
+  },
+};
+
+// Weather API (seasonal trend forecasting)
+export const weatherAPI = {
+  getCurrent: async (lat?: number, lon?: number) => {
+    const params = new URLSearchParams();
+    if (lat != null) params.append("lat", String(lat));
+    if (lon != null) params.append("lon", String(lon));
+    const q = params.toString();
+    return apiRequest<any>(`/weather/current${q ? `?${q}` : ""}`);
+  },
+  getForecast: async (lat?: number, lon?: number, days: number = 7) => {
+    const params = new URLSearchParams();
+    if (lat != null) params.append("lat", String(lat));
+    if (lon != null) params.append("lon", String(lon));
+    params.append("days", String(days));
+    return apiRequest<any>(`/weather/forecast?${params}`);
+  },
+  getSeasonal: async (lat?: number, lon?: number) => {
+    const params = new URLSearchParams();
+    if (lat != null) params.append("lat", String(lat));
+    if (lon != null) params.append("lon", String(lon));
+    const q = params.toString();
+    return apiRequest<any>(`/weather/seasonal${q ? `?${q}` : ""}`);
+  },
 };
 

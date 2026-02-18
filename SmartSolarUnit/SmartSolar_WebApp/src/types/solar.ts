@@ -11,6 +11,12 @@ export interface SolarSite {
   inverter_capacity_kw: number;
   status: "running" | "completed" | "maintenance";
   created_at: string;
+  /** Optional: for weather and seasonal trends (latitude) */
+  latitude?: number;
+  /** Optional: for weather and seasonal trends (longitude) */
+  longitude?: number;
+  /** Optional: display name for location */
+  city?: string;
 }
 
 // Sensor Data Types
@@ -87,4 +93,57 @@ export interface AdminUser {
   email: string;
   role: "admin" | "site_owner";
   name?: string;
+}
+
+// Weather API types (seasonal trend forecasting)
+export interface WeatherCurrent {
+  temperature: number | null;
+  humidity: number | null;
+  precipitation: number | null;
+  weather_code: number | null;
+  cloud_cover: number | null;
+  time: string;
+  latitude: number;
+  longitude: number;
+  timezone: string;
+}
+
+export interface WeatherForecastDay {
+  date: string;
+  temperature_2m_max: number | null;
+  temperature_2m_min: number | null;
+  precipitation_sum: number | null;
+  weather_code: number | null;
+}
+
+export interface WeatherForecast {
+  latitude: number;
+  longitude: number;
+  timezone: string;
+  daily: WeatherForecastDay[];
+}
+
+export interface WeatherMonthlyTrend {
+  yearMonth: string;
+  monthName: string;
+  year: number;
+  month: number;
+  avgTemperature: number | null;
+  precipitationSum: number;
+}
+
+export interface WeatherSeasonal {
+  latitude: number;
+  longitude: number;
+  timezone: string;
+  monthly: WeatherMonthlyTrend[];
+}
+
+export interface PredictionMonthlyBreakdownItem {
+  yearMonth: string;
+  yearMonthLabel: string;
+  month: number;
+  year: number;
+  totalKwh: number;
+  readingsCount: number;
 }

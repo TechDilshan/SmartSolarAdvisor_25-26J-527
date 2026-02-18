@@ -1,6 +1,6 @@
 import { Router } from 'express';
 
-import { getSummary, getDailyTotal, getMonthlyTotal, getAll, getLatest, getByRange } from '../controllers/prediction.controller.js';
+import { getSummary, getDailyTotal, getMonthlyTotal, getAll, getLatest, getByRange, getMonthlyBreakdown } from '../controllers/prediction.controller.js';
 import { verifyToken } from '../middleware/auth.middleware.js';
 
 const router = Router();
@@ -13,6 +13,9 @@ router.get('/:customerName/:siteId/daily', verifyToken, getDailyTotal);
 
 // Get monthly total
 router.get('/:customerName/:siteId/monthly', verifyToken, getMonthlyTotal);
+
+// Get last 12 months breakdown (for seasonal trends)
+router.get('/:customerName/:siteId/monthly-breakdown', verifyToken, getMonthlyBreakdown);
 
 // Get all predictions for a site
 router.get('/:customerName/:siteId', verifyToken, getAll);
