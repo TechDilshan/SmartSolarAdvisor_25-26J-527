@@ -48,7 +48,7 @@ def create_app(config_name=None):
         app,
         resources={r"/api/*": {"origins": "http://localhost:3000"}},
         supports_credentials=True,
-        methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+        methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
     )
 
     # Initialize extensions
