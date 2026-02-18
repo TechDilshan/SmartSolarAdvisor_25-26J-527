@@ -91,7 +91,7 @@ function App() {
         return;
       }
 
-      const response = await axios.get('http://localhost:5000/api/devices', {
+      const response = await axios.get('http://localhost:5001/api/devices', {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -196,7 +196,7 @@ function App() {
 
       // Call the same refresh endpoint used in AddDevice.js
       await axios.post(
-        `http://localhost:5000/api/devices/${selectedDevice._id}/refresh`,
+        `http://localhost:5001/api/devices/${selectedDevice._id}/refresh`,
         {},
         {
           headers: { Authorization: `Bearer ${token}` }
@@ -219,7 +219,46 @@ function App() {
     const inactiveClasses = "text-slate-600 hover:bg-slate-50 hover:text-blue-600 border-r-0";
     return activeTab === tabName ? `${baseClasses} ${activeClasses}` : `${baseClasses} ${inactiveClasses}`;
   };
-  
+
+  /* New function to fetch live data from the proxy route */
+  const fetchLiveSolaxData = async () => {
+    try {
+      const response = await axios.get('http://localhost:5001/api/solax/realtime');
+      console.log('Live Solax Data:', response.data);
+
+      if (response.data && response.data.success && response.data.result) {
+        const liveData = response.data.result;
+
+        // Map Solax API response to valid state structure
+        // Note: Field names from Solax API might differ, adjusting based on common patterns or result object
+        // Assuming result structure: { acpower, yieldtoday, yieldtotal, ... } or needs mapping
+        // If exact fields are unknown, we map what looks standard.
+        // Assuming Solax returns: acpower, yieldtoday, yieldtotal, inverterType, inverterStatus, uploadTime, batPower, etc.
+
+        setSolarData(prev => ({
+          ...prev,
+          acpower: liveData.acpower || 0,
+          yieldtoday: liveData.yieldtoday || 0,
+          yieldtotal: liveData.yieldtotal || 0,
+          consumeenergy: liveData.consumeenergy || 0,
+          inverterSN: liveData.inverterSN || prev.inverterSN,
+          sn: liveData.sn || prev.sn, // or check if result has 'sn'
+          inverterType: liveData.inverterType || prev.inverterType,
+          inverterStatus: liveData.inverterStatus || prev.inverterStatus,
+          uploadTime: liveData.uploadTime || prev.uploadTime,
+          batPower: liveData.batPower || 0,
+          powerdc1: liveData.powerdc1 || 0,
+          powerdc2: liveData.powerdc2 || 0,
+          powerdc3: liveData.powerdc3 || 0,
+          powerdc4: liveData.powerdc4 || 0,
+          soc: liveData.soc || 0
+        }));
+      }
+    } catch (error) {
+      console.error('Failed to fetch live Solax data:', error);
+    }
+  };
+
   useEffect(() => {
     const token = localStorage.getItem('token');
     const userEmail = localStorage.getItem('userEmail');
@@ -230,6 +269,7 @@ function App() {
     }
 
     fetchDevices();
+    fetchLiveSolaxData(); // Initial fetch
   }, []);
 
   useEffect(() => {
@@ -237,6 +277,7 @@ function App() {
 
     const interval = setInterval(() => {
       fetchDevices();
+      fetchLiveSolaxData(); // Periodic fetch
     }, 30000);
 
     return () => clearInterval(interval);
@@ -449,19 +490,19 @@ function App() {
                               <stop offset="50%" stopColor="#fbbf24" stopOpacity="0.8" />
                               <stop offset="100%" stopColor="#ef4444" stopOpacity="0.8" />
                             </linearGradient>
-                            
+
                             {/* Shadow filter */}
                             <filter id="shadow">
-                              <feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.3"/>
+                              <feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.3" />
                             </filter>
-                            
+
                             {/* Gradient for background arc */}
                             <linearGradient id="bgArc" x1="0%" y1="0%" x2="100%" y2="0%">
                               <stop offset="0%" stopColor="#f1f5f9" />
                               <stop offset="100%" stopColor="#e2e8f0" />
                             </linearGradient>
                           </defs>
-                          
+
                           {/* Background semicircle with gradient */}
                           <path
                             d="M 24 128 A 112 112 0 0 1 256 128"
@@ -471,7 +512,7 @@ function App() {
                             strokeLinecap="round"
                             filter="url(#shadow)"
                           />
-                          
+
                           {/* Colored zone indicators */}
                           {[...Array(6)].map((_, i) => {
                             const startAngle = Math.PI - ((i + 1) * Math.PI / 6);
@@ -494,7 +535,7 @@ function App() {
                               />
                             );
                           })}
-                          
+
                           {/* Main divisions (6 parts) - thicker and more visible */}
                           {[...Array(7)].map((_, i) => {
                             const angle = Math.PI - (i * Math.PI / 6);
@@ -515,7 +556,7 @@ function App() {
                               />
                             );
                           })}
-                          
+
                           {/* Subdivisions (10 parts per main division = 60 total) */}
                           {[...Array(61)].map((_, i) => {
                             if (i % 10 === 0) return null; // Skip main divisions
@@ -538,7 +579,7 @@ function App() {
                               />
                             );
                           })}
-                          
+
                           {/* Progress arc with gradient */}
                           {(() => {
                             const powerValue = Math.min(solarData.acpower / 1000, 6);
@@ -559,7 +600,7 @@ function App() {
                               />
                             );
                           })()}
-                          
+
                           {/* Needle */}
                           {(() => {
                             const powerValue = Math.min(solarData.acpower / 1000, 6);
@@ -567,7 +608,7 @@ function App() {
                             const needleLength = 85;
                             const x = 140 + needleLength * Math.cos(angle);
                             const y = 128 - needleLength * Math.sin(angle);
-                            
+
                             // Calculate needle polygon (arrow shape)
                             const perpAngle = angle + Math.PI / 2;
                             const tipX = x;
@@ -581,7 +622,7 @@ function App() {
                             const p2y = baseY - width * Math.sin(perpAngle);
                             const p3x = tipX - 3 * Math.cos(angle);
                             const p3y = tipY + 3 * Math.sin(angle);
-                            
+
                             return (
                               <g>
                                 {/* Needle shadow */}
@@ -604,7 +645,7 @@ function App() {
                               </g>
                             );
                           })()}
-                          
+
                           {/* Labels for 6 main divisions */}
                           {[...Array(7)].map((_, i) => {
                             const angle = Math.PI - (i * Math.PI / 6);
@@ -623,7 +664,7 @@ function App() {
                               </text>
                             );
                           })}
-                          
+
                           {/* Unit label */}
                           <text
                             x="140"

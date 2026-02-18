@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import axios from 'axios';
 import { toast, ToastContainer } from 'react-toastify';
@@ -27,7 +27,7 @@ const Login = () => {
 
     try {
       const response = await axios.post(
-        'http://localhost:5000/api/auth/login',
+        'http://localhost:5001/api/auth/login',
         formData,
         { headers: { 'Content-Type': 'application/json' } }
       );
@@ -96,7 +96,7 @@ const Login = () => {
           </button>
         </form>
         <p className="text-center mt-4">
-          Don’t have an account? <a href="/register" className="text-blue-600 hover:underline">Register</a>
+          Don’t have an account? <Link to="/register" className="text-blue-600 hover:underline">Register</Link>
         </p>
       </div>
     </div>
