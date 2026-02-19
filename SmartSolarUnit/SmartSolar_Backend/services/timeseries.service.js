@@ -2,7 +2,7 @@
  * Time-series forecast via Python ML engine (Prophet / SARIMA).
  */
 
-const PYTHON_ML_ENGINE_URL = process.env.PYTHON_ML_ENGINE_URL || 'http://localhost:8000';
+const PYTHON_ML_ENGINE_URL = process.env.PYTHON_ML_ENGINE_URL || 'http://localhost:8085';
 
 export async function getTimeSeriesForecast(dailyData, periods = 30, useSarima = false) {
   try {

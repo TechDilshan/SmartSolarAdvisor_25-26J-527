@@ -325,3 +325,97 @@ function buildExplanationText(explanation) {
   }
   return lines.join(' ');
 }
+
+/**
+ * Build a global XAI text summary across many days of collected data.
+ * Uses Firebase predictions + weather-based low-day explanations.
+ */
+export async function getGlobalXaiSummary(
+  customerName,
+  siteId,
+  days = 30,
+  threshold = LOW_PREDICTION_THRESHOLD
+) {
+  const lowData = await getLowPredictionDates(customerName, siteId, days, threshold);
+
+  const { lowPredictionDays, averageDailyKwh, daysAnalyzed, threshold: thresholdPct } = lowData;
+
+  if (!lowPredictionDays || lowPredictionDays.length === 0) {
+    return {
+      summaryText: `Across the last ${daysAnalyzed} day(s), average predicted daily energy was ` +
+        `${averageDailyKwh.toFixed(2)} kWh. No days fell below the low threshold of ${thresholdPct.toFixed(
+          1
+        )}% of average. Generation has been within normal range for the analyzed period.`,
+      daysAnalyzed,
+      lowDaysCount: 0,
+      factorsSummary: [],
+      lowPredictionDays,
+    };
+  }
+
+  // Aggregate factors across all low days
+  const factorStats = {};
+  lowPredictionDays.forEach((day) => {
+    (day.factors || []).forEach((f) => {
+      const key = f.name || "Unknown";
+      if (!factorStats[key]) {
+        factorStats[key] = {
+          name: key,
+          count: 0,
+          impacts: new Set(),
+        };
+      }
+      factorStats[key].count += 1;
+      if (f.impact) {
+        factorStats[key].impacts.add(f.impact);
+      }
+    });
+  });
+
+  const factorsSummary = Object.values(factorStats)
+    .map((f) => ({
+      name: f.name,
+      count: f.count,
+      impacts: Array.from(f.impacts),
+    }))
+    .sort((a, b) => b.count - a.count);
+
+  const lines = [];
+  lines.push(
+    `Explainable AI summary for low generation days over the last ${daysAnalyzed} day(s).`
+  );
+  lines.push(
+    `Average predicted daily energy across this period was ${averageDailyKwh.toFixed(
+      2
+    )} kWh. Days below ${thresholdPct.toFixed(
+      1
+    )}% of this average are treated as "low generation" days.`
+  );
+  lines.push(
+    `The system detected ${lowPredictionDays.length} low generation day(s) driven by weather and environmental conditions.`
+  );
+
+  if (factorsSummary.length > 0) {
+    lines.push("Main recurring reasons for low generation:");
+    factorsSummary.forEach((f) => {
+      lines.push(
+        `• ${f.name} (appeared on ${f.count} low day(s), impact level(s): ${f.impacts.join(
+          ", "
+        )})`
+      );
+    });
+  }
+
+  lines.push("Day-by-day explanations:");
+  lowPredictionDays.forEach((d) => {
+    lines.push(`- ${d.date}: ${d.explanationText}`);
+  });
+
+  return {
+    summaryText: lines.join(" "),
+    daysAnalyzed,
+    lowDaysCount: lowPredictionDays.length,
+    factorsSummary,
+    lowPredictionDays,
+  };
+}

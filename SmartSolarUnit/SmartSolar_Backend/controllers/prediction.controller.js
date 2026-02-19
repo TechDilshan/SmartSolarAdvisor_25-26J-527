@@ -1,3 +1,5 @@
+// prediction.controller.js  (fixed - TypeScript annotations removed)
+
 import PredictionModel from '../models/prediction.model.js';
 
 export const getAll = async (req, res) => {
@@ -163,8 +165,6 @@ export const getSummary = async (req, res) => {
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0].replace(/-/g, '');
     
-    // Use last 30 days total instead of current calendar month
-    // This handles year boundaries correctly (e.g., Jan 1st will include Dec data)
     const [dailyTotal, monthlyTotal, latestPrediction] = await Promise.all([
       PredictionModel.getDailyTotal(customerName, siteId, todayStr),
       PredictionModel.getLast30DaysTotal(customerName, siteId),
@@ -310,6 +310,45 @@ export const getLowPredictionDates = async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to get low prediction dates'
+    });
+  }
+};
+
+export const getGlobalXaiSummary = async (req, res) => {
+  try {
+    const { customerName, siteId } = req.params;
+    const { days, threshold } = req.query;
+
+    let daysToAnalyze;
+
+    const SiteModel = (await import('../models/site.model.js')).default;
+    const site = await SiteModel.getById(siteId);
+    if (site?.created_at) {
+      const start = new Date(site.created_at);
+      const now = new Date();
+      const diffMs = now.getTime() - start.getTime();
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1;
+      daysToAnalyze = Math.max(1, diffDays);
+    } else if (days) {
+      daysToAnalyze = Math.max(1, parseInt(days, 10));
+    } else {
+      daysToAnalyze = 30;
+    }
+
+    const explanationService = await import('../services/explanation.service.js');
+    const data = await explanationService.getGlobalXaiSummary(
+      customerName,
+      siteId,
+      daysToAnalyze,
+      threshold ? parseFloat(threshold) : undefined
+    );
+
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error('Get global XAI summary error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get global XAI summary',
     });
   }
 };

@@ -3,7 +3,7 @@
  * This service communicates with the Python ML engine for explainability
  */
 
-const PYTHON_ML_ENGINE_URL = process.env.PYTHON_ML_ENGINE_URL || 'http://localhost:8000';
+const PYTHON_ML_ENGINE_URL = process.env.PYTHON_ML_ENGINE_URL || 'http://localhost:8085';
 const ENABLE_SHAP = process.env.ENABLE_SHAP !== 'false';
 const ENABLE_LIME = process.env.ENABLE_LIME !== 'false';
 

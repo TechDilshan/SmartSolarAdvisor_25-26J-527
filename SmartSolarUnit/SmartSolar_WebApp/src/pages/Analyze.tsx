@@ -5,12 +5,12 @@ import {
   useWeatherSeasonal,
   usePredictionMonthlyBreakdown,
   useFullYearForecast,
-  useLowPredictionDates,
   useFeatureImportance,
   useDailyAnalysis,
   useTimeSeriesForecast,
 } from "@/hooks/useBackendAPI";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import { FullYearForecastChart } from "@/components/dashboard/FullYearForecastChart";
 import { FeatureImportanceChart } from "@/components/dashboard/FeatureImportanceChart";
 import {
@@ -72,28 +72,35 @@ const Analyze: React.FC = () => {
     selectedSite?.latitude,
     selectedSite?.longitude
   );
-  const { data: lowPredictionData, loading: lowPredictionLoading } = useLowPredictionDates(
-    customerName,
-    siteId,
-    30
-  );
   const { data: featureImportance, loading: importanceLoading } = useFeatureImportance(
     customerName,
     siteId
   );
-  const { data: dailyAnalysis, loading: dailyAnalysisLoading } = useDailyAnalysis(
+  const {
+    data: dailyAnalysis,
+    loading: dailyAnalysisLoading,
+    refetch: refetchDailyAnalysis,
+  } = useDailyAnalysis(
     customerName,
     siteId,
     undefined,
     true
   );
-  const { data: timeSeriesForecast, loading: timeSeriesLoading } = useTimeSeriesForecast(
-    customerName,
-    siteId,
-    90,
-    30,
-    "prophet"
-  );
+  const historyDays =
+    selectedSite?.created_at
+      ? Math.max(
+          7,
+          Math.floor(
+            (new Date().getTime() - new Date(selectedSite.created_at).getTime()) /
+              (1000 * 60 * 60 * 24)
+          ) + 1
+        )
+      : 90;
+  const {
+    data: timeSeriesForecast,
+    loading: timeSeriesLoading,
+    refetch: refetchTimeSeries,
+  } = useTimeSeriesForecast(customerName, siteId, historyDays, 30, "prophet");
 
   const seasonalChartData = useMemo(() => {
     const weatherByMonth = new Map(
@@ -114,9 +121,9 @@ const Analyze: React.FC = () => {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Analyze</h1>
+          <h1 className="text-2xl font-bold text-foreground">Unit Prediction AI</h1>
           <p className="text-muted-foreground">
-            Seasonal trends, full-year forecast, low prediction explanations, and XAI
+            Daily energy generation and AI predictions using your realtime Firebase data.
           </p>
         </div>
 
@@ -149,7 +156,7 @@ const Analyze: React.FC = () => {
 
         {selectedSite && (
           <Tabs defaultValue="daily" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 lg:grid-cols-7">
+            <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5">
               <TabsTrigger value="daily" className="flex items-center gap-2">
                 <Activity className="w-4 h-4" />
                 Daily
@@ -166,17 +173,9 @@ const Analyze: React.FC = () => {
                 <Calendar className="w-4 h-4" />
                 Full Year
               </TabsTrigger>
-              <TabsTrigger value="low" className="flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4" />
-                Low Units
-              </TabsTrigger>
               <TabsTrigger value="importance" className="flex items-center gap-2">
                 <BarChart3 className="w-4 h-4" />
                 Importance
-              </TabsTrigger>
-              <TabsTrigger value="xai" className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4" />
-                XAI
               </TabsTrigger>
             </TabsList>
 
@@ -184,11 +183,21 @@ const Analyze: React.FC = () => {
               <div className="p-6 rounded-xl bg-card border border-border">
                 <h3 className="text-lg font-semibold text-foreground mb-2 flex items-center gap-2">
                   <Activity className="w-5 h-5" />
-                  Daily Analysis (Realtime Collected Results)
+                  Daily Energy Generation (Realtime Collected Results)
                 </h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Today's aggregated predictions with XAI explanation
-                </p>
+                <div className="flex items-center justify-between gap-4 mb-4">
+                  <p className="text-sm text-muted-foreground">
+                    Today's aggregated predictions with AI explanation from your latest sensor data.
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => refetchDailyAnalysis()}
+                    disabled={dailyAnalysisLoading}
+                  >
+                    Refresh Daily Results
+                  </Button>
+                </div>
                 {dailyAnalysisLoading ? (
                   <div className="min-h-[200px] flex items-center justify-center text-muted-foreground">
                     Loading realtime data...
@@ -268,9 +277,20 @@ const Analyze: React.FC = () => {
                   <TrendingUp className="w-5 h-5" />
                   Time-Series Forecast (Prophet)
                 </h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Prophet-based forecast using last 90 days of daily data
-                </p>
+                <div className="flex items-center justify-between gap-4 mb-4">
+                  <p className="text-sm text-muted-foreground">
+                    Forecast trained on your collected daily energy from{" "}
+                    {selectedSite?.created_at || "the first available day"} up to today.
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => refetchTimeSeries()}
+                    disabled={timeSeriesLoading}
+                  >
+                    Generate Forecast
+                  </Button>
+                </div>
                 {timeSeriesLoading ? (
                   <div className="h-96 flex items-center justify-center text-muted-foreground">
                     Computing Prophet forecast...
@@ -455,102 +475,11 @@ const Analyze: React.FC = () => {
               <FullYearForecastChart data={fullYearForecast} loading={forecastLoading} />
             </TabsContent>
 
-            <TabsContent value="low" className="mt-6">
-              <div className="p-6 rounded-xl bg-card border border-border">
-                <h3 className="text-lg font-semibold text-foreground mb-2 flex items-center gap-2">
-                  <AlertTriangle className="w-5 h-5" />
-                  Low Unit Prediction Dates – Explanations
-                </h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Days when predicted energy was below threshold, with full text explanations
-                </p>
-                {lowPredictionLoading ? (
-                  <div className="min-h-[200px] flex items-center justify-center text-muted-foreground">
-                    Loading…
-                  </div>
-                ) : !lowPredictionData?.lowPredictionDays?.length ? (
-                  <div className="min-h-[200px] flex items-center justify-center text-muted-foreground">
-                    No low prediction days in the analyzed period (last 30 days). Predictions are within normal range.
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                      Average daily: {lowPredictionData.averageDailyKwh} kWh · Threshold: {lowPredictionData.threshold}% · Found {lowPredictionData.count} low day(s)
-                    </p>
-                    {lowPredictionData.lowPredictionDays.map((day: any) => (
-                      <div
-                        key={day.date}
-                        className="p-4 rounded-lg bg-muted/50 border border-border"
-                      >
-                        <div className="font-medium text-foreground mb-1">
-                          {day.date} — {day.predictedKwh.toFixed(2)} kWh ({day.percentage}% of average)
-                        </div>
-                        <p className="text-sm text-foreground whitespace-pre-wrap">
-                          {day.explanationText}
-                        </p>
-                        {day.recommendations?.length > 0 && (
-                          <ul className="mt-2 list-disc list-inside text-sm text-muted-foreground">
-                            {day.recommendations.map((r: string, i: number) => (
-                              <li key={i}>{r}</li>
-                            ))}
-                          </ul>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-
             <TabsContent value="importance" className="mt-6">
               <FeatureImportanceChart
                 data={featureImportance}
                 loading={importanceLoading}
               />
-            </TabsContent>
-
-            <TabsContent value="xai" className="mt-6">
-              <div className="p-6 rounded-xl bg-card border border-border">
-                <h3 className="text-lg font-semibold text-foreground mb-2 flex items-center gap-2">
-                  <Sparkles className="w-5 h-5" />
-                  Explainable AI (XAI)
-                </h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Explanations for low unit prediction days — why generation was lower (weather, dust, irradiance, etc.)
-                </p>
-                {lowPredictionLoading ? (
-                  <div className="min-h-[200px] flex items-center justify-center text-muted-foreground">
-                    Loading…
-                  </div>
-                ) : !lowPredictionData?.lowPredictionDays?.length ? (
-                  <div className="min-h-[200px] flex items-center justify-center text-muted-foreground">
-                    No low prediction days to explain. All days are within normal range.
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                      Text explanations for each low prediction date:
-                    </p>
-                    {lowPredictionData.lowPredictionDays.map((day: any) => (
-                      <div
-                        key={day.date}
-                        className="p-4 rounded-lg bg-muted/50 border border-border"
-                      >
-                        <div className="font-medium text-foreground mb-2">{day.date}</div>
-                        <p className="text-sm text-foreground">{day.explanationText}</p>
-                        {day.factors?.length > 0 && (
-                          <div className="mt-2 text-sm">
-                            <span className="text-muted-foreground">Factors: </span>
-                            {day.factors
-                              .map((f: any) => `${f.name} (${f.impact})`)
-                              .join(", ")}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
             </TabsContent>
           </Tabs>
         )}

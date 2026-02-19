@@ -328,5 +328,21 @@ export const explainabilityAPI = {
     const q = params.toString();
     return apiRequest<any>(`/predictions/${customerName}/${siteId}/timeseries-forecast${q ? `?${q}` : ""}`);
   },
+  getGlobalXaiSummary: async (
+    customerName: string,
+    siteId: string,
+    days?: number
+  ) => {
+    const params = new URLSearchParams();
+    if (days != null) params.append("days", String(days));
+    const q = params.toString();
+    return apiRequest<{
+      summaryText: string;
+      daysAnalyzed: number;
+      lowDaysCount: number;
+      factorsSummary: Array<{ name: string; count: number; impacts: string[] }>;
+      lowPredictionDays: any[];
+    }>(`/predictions/${customerName}/${siteId}/xai-summary${q ? `?${q}` : ""}`);
+  },
 };
 
