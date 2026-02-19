@@ -132,7 +132,7 @@
 
 // //   try {
 // //     const userfind = await User.findOne({ email: email });
-    
+//     
 // //     if (!userfind) {
 // //       return res.status(404).json({ status: 404, message: "User not found" });
 // //     }
@@ -140,7 +140,7 @@
 // //     const token = jwt.sign({ _id: userfind._id }, keysecret, {
 // //       expiresIn: "520s"
 // //     });
-    
+//     
 // //     const setusertoken = await User.findByIdAndUpdate({_id:userfind._id}, {verifytoken:token},{new:true})
 
 // //     if(setusertoken){
@@ -289,7 +289,7 @@
 //       res.status(200).json({ message: 'Logged out successfully' });
 //     });
 //   };
-  
+
 const User = require('../Models/Users');
 const jwt = require('jsonwebtoken');
 
@@ -419,7 +419,7 @@ exports.getCurrentUser = async (req, res) => {
   try {
     // req.user.id comes from authMiddleware
     const user = await User.findById(req.user.id).select('-password');
-    
+
     if (!user) {
       return res.status(404).json({
         success: false,

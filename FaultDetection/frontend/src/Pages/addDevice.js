@@ -287,7 +287,7 @@ function AddDevice() {
       setLoading(true);
       const token = localStorage.getItem("token");
 
-      const response = await axios.get("http://localhost:5000/api/devices", {
+      const response = await axios.get("http://localhost:5001/api/devices", {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -329,7 +329,7 @@ function AddDevice() {
       const token = localStorage.getItem("token");
 
       const response = await axios.post(
-        "http://localhost:5000/api/devices/add",
+        "http://localhost:5001/api/devices/add",
         formData,
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -366,7 +366,7 @@ function AddDevice() {
       const token = localStorage.getItem("token");
 
       const response = await axios.post(
-        `http://localhost:5000/api/devices/${deviceId}/refresh`,
+        `http://localhost:5001/api/devices/${deviceId}/refresh`,
         {},
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -392,7 +392,7 @@ function AddDevice() {
     try {
       const token = localStorage.getItem("token");
 
-      await axios.delete(`http://localhost:5000/api/devices/${deviceId}`, {
+      await axios.delete(`http://localhost:5001/api/devices/${deviceId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -597,9 +597,8 @@ function AddDevice() {
                         title="Refresh data"
                       >
                         <RefreshCw
-                          className={`w-5 h-5 ${
-                            refreshing === device._id ? "animate-spin" : ""
-                          }`}
+                          className={`w-5 h-5 ${refreshing === device._id ? "animate-spin" : ""
+                            }`}
                         />
                       </button>
                       <button

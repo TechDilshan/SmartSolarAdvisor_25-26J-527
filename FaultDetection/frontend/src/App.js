@@ -91,7 +91,7 @@ function App() {
         return;
       }
 
-      const response = await axios.get('http://localhost:5000/api/devices', {
+      const response = await axios.get('http://localhost:5001/api/devices', {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -196,7 +196,7 @@ function App() {
 
       // Call the same refresh endpoint used in AddDevice.js
       await axios.post(
-        `http://localhost:5000/api/devices/${selectedDevice._id}/refresh`,
+        `http://localhost:5001/api/devices/${selectedDevice._id}/refresh`,
         {},
         {
           headers: { Authorization: `Bearer ${token}` }
@@ -220,6 +220,45 @@ function App() {
     return activeTab === tabName ? `${baseClasses} ${activeClasses}` : `${baseClasses} ${inactiveClasses}`;
   };
 
+  /* New function to fetch live data from the proxy route */
+  const fetchLiveSolaxData = async () => {
+    try {
+      const response = await axios.get('http://localhost:5001/api/solax/realtime');
+      console.log('Live Solax Data:', response.data);
+
+      if (response.data && response.data.success && response.data.result) {
+        const liveData = response.data.result;
+
+        // Map Solax API response to valid state structure
+        // Note: Field names from Solax API might differ, adjusting based on common patterns or result object
+        // Assuming result structure: { acpower, yieldtoday, yieldtotal, ... } or needs mapping
+        // If exact fields are unknown, we map what looks standard.
+        // Assuming Solax returns: acpower, yieldtoday, yieldtotal, inverterType, inverterStatus, uploadTime, batPower, etc.
+
+        setSolarData(prev => ({
+          ...prev,
+          acpower: liveData.acpower || 0,
+          yieldtoday: liveData.yieldtoday || 0,
+          yieldtotal: liveData.yieldtotal || 0,
+          consumeenergy: liveData.consumeenergy || 0,
+          inverterSN: liveData.inverterSN || prev.inverterSN,
+          sn: liveData.sn || prev.sn, // or check if result has 'sn'
+          inverterType: liveData.inverterType || prev.inverterType,
+          inverterStatus: liveData.inverterStatus || prev.inverterStatus,
+          uploadTime: liveData.uploadTime || prev.uploadTime,
+          batPower: liveData.batPower || 0,
+          powerdc1: liveData.powerdc1 || 0,
+          powerdc2: liveData.powerdc2 || 0,
+          powerdc3: liveData.powerdc3 || 0,
+          powerdc4: liveData.powerdc4 || 0,
+          soc: liveData.soc || 0
+        }));
+      }
+    } catch (error) {
+      console.error('Failed to fetch live Solax data:', error);
+    }
+  };
+
   useEffect(() => {
     const token = localStorage.getItem('token');
     const userEmail = localStorage.getItem('userEmail');
@@ -230,6 +269,7 @@ function App() {
     }
 
     fetchDevices();
+    fetchLiveSolaxData(); // Initial fetch
   }, []);
 
   useEffect(() => {
@@ -237,6 +277,7 @@ function App() {
 
     const interval = setInterval(() => {
       fetchDevices();
+      fetchLiveSolaxData(); // Periodic fetch
     }, 30000);
 
     return () => clearInterval(interval);
@@ -443,6 +484,12 @@ function App() {
                       <div className="relative w-72 h-48 mb-4">
                         <svg className="w-72 h-48" viewBox="0 0 280 140">
                           <defs>
+                            {/* Gradient for gauge track */}
+                            <linearGradient id="gaugeTrack" x1="0%" y1="0%" x2="100%" y2="0%">
+                              <stop offset="0%" stopColor="#10b981" stopOpacity="0.8" />
+                              <stop offset="50%" stopColor="#fbbf24" stopOpacity="0.8" />
+                              <stop offset="100%" stopColor="#ef4444" stopOpacity="0.8" />
+                            </linearGradient>
 
                             {/* Shadow filter */}
                             <filter id="shadow">
@@ -467,7 +514,7 @@ function App() {
                           />
 
                           {/* Colored zone indicators */}
-                          {/* {[...Array(6)].map((_, i) => {
+                          {[...Array(6)].map((_, i) => {
                             const startAngle = Math.PI - ((i + 1) * Math.PI / 6);
                             const endAngle = Math.PI - (i * Math.PI / 6);
                             const startX = 140 + 112 * Math.cos(startAngle);
@@ -487,7 +534,7 @@ function App() {
                                 opacity="0.3"
                               />
                             );
-                          })} */}
+                          })}
 
                           {/* Main divisions (6 parts) - thicker and more visible */}
                           {[...Array(7)].map((_, i) => {
@@ -543,7 +590,7 @@ function App() {
                               <path
                                 d={`M 24 128 A 112 112 0 0 1 ${endX} ${endY}`}
                                 fill="none"
-                                stroke="#3b82f6"   
+                                stroke="url(#gaugeTrack)"
                                 strokeWidth="14"
                                 strokeLinecap="round"
                                 style={{
