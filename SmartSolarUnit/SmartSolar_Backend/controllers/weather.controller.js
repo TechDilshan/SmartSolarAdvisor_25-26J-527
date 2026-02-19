@@ -41,3 +41,19 @@ export const getSeasonal = async (req, res) => {
     });
   }
 };
+
+export const getFullYearForecast = async (req, res) => {
+  try {
+    const { customerName, siteId } = req.params;
+    const { lat, lon } = req.query;
+    const seasonalForecastService = await import('../services/seasonal_forecast.service.js');
+    const data = await seasonalForecastService.getFullYearForecast(customerName, siteId, lat, lon);
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error('Weather getFullYearForecast error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to fetch full year forecast',
+    });
+  }
+};

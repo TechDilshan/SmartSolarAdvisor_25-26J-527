@@ -157,6 +157,32 @@ class PredictionModel {
   }
 
   /**
+   * Get daily totals for the last N days (for time-series / Prophet).
+   * Returns array of { date (YYYY-MM-DD), dateStr (YYYYMMDD), totalKwh, readingsCount }.
+   */
+  async getDailyTotalsForRange(customerName, siteId, days = 90) {
+    const now = new Date();
+    const results = [];
+    for (let i = 0; i < days; i++) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const dateStr = `${y}${m}${day}`;
+      const dateLabel = `${y}-${m}-${day}`;
+      const total = await this.getDailyTotal(customerName, siteId, dateStr);
+      results.push({
+        date: dateLabel,
+        dateStr,
+        totalKwh: total.totalKwh,
+        readingsCount: total.readingsCount,
+      });
+    }
+    return results.reverse();
+  }
+
+  /**
    * Get monthly totals for the last 12 months (for seasonal trends dashboard).
    * Returns array of { yearMonth (YYYYMM), yearMonthLabel (e.g. '2024-01'), totalKwh, readingsCount }.
    */

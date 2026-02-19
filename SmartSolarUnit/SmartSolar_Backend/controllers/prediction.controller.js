@@ -187,3 +187,203 @@ export const getSummary = async (req, res) => {
     });
   }
 };
+
+export const explainLowPrediction = async (req, res) => {
+  try {
+    const { customerName, siteId } = req.params;
+    const { date, threshold } = req.query;
+    const explanationService = await import('../services/explanation.service.js');
+    const data = await explanationService.explainLowPrediction(
+      customerName,
+      siteId,
+      date,
+      threshold ? parseFloat(threshold) : undefined
+    );
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error('Explain low prediction error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to explain low prediction'
+    });
+  }
+};
+
+export const getMonthlyAdjusted = async (req, res) => {
+  try {
+    const { customerName, siteId } = req.params;
+    const { yearMonth, lat, lon } = req.query;
+    
+    if (!yearMonth) {
+      const now = new Date();
+      const currentMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const seasonalForecastService = await import('../services/seasonal_forecast.service.js');
+      const site = await import('../models/site.model.js').then(m => m.default.getById(siteId));
+      const data = await seasonalForecastService.getMonthlyAdjusted(
+        customerName,
+        siteId,
+        currentMonth,
+        lat || site?.latitude,
+        lon || site?.longitude
+      );
+      return res.json({ success: true, data });
+    }
+    
+    const seasonalForecastService = await import('../services/seasonal_forecast.service.js');
+    const site = await import('../models/site.model.js').then(m => m.default.getById(siteId));
+    const data = await seasonalForecastService.getMonthlyAdjusted(
+      customerName,
+      siteId,
+      yearMonth,
+      lat || site?.latitude,
+      lon || site?.longitude
+    );
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error('Get monthly adjusted error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get monthly adjusted prediction'
+    });
+  }
+};
+
+export const getFeatureImportance = async (req, res) => {
+  try {
+    const { customerName, siteId } = req.params;
+    const explanationService = await import('../services/explanation.service.js');
+    const data = await explanationService.getFeatureImportance(customerName, siteId);
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error('Get feature importance error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get feature importance'
+    });
+  }
+};
+
+export const getShapExplanation = async (req, res) => {
+  try {
+    const { customerName, siteId, timestamp } = req.params;
+    const xaiService = await import('../services/xai.service.js');
+    const data = await xaiService.getShapExplanation(customerName, siteId, timestamp);
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error('Get SHAP explanation error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get SHAP explanation'
+    });
+  }
+};
+
+export const getLimeExplanation = async (req, res) => {
+  try {
+    const { customerName, siteId, timestamp } = req.params;
+    const xaiService = await import('../services/xai.service.js');
+    const data = await xaiService.getLimeExplanation(customerName, siteId, timestamp);
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error('Get LIME explanation error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get LIME explanation'
+    });
+  }
+};
+
+export const getLowPredictionDates = async (req, res) => {
+  try {
+    const { customerName, siteId } = req.params;
+    const { days, threshold } = req.query;
+    const explanationService = await import('../services/explanation.service.js');
+    const data = await explanationService.getLowPredictionDates(
+      customerName,
+      siteId,
+      days ? parseInt(days, 10) : 30,
+      threshold ? parseFloat(threshold) : undefined
+    );
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error('Get low prediction dates error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get low prediction dates'
+    });
+  }
+};
+
+export const getDailyAnalysis = async (req, res) => {
+  try {
+    const { customerName, siteId } = req.params;
+    const { date, includeXai } = req.query;
+    const targetDate = date || new Date().toISOString().slice(0, 10);
+    const dateStr = targetDate.replace(/-/g, '');
+    const [dailyTotal, latestPrediction] = await Promise.all([
+      PredictionModel.getDailyTotal(customerName, siteId, dateStr),
+      PredictionModel.getLatestPrediction(customerName, siteId),
+    ]);
+    let xaiExplanation = null;
+    if (includeXai === 'true' && latestPrediction?.features_used) {
+      const xaiService = await import('../services/xai.service.js');
+      xaiExplanation = await xaiService.getShapExplanation(
+        customerName,
+        siteId,
+        latestPrediction.timestamp,
+        latestPrediction.features_used
+      );
+    }
+    res.json({
+      success: true,
+      data: {
+        date: targetDate,
+        dateStr,
+        totalKwh: dailyTotal.totalKwh,
+        readingsCount: dailyTotal.readingsCount,
+        latestPrediction: latestPrediction ? {
+          timestamp: latestPrediction.timestamp,
+          predictedKwh: latestPrediction.predicted_kwh_5min,
+          features: latestPrediction.features_used,
+        } : null,
+        xaiExplanation,
+      },
+    });
+  } catch (error) {
+    console.error('Get daily analysis error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get daily analysis',
+    });
+  }
+};
+
+export const getTimeSeriesForecast = async (req, res) => {
+  try {
+    const { customerName, siteId } = req.params;
+    const { days, periods, model } = req.query;
+    const historyDays = days ? parseInt(days, 10) : 90;
+    const forecastPeriods = periods ? parseInt(periods, 10) : 30;
+    const useSarima = model === 'sarima';
+    const dailyTotals = await PredictionModel.getDailyTotalsForRange(customerName, siteId, historyDays);
+    const timeseriesService = await import('../services/timeseries.service.js');
+    const forecast = await timeseriesService.getTimeSeriesForecast(dailyTotals, forecastPeriods, useSarima);
+    res.json({
+      success: true,
+      data: {
+        history: dailyTotals,
+        forecast: forecast.forecast || [],
+        historyData: forecast.history || [],
+        model: forecast.model || (useSarima ? 'sarima' : 'prophet'),
+        error: forecast.error || false,
+        message: forecast.message,
+      },
+    });
+  } catch (error) {
+    console.error('Get time-series forecast error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get time-series forecast',
+    });
+  }
+};

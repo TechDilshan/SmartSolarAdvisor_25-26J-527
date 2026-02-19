@@ -147,3 +147,54 @@ export interface PredictionMonthlyBreakdownItem {
   totalKwh: number;
   readingsCount: number;
 }
+
+// Full Year Forecast Types
+export interface FullYearForecastItem {
+  yearMonth: string;
+  monthName: string;
+  year: number;
+  month: number;
+  avgTemperature: number;
+  precipitationSum: number;
+  predictedSolarKwh: number;
+  baselineKwh: number;
+  adjustmentFactor: number;
+  confidence: 'high' | 'medium' | 'low';
+}
+
+export interface FullYearForecast {
+  latitude: number;
+  longitude: number;
+  systemCapacity: number;
+  historicalAverage: number;
+  forecast: FullYearForecastItem[];
+}
+
+// Low Prediction Explanation Types
+export interface ExplanationFactor {
+  name: string;
+  impact: 'high' | 'medium' | 'low';
+  value: number;
+  unit: string;
+  explanation: string;
+  contribution?: number;
+}
+
+export interface LowPredictionExplanation {
+  isLow: boolean;
+  predictedKwh: number;
+  averageKwh: number;
+  percentage: number;
+  threshold?: number;
+  factors?: ExplanationFactor[];
+  recommendations?: string[];
+  date?: string;
+  message?: string;
+}
+
+// Feature Importance Types
+export interface FeatureImportance {
+  features: Array<{ name: string; importance: number }>;
+  method: string;
+  note?: string;
+}

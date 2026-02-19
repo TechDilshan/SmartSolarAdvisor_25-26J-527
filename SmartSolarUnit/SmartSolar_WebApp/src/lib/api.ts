@@ -241,5 +241,92 @@ export const weatherAPI = {
     const q = params.toString();
     return apiRequest<any>(`/weather/seasonal${q ? `?${q}` : ""}`);
   },
+  getFullYearForecast: async (customerName: string, siteId: string, lat?: number, lon?: number) => {
+    const params = new URLSearchParams();
+    if (lat != null) params.append("lat", String(lat));
+    if (lon != null) params.append("lon", String(lon));
+    const q = params.toString();
+    return apiRequest<any>(`/weather/full-year-forecast/${customerName}/${siteId}${q ? `?${q}` : ""}`);
+  },
+};
+
+// Explainability API
+export const explainabilityAPI = {
+  explainLow: async (customerName: string, siteId: string, date?: string, threshold?: number) => {
+    const params = new URLSearchParams();
+    if (date) params.append("date", date);
+    if (threshold != null) params.append("threshold", String(threshold));
+    const q = params.toString();
+    return apiRequest<any>(`/predictions/${customerName}/${siteId}/explain-low${q ? `?${q}` : ""}`);
+  },
+  getLowPredictionDates: async (
+    customerName: string,
+    siteId: string,
+    days?: number,
+    threshold?: number
+  ) => {
+    const params = new URLSearchParams();
+    if (days != null) params.append("days", String(days));
+    if (threshold != null) params.append("threshold", String(threshold));
+    const q = params.toString();
+    return apiRequest<{
+      averageDailyKwh: number;
+      threshold: number;
+      count: number;
+      daysAnalyzed: number;
+      lowPredictionDays: Array<{
+        date: string;
+        dateStr: string;
+        predictedKwh: number;
+        averageKwh: number;
+        percentage: number;
+        factors: any[];
+        recommendations: string[];
+        explanationText: string;
+      }>;
+    }>(`/predictions/${customerName}/${siteId}/low-prediction-dates${q ? `?${q}` : ""}`);
+  },
+  getFeatureImportance: async (customerName: string, siteId: string) => {
+    return apiRequest<{
+      features: Array<{ name: string; importance: number }>;
+      method: string;
+      note?: string;
+    }>(`/predictions/${customerName}/${siteId}/feature-importance`);
+  },
+  getShapExplanation: async (customerName: string, siteId: string, timestamp: string) => {
+    return apiRequest<any>(`/predictions/${customerName}/${siteId}/explain/${timestamp}`);
+  },
+  getLimeExplanation: async (customerName: string, siteId: string, timestamp: string) => {
+    return apiRequest<any>(`/predictions/${customerName}/${siteId}/explain-lime/${timestamp}`);
+  },
+  getMonthlyAdjusted: async (customerName: string, siteId: string, yearMonth?: string, lat?: number, lon?: number) => {
+    const params = new URLSearchParams();
+    if (yearMonth) params.append("yearMonth", yearMonth);
+    if (lat != null) params.append("lat", String(lat));
+    if (lon != null) params.append("lon", String(lon));
+    const q = params.toString();
+    return apiRequest<any>(`/predictions/${customerName}/${siteId}/monthly-adjusted${q ? `?${q}` : ""}`);
+  },
+  getDailyAnalysis: async (customerName: string, siteId: string, date?: string, includeXai: boolean = false) => {
+    const params = new URLSearchParams();
+    if (date) params.append("date", date);
+    if (includeXai) params.append("includeXai", "true");
+    const q = params.toString();
+    return apiRequest<any>(`/predictions/${customerName}/${siteId}/daily-analysis${q ? `?${q}` : ""}`);
+  },
+  getTimeSeriesForecast: async (
+    customerName: string,
+    siteId: string,
+    days?: number,
+    periods?: number,
+    model?: "prophet" | "sarima"
+  ) => {
+    const params = new URLSearchParams();
+    if (days != null) params.append("days", String(days));
+    if (periods != null) params.append("periods", String(periods));
+    if (model) params.append("model", model);
+    const q = params.toString();
+    return apiRequest<any>(`/predictions/${customerName}/${siteId}/timeseries-forecast${q ? `?${q}` : ""}`);
+  },
 };
 

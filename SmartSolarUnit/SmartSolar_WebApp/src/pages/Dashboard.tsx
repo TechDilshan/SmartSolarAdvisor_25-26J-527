@@ -4,7 +4,19 @@ import { StatsCard } from "@/components/dashboard/StatsCard";
 import { LiveCounter } from "@/components/dashboard/LiveCounter";
 import { SensorChart } from "@/components/charts/SensorChart";
 import { PowerGauge } from "@/components/charts/PowerGauge";
-import { useSolarSites, useSensorData, usePredictionData, useWeatherSeasonal, usePredictionMonthlyBreakdown } from "@/hooks/useBackendAPI";
+import {
+  useSolarSites,
+  useSensorData,
+  usePredictionData,
+  useWeatherSeasonal,
+  usePredictionMonthlyBreakdown,
+  useFullYearForecast,
+  useLowPredictionExplanation,
+  useFeatureImportance,
+} from "@/hooks/useBackendAPI";
+import { LowPredictionAlert } from "@/components/dashboard/LowPredictionAlert";
+import { FullYearForecastChart } from "@/components/dashboard/FullYearForecastChart";
+import { FeatureImportanceChart } from "@/components/dashboard/FeatureImportanceChart";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   LineChart,
@@ -44,6 +56,20 @@ const Dashboard: React.FC = () => {
     runningSite?.longitude
   );
   const { data: monthlyBreakdown, loading: monthlyBreakdownLoading } = usePredictionMonthlyBreakdown(
+    runningSite?.customer_name || null,
+    runningSite?.id || null
+  );
+  const { data: fullYearForecast, loading: forecastLoading } = useFullYearForecast(
+    runningSite?.customer_name || null,
+    runningSite?.id || null,
+    runningSite?.latitude,
+    runningSite?.longitude
+  );
+  const { data: lowPredictionExplanation, loading: explanationLoading } = useLowPredictionExplanation(
+    runningSite?.customer_name || null,
+    runningSite?.id || null
+  );
+  const { data: featureImportance, loading: importanceLoading } = useFeatureImportance(
     runningSite?.customer_name || null,
     runningSite?.id || null
   );
@@ -494,6 +520,30 @@ const Dashboard: React.FC = () => {
             </div>
           )}
         </div>
+
+        {/* Low Prediction Alert */}
+        {runningSite && (
+          <LowPredictionAlert
+            explanation={lowPredictionExplanation}
+            loading={explanationLoading}
+          />
+        )}
+
+        {/* Full Year Forecast */}
+        {runningSite && (
+          <FullYearForecastChart
+            data={fullYearForecast}
+            loading={forecastLoading}
+          />
+        )}
+
+        {/* Feature Importance */}
+        {runningSite && (
+          <FeatureImportanceChart
+            data={featureImportance}
+            loading={importanceLoading}
+          />
+        )}
       </div>
     </DashboardLayout>
   );
