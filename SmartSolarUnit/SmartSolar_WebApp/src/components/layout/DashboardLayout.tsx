@@ -10,6 +10,7 @@ import {
   Menu,
   X,
   Zap,
+  LineChart as LineChartIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -17,13 +18,6 @@ import { cn } from "@/lib/utils";
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
-
-const navItems = [
-  { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { path: "/sites", icon: Sun, label: "Solar Sites" },
-  { path: "/summary", icon: BarChart3, label: "Summary" },
-  { path: "/profile", icon: User, label: "Profile" },
-];
 
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const { user, logout, isAdmin } = useAuth();
@@ -35,6 +29,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
   const adminNavItems = [
     { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { path: "/sites", icon: Sun, label: "Solar Sites" },
+    { path: "/analyze", icon: LineChartIcon, label: "Analyze" },
     { path: "/summary", icon: BarChart3, label: "Summary" },
     { path: "/profile", icon: User, label: "Profile" },
   ];
@@ -42,6 +37,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
   const siteOwnerNavItems = [
     { path: "/dashboard", icon: LayoutDashboard, label: "My Dashboard" },
     { path: "/sites", icon: Sun, label: "My Sites" },
+    { path: "/analyze", icon: LineChartIcon, label: "Analyze" },
     { path: "/profile", icon: User, label: "Profile" },
   ];
 
@@ -158,7 +154,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
             </Button>
             <div className="flex-1">
               <h2 className="text-lg font-semibold text-foreground capitalize">
-                {location.pathname.split("/").pop() || "Dashboard"}
+                {location.pathname === "/analyze" ? "Analyze" : (location.pathname.split("/").pop() || "Dashboard")}
               </h2>
             </div>
             <div className="flex items-center gap-2">

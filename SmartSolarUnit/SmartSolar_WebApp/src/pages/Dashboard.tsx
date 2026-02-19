@@ -4,8 +4,30 @@ import { StatsCard } from "@/components/dashboard/StatsCard";
 import { LiveCounter } from "@/components/dashboard/LiveCounter";
 import { SensorChart } from "@/components/charts/SensorChart";
 import { PowerGauge } from "@/components/charts/PowerGauge";
-import { useSolarSites, useSensorData, usePredictionData } from "@/hooks/useBackendAPI";
+import {
+  useSolarSites,
+  useSensorData,
+  usePredictionData,
+  useWeatherSeasonal,
+  usePredictionMonthlyBreakdown,
+  useFullYearForecast,
+  useLowPredictionExplanation,
+  useFeatureImportance,
+} from "@/hooks/useBackendAPI";
+import { LowPredictionAlert } from "@/components/dashboard/LowPredictionAlert";
+import { FullYearForecastChart } from "@/components/dashboard/FullYearForecastChart";
+import { FeatureImportanceChart } from "@/components/dashboard/FeatureImportanceChart";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
 import {
   Sun,
   Zap,
@@ -14,7 +36,9 @@ import {
   Thermometer,
   Droplets,
   Wind,
+  CloudRain,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const Dashboard: React.FC = () => {
   const { isAdmin } = useAuth();
@@ -24,6 +48,28 @@ const Dashboard: React.FC = () => {
   const runningSite = sites.find((s) => s.status === "running");
   const { data: sensorData } = useSensorData(runningSite?.device_id || null);
   const { data: predictionData, dailyTotal, monthlyTotal, loading: predictionLoading } = usePredictionData(
+    runningSite?.customer_name || null,
+    runningSite?.id || null
+  );
+  const { data: weatherSeasonal, loading: weatherSeasonalLoading } = useWeatherSeasonal(
+    runningSite?.latitude,
+    runningSite?.longitude
+  );
+  const { data: monthlyBreakdown, loading: monthlyBreakdownLoading } = usePredictionMonthlyBreakdown(
+    runningSite?.customer_name || null,
+    runningSite?.id || null
+  );
+  const { data: fullYearForecast, loading: forecastLoading } = useFullYearForecast(
+    runningSite?.customer_name || null,
+    runningSite?.id || null,
+    runningSite?.latitude,
+    runningSite?.longitude
+  );
+  const { data: lowPredictionExplanation, loading: explanationLoading } = useLowPredictionExplanation(
+    runningSite?.customer_name || null,
+    runningSite?.id || null
+  );
+  const { data: featureImportance, loading: importanceLoading } = useFeatureImportance(
     runningSite?.customer_name || null,
     runningSite?.id || null
   );
@@ -104,6 +150,23 @@ const Dashboard: React.FC = () => {
     temp: d.dht_avg?.temp_c || 0,
     humidity: d.dht_avg?.["hum_%"] || 0,
   }));
+
+  // Merge weather monthly trends with prediction monthly breakdown for seasonal chart
+  const seasonalChartData = useMemo(() => {
+    const weatherByMonth = new Map(
+      (weatherSeasonal?.monthly || []).map((m) => [m.yearMonth, m])
+    );
+    return (monthlyBreakdown || []).map((p) => {
+      const w = weatherByMonth.get(p.yearMonthLabel);
+      return {
+        month: p.yearMonthLabel,
+        label: `${p.yearMonthLabel.slice(5)}/${String(p.year).slice(2)}`,
+        avgTemp: w?.avgTemperature ?? null,
+        precipitation: w?.precipitationSum ?? 0,
+        solarKwh: Math.round(p.totalKwh * 1000) / 1000,
+      };
+    });
+  }, [weatherSeasonal?.monthly, monthlyBreakdown]);
 
   return (
     <DashboardLayout>
@@ -305,6 +368,107 @@ const Dashboard: React.FC = () => {
           />
         </div>
 
+        {/* Seasonal Trends: monthly temperature and predicted solar yield */}
+        <div
+          className={cn(
+            "p-6 rounded-xl bg-card border border-border animate-fade-in"
+          )}
+        >
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-lg font-semibold text-foreground">
+                Seasonal Trends
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Monthly average temperature (weather) and predicted solar yield — last 12 months
+              </p>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <CloudRain className="w-4 h-4" />
+              Weather + yield
+            </div>
+          </div>
+          {weatherSeasonalLoading || monthlyBreakdownLoading ? (
+            <div className="h-64 flex items-center justify-center text-muted-foreground">
+              Loading seasonal data…
+            </div>
+          ) : seasonalChartData.length === 0 ? (
+            <div className="h-64 flex items-center justify-center text-muted-foreground">
+              No monthly data yet. Add site coordinates for weather and ensure predictions exist.
+            </div>
+          ) : (
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={seasonalChartData}
+                  margin={{ top: 5, right: 50, left: 5, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis
+                    dataKey="label"
+                    stroke="hsl(var(--muted-foreground))"
+                    fontSize={12}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    yAxisId="temp"
+                    stroke="hsl(var(--chart-temperature))"
+                    fontSize={12}
+                    tickLine={false}
+                    axisLine={false}
+                    unit=" °C"
+                    label={{ value: "Avg temp (°C)", angle: -90, position: "insideLeft", style: { fontSize: 10 } }}
+                  />
+                  <YAxis
+                    yAxisId="kwh"
+                    orientation="right"
+                    stroke="hsl(var(--chart-2))"
+                    fontSize={12}
+                    tickLine={false}
+                    axisLine={false}
+                    unit=" kWh"
+                    label={{ value: "Solar (kWh)", angle: 90, position: "insideRight", style: { fontSize: 10 } }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--card))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "0.5rem",
+                      fontSize: "12px",
+                    }}
+                    formatter={(value: number, name: string) => [
+                      name === "avgTemp" ? `${value} °C` : `${value} kWh`,
+                      name === "avgTemp" ? "Avg temperature" : "Predicted solar",
+                    ]}
+                    labelFormatter={(label) => `Month: ${label}`}
+                  />
+                  <Legend />
+                  <Line
+                    yAxisId="temp"
+                    type="monotone"
+                    dataKey="avgTemp"
+                    name="Avg temperature"
+                    stroke="hsl(var(--chart-temperature))"
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                    connectNulls
+                  />
+                  <Line
+                    yAxisId="kwh"
+                    type="monotone"
+                    dataKey="solarKwh"
+                    name="Predicted solar (kWh)"
+                    stroke="hsl(var(--chart-2))"
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
+
         {/* Quick Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {sensorData.length > 0 && (
@@ -356,6 +520,30 @@ const Dashboard: React.FC = () => {
             </div>
           )}
         </div>
+
+        {/* Low Prediction Alert */}
+        {runningSite && (
+          <LowPredictionAlert
+            explanation={lowPredictionExplanation}
+            loading={explanationLoading}
+          />
+        )}
+
+        {/* Full Year Forecast */}
+        {runningSite && (
+          <FullYearForecastChart
+            data={fullYearForecast}
+            loading={forecastLoading}
+          />
+        )}
+
+        {/* Feature Importance */}
+        {runningSite && (
+          <FeatureImportanceChart
+            data={featureImportance}
+            loading={importanceLoading}
+          />
+        )}
       </div>
     </DashboardLayout>
   );

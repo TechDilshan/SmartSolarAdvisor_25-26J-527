@@ -11,6 +11,7 @@ import SolarSites from "@/pages/SolarSites";
 import SiteDetail from "@/pages/SiteDetail";
 import Summary from "@/pages/Summary";
 import Profile from "@/pages/Profile";
+import Analyze from "@/pages/Analyze";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -46,6 +47,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <SiteDetail />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/analyze"
+              element={
+                <ProtectedRoute>
+                  <Analyze />
                 </ProtectedRoute>
               }
             />
