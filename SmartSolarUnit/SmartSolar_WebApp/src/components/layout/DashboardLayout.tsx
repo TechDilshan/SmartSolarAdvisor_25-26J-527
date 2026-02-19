@@ -30,7 +30,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
   const adminNavItems = [
     { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { path: "/sites", icon: Sun, label: "Solar Sites" },
-    { path: "/analyze", icon: LineChartIcon, label: "Unit Prediction AI" },
+    { path: "/analyze", icon: LineChartIcon, label: "Seasonal Prediction" },
     { path: "/xai-insights", icon: Sparkles, label: "XAI Insights" },
     { path: "/summary", icon: BarChart3, label: "Summary" },
     { path: "/profile", icon: User, label: "Profile" },
@@ -39,7 +39,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
   const siteOwnerNavItems = [
     { path: "/dashboard", icon: LayoutDashboard, label: "My Dashboard" },
     { path: "/sites", icon: Sun, label: "My Sites" },
-    { path: "/analyze", icon: LineChartIcon, label: "Unit Prediction AI" },
+    { path: "/analyze", icon: LineChartIcon, label: "Seasonal Prediction" },
     { path: "/xai-insights", icon: Sparkles, label: "XAI Insights" },
     { path: "/profile", icon: User, label: "Profile" },
   ];
@@ -158,7 +158,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
             <div className="flex-1">
               <h2 className="text-lg font-semibold text-foreground capitalize">
                 {location.pathname === "/analyze"
-                  ? "Unit Prediction AI"
+                  ? "Seasonal Prediction"
                   : location.pathname === "/xai-insights"
                   ? "Explainable AI Summary"
                   : (location.pathname.split("/").pop() || "Dashboard")}

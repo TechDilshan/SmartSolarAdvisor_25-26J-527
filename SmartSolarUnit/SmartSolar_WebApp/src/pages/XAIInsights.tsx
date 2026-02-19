@@ -21,6 +21,7 @@ const XAIInsights: React.FC = () => {
     summaryText: string;
     daysAnalyzed: number;
     lowDaysCount: number;
+    lowPredictionDays: any[];
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,6 +48,7 @@ const XAIInsights: React.FC = () => {
         summaryText: res.summaryText,
         daysAnalyzed: res.daysAnalyzed,
         lowDaysCount: res.lowDaysCount,
+        lowPredictionDays: res.lowPredictionDays || [],
       });
     } catch (e: any) {
       setError(e.message || "Failed to generate XAI summary");
@@ -132,13 +134,42 @@ const XAIInsights: React.FC = () => {
             )}
 
             {!loadingSummary && summary && (
-              <div className="space-y-2">
-                <p className="text-xs text-muted-foreground">
-                  Days analyzed: {summary.daysAnalyzed} · Low-generation days: {summary.lowDaysCount}
-                </p>
-                <div className="p-4 rounded-lg bg-muted/40 border border-border text-sm text-foreground whitespace-pre-wrap">
-                  {summary.summaryText}
+              <div className="space-y-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">
+                    Days analyzed: {summary.daysAnalyzed} · Low-generation days: {summary.lowDaysCount}
+                  </p>
+                  <div className="p-4 rounded-lg bg-muted/40 border border-border text-sm text-foreground whitespace-pre-wrap">
+                    {summary.summaryText}
+                  </div>
                 </div>
+
+                {summary.lowPredictionDays && summary.lowPredictionDays.length > 0 && (
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold text-foreground">
+                      Low-generation days (detailed explanation)
+                    </h3>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      {summary.lowPredictionDays.map((day: any) => (
+                        <div
+                          key={day.date}
+                          className="p-4 rounded-lg bg-muted/30 border border-border space-y-2 text-sm"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="font-semibold text-foreground">{day.date}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {day.predictedKwh.toFixed(2)} kWh (
+                              {day.percentage}% of average)
+                            </div>
+                          </div>
+                          <p className="text-foreground whitespace-pre-wrap">
+                            {day.explanationText}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

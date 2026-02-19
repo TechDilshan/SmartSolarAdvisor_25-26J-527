@@ -11,8 +11,15 @@ const LOW_PREDICTION_THRESHOLD = parseFloat(process.env.LOW_PREDICTION_THRESHOLD
 
 /**
  * Analyze factors contributing to low prediction
+ * Optionally uses a pre-computed average daily kWh for the comparison window.
  */
-export async function explainLowPrediction(customerName, siteId, date, threshold = LOW_PREDICTION_THRESHOLD) {
+export async function explainLowPrediction(
+  customerName,
+  siteId,
+  date,
+  threshold = LOW_PREDICTION_THRESHOLD,
+  avgOverrideKwh
+) {
   // Get prediction for the date
   const dateStr = date ? date.replace(/-/g, '') : new Date().toISOString().slice(0, 10).replace(/-/g, '');
   const dailyTotal = await PredictionModel.getDailyTotal(customerName, siteId, dateStr);
@@ -20,11 +27,22 @@ export async function explainLowPrediction(customerName, siteId, date, threshold
   // Get site info
   const site = await SiteModel.getById(siteId);
   
-  // Calculate average daily generation (last 30 days)
-  const last30Days = await PredictionModel.getLast30DaysTotal(customerName, siteId);
-  const avgDailyKwh = last30Days.readingsCount > 0
-    ? last30Days.totalKwh / 30
-    : dailyTotal.totalKwh;
+  // Calculate average daily generation.
+  // If an override is provided (from a known window), use that value.
+  // Otherwise, fall back to last 30 days with an estimate of days with data.
+  let avgDailyKwh;
+  if (typeof avgOverrideKwh === 'number' && avgOverrideKwh > 0) {
+    avgDailyKwh = avgOverrideKwh;
+  } else {
+    const last30Days = await PredictionModel.getLast30DaysTotal(customerName, siteId);
+    const readingsPerDay = 288; // 5‑minute intervals
+    const estimatedDaysWithData = last30Days.readingsCount > 0
+      ? Math.max(1, last30Days.readingsCount / readingsPerDay)
+      : 1;
+    avgDailyKwh = last30Days.readingsCount > 0
+      ? last30Days.totalKwh / estimatedDaysWithData
+      : dailyTotal.totalKwh;
+  }
   
   const predictedKwh = dailyTotal.totalKwh;
   const percentage = avgDailyKwh > 0 ? (predictedKwh / avgDailyKwh) * 100 : 100;
@@ -279,13 +297,35 @@ export async function getLowPredictionDates(customerName, siteId, days = 30, thr
     dates.push(dateStr);
   }
 
-  const last30Days = await PredictionModel.getLast30DaysTotal(customerName, siteId);
-  const avgDailyKwh = last30Days.readingsCount > 0 ? last30Days.totalKwh / 30 : 0;
+  // First compute daily totals for the requested window to get a true window average.
+  let totalKwhSum = 0;
+  let daysWithData = 0;
+  const dailyTotalsByDate = {};
+
+  for (const dateStr of dates) {
+    const dailyTotal = await PredictionModel.getDailyTotal(customerName, siteId, dateStr);
+    dailyTotalsByDate[dateStr] = dailyTotal;
+    if (dailyTotal.readingsCount > 0) {
+      totalKwhSum += dailyTotal.totalKwh;
+      daysWithData += 1;
+    }
+  }
+
+  const avgDailyKwh = daysWithData > 0 ? totalKwhSum / daysWithData : 0;
 
   const results = [];
   for (const dateStr of dates) {
     const dateLabel = dateStr.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3');
-    const explanation = await explainLowPrediction(customerName, siteId, dateLabel, threshold);
+
+    // Reuse explainLowPrediction but force it to compare against this window's average.
+    const explanation = await explainLowPrediction(
+      customerName,
+      siteId,
+      dateLabel,
+      threshold,
+      avgDailyKwh
+    );
+
     if (explanation.isLow) {
       const textSummary = buildExplanationText(explanation);
       results.push({
@@ -396,6 +436,7 @@ export async function getGlobalXaiSummary(
   );
 
   if (factorsSummary.length > 0) {
+    lines.push("");
     lines.push("Main recurring reasons for low generation:");
     factorsSummary.forEach((f) => {
       lines.push(
@@ -406,13 +447,14 @@ export async function getGlobalXaiSummary(
     });
   }
 
+  lines.push("");
   lines.push("Day-by-day explanations:");
   lowPredictionDays.forEach((d) => {
     lines.push(`- ${d.date}: ${d.explanationText}`);
   });
 
   return {
-    summaryText: lines.join(" "),
+    summaryText: lines.join("\n"),
     daysAnalyzed,
     lowDaysCount: lowPredictionDays.length,
     factorsSummary,

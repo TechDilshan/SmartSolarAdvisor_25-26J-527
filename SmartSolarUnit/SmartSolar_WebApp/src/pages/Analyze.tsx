@@ -121,7 +121,7 @@ const Analyze: React.FC = () => {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Unit Prediction AI</h1>
+          <h1 className="text-2xl font-bold text-foreground">Seasonal Prediction</h1>
           <p className="text-muted-foreground">
             Daily energy generation and AI predictions using your realtime Firebase data.
           </p>
@@ -234,7 +234,7 @@ const Analyze: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                    {dailyAnalysis.xaiExplanation && !dailyAnalysis.xaiExplanation.error && (
+                    {/* {dailyAnalysis.xaiExplanation && !dailyAnalysis.xaiExplanation.error && (
                       <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
                         <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2">
                           <Sparkles className="w-4 h-4" />
@@ -252,7 +252,7 @@ const Analyze: React.FC = () => {
                           </div>
                         )}
                       </div>
-                    )}
+                    )} */}
                     {dailyAnalysis.latestPrediction?.features && (
                       <div className="p-4 rounded-lg bg-muted/30 border border-border">
                         <h4 className="text-sm font-medium text-foreground mb-2">Latest Features</h4>
