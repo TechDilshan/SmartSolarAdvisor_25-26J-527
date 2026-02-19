@@ -92,13 +92,14 @@ export const DayDetailsModal: React.FC<DayDetailsModalProps> = ({
       ? `${timestamp.substring(9, 11)}:${timestamp.substring(11, 13)}`
       : '';
     
+    const rawRainfall = pred.features_used?.rainfall || 0;
     return {
       time: timeStr,
       irradiance: pred.features_used?.irradiance || 0,
       temperature: pred.features_used?.temperature || 0,
       humidity: pred.features_used?.humidity || 0,
       dustLevel: pred.features_used?.dust_level || 0,
-      rainfall: pred.features_used?.rainfall || 0,
+      rainfall: 100 - rawRainfall,
     };
   });
 
@@ -306,7 +307,9 @@ export const DayDetailsModal: React.FC<DayDetailsModalProps> = ({
                             {pred.features_used?.dust_level?.toFixed(3) || 'N/A'}
                           </div>
                           <div>
-                            {pred.features_used?.rainfall?.toFixed(2) || 'N/A'}
+                            {pred.features_used?.rainfall !== undefined 
+                              ? (100 - pred.features_used.rainfall).toFixed(2) 
+                              : 'N/A'}
                           </div>
                         </div>
                       );

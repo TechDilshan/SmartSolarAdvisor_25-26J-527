@@ -22,10 +22,14 @@ interface SensorChartProps {
     key: string;
     color: string;
     label: string;
+    yAxisId?: string;
   }[];
   title: string;
   unit: string;
   className?: string;
+  yAxisDomain?: [number | 'auto' | 'dataMin' | 'dataMax', number | 'auto' | 'dataMin' | 'dataMax'];
+  leftYAxisDomain?: [number | 'auto' | 'dataMin' | 'dataMax', number | 'auto' | 'dataMin' | 'dataMax'];
+  rightYAxisDomain?: [number | 'auto' | 'dataMin' | 'dataMax', number | 'auto' | 'dataMin' | 'dataMax'];
 }
 
 export const SensorChart: React.FC<SensorChartProps> = ({
@@ -34,7 +38,15 @@ export const SensorChart: React.FC<SensorChartProps> = ({
   title,
   unit,
   className,
+  yAxisDomain,
+  leftYAxisDomain,
+  rightYAxisDomain,
 }) => {
+  // Check if we need dual Y-axes
+  const hasLeftAxis = dataKeys.some(dk => dk.yAxisId === 'left' || !dk.yAxisId);
+  const hasRightAxis = dataKeys.some(dk => dk.yAxisId === 'right');
+  const useDualAxis = hasLeftAxis && hasRightAxis;
+
   return (
     <div
       className={cn(
@@ -54,7 +66,7 @@ export const SensorChart: React.FC<SensorChartProps> = ({
       </div>
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+          <LineChart data={data} margin={{ top: 5, right: useDualAxis ? 30 : 10, left: 10, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
             <XAxis
               dataKey="time"
@@ -63,13 +75,36 @@ export const SensorChart: React.FC<SensorChartProps> = ({
               tickLine={false}
               axisLine={false}
             />
-            <YAxis
-              stroke="hsl(var(--muted-foreground))"
-              fontSize={12}
-              tickLine={false}
-              axisLine={false}
-              unit={unit}
-            />
+            {useDualAxis ? (
+              <>
+                <YAxis
+                  yAxisId="left"
+                  stroke="hsl(var(--muted-foreground))"
+                  fontSize={12}
+                  tickLine={false}
+                  axisLine={false}
+                  domain={leftYAxisDomain || yAxisDomain}
+                />
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  stroke="hsl(var(--muted-foreground))"
+                  fontSize={12}
+                  tickLine={false}
+                  axisLine={false}
+                  domain={rightYAxisDomain}
+                />
+              </>
+            ) : (
+              <YAxis
+                stroke="hsl(var(--muted-foreground))"
+                fontSize={12}
+                tickLine={false}
+                axisLine={false}
+                unit={unit}
+                domain={yAxisDomain}
+              />
+            )}
             <Tooltip
               contentStyle={{
                 backgroundColor: "hsl(var(--card))",
@@ -89,6 +124,7 @@ export const SensorChart: React.FC<SensorChartProps> = ({
                 strokeWidth={2}
                 dot={false}
                 activeDot={{ r: 4, strokeWidth: 0 }}
+                yAxisId={useDualAxis ? (dk.yAxisId || 'left') : undefined}
               />
             ))}
           </LineChart>
