@@ -12,6 +12,7 @@ import SiteDetail from "@/pages/SiteDetail";
 import Summary from "@/pages/Summary";
 import Profile from "@/pages/Profile";
 import Analyze from "@/pages/Analyze";
+import XAIInsights from "@/pages/XAIInsights";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -55,6 +56,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Analyze />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/xai-insights"
+              element={
+                <ProtectedRoute>
+                  <XAIInsights />
                 </ProtectedRoute>
               }
             />

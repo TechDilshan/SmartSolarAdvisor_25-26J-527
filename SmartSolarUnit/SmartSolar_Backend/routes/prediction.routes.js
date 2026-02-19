@@ -16,6 +16,7 @@ import {
   getLowPredictionDates,
   getDailyAnalysis,
   getTimeSeriesForecast,
+  getGlobalXaiSummary,
 } from '../controllers/prediction.controller.js';
 import { verifyToken } from '../middleware/auth.middleware.js';
 
@@ -47,6 +48,9 @@ router.get('/:customerName/:siteId/daily-analysis', verifyToken, getDailyAnalysi
 
 // Get time-series forecast (Prophet/SARIMA)
 router.get('/:customerName/:siteId/timeseries-forecast', verifyToken, getTimeSeriesForecast);
+
+// Get global XAI text summary across all collected data
+router.get('/:customerName/:siteId/xai-summary', verifyToken, getGlobalXaiSummary);
 
 // Get feature importance
 router.get('/:customerName/:siteId/feature-importance', verifyToken, getFeatureImportance);

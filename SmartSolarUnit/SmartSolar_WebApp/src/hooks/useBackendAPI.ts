@@ -373,29 +373,68 @@ export const useTimeSeriesForecast = (
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!customerName || !siteId) {
-      setData(null);
-      setLoading(false);
-      return;
-    }
-    let cancelled = false;
+  const fetchForecast = async () => {
     setLoading(true);
-    explainabilityAPI
-      .getTimeSeriesForecast(customerName, siteId, days, periods, model)
-      .then((res) => {
-        if (!cancelled) setData(res);
-      })
-      .catch((err: any) => {
-        if (!cancelled) setError(err.message || "Failed to fetch time-series forecast");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => { cancelled = true; };
+    try {
+      if (!customerName || !siteId) {
+        setData(null);
+        setLoading(false);
+        return;
+      }
+      const res = await explainabilityAPI.getTimeSeriesForecast(
+        customerName,
+        siteId,
+        days,
+        periods,
+        model
+      );
+      setData(res);
+      setError(null);
+    } catch (err: any) {
+      setError(err.message || "Failed to fetch time-series forecast");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      if (!customerName || !siteId) {
+        setData(null);
+        setLoading(false);
+        return;
+      }
+      setLoading(true);
+      try {
+        const res = await explainabilityAPI.getTimeSeriesForecast(
+          customerName,
+          siteId,
+          days,
+          periods,
+          model
+        );
+        if (!cancelled) {
+          setData(res);
+          setError(null);
+        }
+      } catch (err: any) {
+        if (!cancelled) {
+          setError(err.message || "Failed to fetch time-series forecast");
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
   }, [customerName, siteId, days, periods, model]);
 
-  return { data, loading, error };
+  return { data, loading, error, refetch: fetchForecast };
 };
 
 // Hook for full year forecast (12 months ahead)

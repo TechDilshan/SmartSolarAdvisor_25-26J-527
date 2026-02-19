@@ -239,8 +239,8 @@ def add_sample_data():
     devices_ref = db.reference(f"devices/{DEVICE_ID}")
     predictions_ref = db.reference(f"predicted_units/{CUSTOMER_NAME}/{SITE_ID}")
     
-    start_date = datetime(2026, 1, 1, 6, 0, 0)
-    end_date = datetime(2026, 1, 7, 18, 0, 0)
+    start_date = datetime(2026, 2, 19, 6, 0, 0)
+    end_date = datetime(2026, 2, 19, 18, 0, 0)
     
     current_date = start_date
     total_records = 0
@@ -303,4 +303,3 @@ if __name__ == "__main__":
         print(f"❌ Error adding sample data: {e}")
         import traceback
         traceback.print_exc()
-
