@@ -52,25 +52,64 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// MongoDB connection
+// MongoDB connection with improved error handling and options
 const connectDB = async () => {
-  // try {
-  //   await mongoose.connect(process.env.MONGO_URI || process.env.MONGODB_URI, {
-  //     useNewUrlParser: true,
-  //     useUnifiedTopology: true
-  //   });
-  //   console.log('MongoDB connected successfully');
-  // } catch (err) {
-  //   console.error('MongoDB connection failed:', err.message);
-  //   process.exit(1);
-  // }
-
-  mongoose.connect(process.env.MONGO_URI)
-    .then(() => console.log('MongoDB connected successfully'))
-    .catch(err => {
-      console.error('MongoDB connection failed:', err.message);
+  try {
+    const mongoUri = process.env.MONGO_URI || process.env.MONGODB_URI;
+    
+    if (!mongoUri) {
+      console.error('❌ MONGO_URI is not set in environment variables');
       process.exit(1);
+    }
+
+    console.log('🔌 Connecting to MongoDB...');
+    console.log('📍 Connection string:', mongoUri.replace(/:[^:@]+@/, ':****@')); // Hide password
+
+    // Use connection string as-is (already includes database name in .env)
+    const connectionUri = mongoUri;
+
+    const connectionOptions = {
+      serverSelectionTimeoutMS: 10000, // 10 seconds
+      socketTimeoutMS: 45000, // 45 seconds
+      maxPoolSize: 10,
+      minPoolSize: 5,
+      retryWrites: true,
+      w: 'majority'
+    };
+
+    await mongoose.connect(connectionUri, connectionOptions);
+    
+    console.log('✅ MongoDB connected successfully');
+    console.log('📊 Database:', mongoose.connection.db.databaseName);
+    console.log('🔗 Connection state:', mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected');
+    
+    // Set up connection event handlers
+    mongoose.connection.on('error', (err) => {
+      console.error('❌ MongoDB connection error:', err);
     });
+
+    mongoose.connection.on('disconnected', () => {
+      console.warn('⚠️ MongoDB disconnected');
+    });
+
+    mongoose.connection.on('reconnected', () => {
+      console.log('✅ MongoDB reconnected');
+    });
+
+    // Create indexes for better performance
+    try {
+      const Device = require('./Models/Device');
+      await Device.createIndexes();
+      console.log('✅ Device indexes created/verified');
+    } catch (indexError) {
+      console.warn('⚠️ Index creation warning:', indexError.message);
+    }
+
+  } catch (err) {
+    console.error('❌ MongoDB connection failed:', err.message);
+    console.error('Error details:', err);
+    process.exit(1);
+  }
 };
 
 // Connect to database (skip in test environment)
@@ -81,12 +120,30 @@ if (process.env.NODE_ENV !== 'test') {
 // Import Routes
 const userRoutes = require('./Routes/userRoutes');
 const deviceRoutes = require('./Routes/deviceRoutes');
+const faultRoutes = require('./Routes/faultRoutes');
 
 // Register Routes
 app.use('/api/auth', userRoutes);
 app.use('/api/devices', deviceRoutes);
+app.use('/api/faults', faultRoutes);
 
-// SolaX Proxy Route (avoids CORS issues)
+// Weather API Proxy Route (avoids CORS issues)
+app.get('/api/weather/realtime', async (req, res) => {
+  try {
+    const response = await axios.get(
+      'https://solaxcloud.dynac.space/api/v2/dataAccess/realtimeInfo/get',
+      {
+        timeout: 10000
+      }
+    );
+    res.json(response.data);
+  } catch (error) {
+    console.error('Error fetching Weather API:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// SolaX Proxy Route (avoids CORS issues) - Keep for backward compatibility
 app.get('/api/solax/realtime', async (req, res) => {
   try {
     const response = await axios.post(
@@ -115,11 +172,53 @@ app.get('/', (req, res) => {
 });
 
 app.get('/api/health', (req, res) => {
+  const dbStatus = mongoose.connection.readyState;
+  const dbStates = {
+    0: 'disconnected',
+    1: 'connected',
+    2: 'connecting',
+    3: 'disconnecting'
+  };
+  
   res.json({
     success: true,
     message: 'Server is running',
-    timestamp: new Date()
+    timestamp: new Date(),
+    database: {
+      status: dbStates[dbStatus] || 'unknown',
+      connected: dbStatus === 1,
+      databaseName: mongoose.connection.db?.databaseName || 'unknown'
+    }
   });
+});
+
+// Database status endpoint
+app.get('/api/db/status', async (req, res) => {
+  try {
+    const Device = require('./Models/Device');
+    const User = require('./Models/Users');
+    
+    const deviceCount = await Device.countDocuments({});
+    const userCount = await User.countDocuments({});
+    
+    res.json({
+      success: true,
+      connection: {
+        status: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+        database: mongoose.connection.db?.databaseName,
+        host: mongoose.connection.host
+      },
+      counts: {
+        devices: deviceCount,
+        users: userCount
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
 });
 
 // 404 handler - Must be after all routes

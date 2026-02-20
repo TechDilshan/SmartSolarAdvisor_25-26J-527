@@ -295,9 +295,10 @@ const jwt = require('jsonwebtoken');
 
 // Generate JWT Token with userId as 'id'
 const generateToken = (userId) => {
+  const JWT_SECRET = process.env.JWT_SECRET || 'madusarani**2001'; // Fallback secret
   return jwt.sign(
     { id: userId }, // ← IMPORTANT: Use 'id' not '_id' or 'userId'
-    process.env.JWT_SECRET,
+    JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRE || '7d' }
   );
 };

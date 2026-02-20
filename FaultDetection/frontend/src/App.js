@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { Sun, Battery, Home, Zap, Menu, Bell, Plus, User, LogIn, LogOut, Activity, Server, RefreshCw } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Sun, Battery, Home, Zap, RefreshCw, AlertTriangle, CheckCircle, Activity, Server } from 'lucide-react';
 import axios from "axios";
-import Logo from './images/Logo.png';
+import Layout from './components/Layout';
 
 function App() {
   const navigate = useNavigate();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [username, setUsername] = useState('User');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
   const today = new Date();
 
   // Directly display the value with the given unit
@@ -61,7 +60,7 @@ function App() {
   const [selectedDevice, setSelectedDevice] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState("overview"); // default active
+  const [faultStatus, setFaultStatus] = useState(null);
 
 
   const fetchDevices = async () => {
@@ -95,8 +94,20 @@ function App() {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      if (response.data.success && response.data.devices) {
-        setDevices(response.data.devices);
+      console.log('App.js - Devices response:', response.data);
+      console.log('App.js - Devices count:', response.data?.count);
+      console.log('App.js - Devices array:', response.data?.devices);
+
+      if (response.data.success) {
+        const deviceList = Array.isArray(response.data.devices) ? response.data.devices : [];
+        console.log('App.js - Setting devices:', deviceList.length);
+        console.log('App.js - Is array?', Array.isArray(deviceList));
+        
+        if (deviceList.length > 0) {
+          console.log('App.js - First device:', deviceList[0]);
+        }
+        
+        setDevices(deviceList);
 
         if (response.data.devices.length > 0) {
           const firstDevice = response.data.devices[0];
@@ -212,13 +223,6 @@ function App() {
     }
   };
 
-  const getLinkClasses = (tabName) => {
-
-    const baseClasses = "flex items-center gap-4 px-6 py-3 font-medium transition-all";
-    const activeClasses = "bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 border-r-4 border-blue-600";
-    const inactiveClasses = "text-slate-600 hover:bg-slate-50 hover:text-blue-600 border-r-0";
-    return activeTab === tabName ? `${baseClasses} ${activeClasses}` : `${baseClasses} ${inactiveClasses}`;
-  };
 
   /* New function to fetch live data from the proxy route */
   const fetchLiveSolaxData = async () => {
@@ -278,10 +282,40 @@ function App() {
     const interval = setInterval(() => {
       fetchDevices();
       fetchLiveSolaxData(); // Periodic fetch
-    }, 30000);
+      if (selectedDevice) {
+        fetchFaultStatus();
+      }
+    }, 5 * 60 * 1000); // Every 5 minutes
 
     return () => clearInterval(interval);
-  }, [isLoggedIn]);
+  }, [isLoggedIn, selectedDevice]);
+
+  useEffect(() => {
+    if (selectedDevice && isLoggedIn) {
+      fetchFaultStatus();
+    }
+  }, [selectedDevice, isLoggedIn]);
+
+  const fetchFaultStatus = async () => {
+    if (!selectedDevice) return;
+    
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(
+        `http://localhost:5001/api/faults/detect/${selectedDevice._id}`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+
+      if (response.data.success) {
+        setFaultStatus(response.data.faultDetection);
+      }
+    } catch (error) {
+      console.error('Failed to fetch fault status:', error);
+    }
+  };
 
   const handleLogin = () => navigate('/login');
 
@@ -309,6 +343,7 @@ function App() {
     });
     setDevices([]);
     setSelectedDevice(null);
+    navigate('/login');
   };
 
   const acPower = getPowerDisplay(solarData.acpower);
@@ -324,135 +359,9 @@ function App() {
   };
 
   return (
-    <div className="flex h-screen bg-slate-50">
-      {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-white shadow-lg transition-all duration-300 flex flex-col`}>
-        {/* Logo Section */}
-        <div className="p-6 border-b border-slate-200">
-          <div className="flex items-center gap-3">
-            <img src={Logo} alt="Smart Solar Advisor Logo" className="w-12 h-12 object-contain" />
-            {sidebarOpen && (
-              <div className="flex flex-col">
-                <span className="text-xl font-bold text-slate-800">SMART SOLAR ADVISO<span className="text-blue-600">R</span></span>
-                <span className="text-xs text-slate-500">Power Management</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Navigation */}
-        <nav className="flex-1 py-6">
-          <a
-            href="/"
-            className={getLinkClasses("overview")}
-            onClick={() => setActiveTab("overview")}
-          >
-            <Activity className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Overview</span>}
-          </a>
-
-          <a
-            href="#"
-            className={getLinkClasses("plant")}
-            onClick={() => setActiveTab("plant")}
-          >
-            <Sun className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Plant</span>}
-          </a>
-
-          <a
-            href="/add-device"
-            className={getLinkClasses("devices")}
-            onClick={() => setActiveTab("devices")}
-          >
-            <Activity className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Devices</span>}
-          </a>
-
-          <a
-            href="#"
-            className={getLinkClasses("live")}
-            onClick={() => setActiveTab("live")}
-          >
-            <Battery className="w-5 h-5 flex-shrink-0" />
-            {sidebarOpen && <span>Live Data</span>}
-          </a>
-        </nav>
-
-
-        {/* Sidebar Footer */}
-        {sidebarOpen && (
-          <div className="p-4 border-t border-slate-200">
-            <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-4 text-white text-sm">
-              <div className="font-semibold mb-1">Need Help?</div>
-              <div className="text-xs text-blue-100">Contact our support team</div>
-            </div>
-          </div>
-        )}
-      </aside>
-
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top Header */}
-        <header className="bg-white shadow-sm border-b border-slate-200">
-          <div className="px-6 py-4 flex items-center justify-between">
-            {/* Left Section */}
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-600 hover:text-slate-800"
-              >
-                <Menu className="w-6 h-6" />
-              </button>
-            </div>
-
-            {/* Right Section */}
-            <div className="flex items-center gap-3">
-              {isLoggedIn && (
-                <>
-                  <button className="relative p-2 hover:bg-slate-100 rounded-lg transition-colors">
-                    <Bell className="w-5 h-5 text-slate-600" />
-                    <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white"></span>
-                  </button>
-                  <button
-                    onClick={() => navigate("/add-device")}
-                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors flex items-center gap-2"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add Device
-                  </button>
-                </>
-              )}
-
-              {isLoggedIn ? (
-                <div className="flex items-center gap-3 px-4 py-2 bg-slate-100 rounded-lg">
-                  <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center shadow-sm">
-                    <User className="w-5 h-5 text-white" />
-                  </div>
-                  <span className="text-sm font-medium text-slate-700">{username}</span>
-                  <button
-                    onClick={handleLogout}
-                    className="ml-2 p-1 text-slate-500 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
-                  >
-                    <LogOut className="w-4 h-4" />
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={handleLogin}
-                  className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all flex items-center gap-2 shadow-md font-medium"
-                >
-                  <LogIn className="w-5 h-5" />
-                  <span>Login</span>
-                </button>
-              )}
-            </div>
-          </div>
-        </header>
-
-        {/* Dashboard Content */}
-        <main className="flex-1 overflow-y-auto bg-slate-50 p-6">
-          <div className="max-w-7xl mx-auto">
+    <Layout isLoggedIn={isLoggedIn} username={username} onLogout={handleLogout}>
+      <div className="p-6">
+        <div className="max-w-7xl mx-auto">
             {loading ? (
               <div className="text-center py-12">
                 <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -800,6 +709,44 @@ function App() {
 
                   {/* Right Panel - Device Information */}
                   <div className="bg-white rounded-2xl shadow-md p-6 border border-slate-200">
+                    {/* Fault Status Alert */}
+                    {faultStatus && (
+                      <div className={`mb-6 p-4 rounded-lg border-2 ${
+                        faultStatus.faultDetected 
+                          ? faultStatus.faultSeverity === 'high' 
+                            ? 'bg-red-50 border-red-300' 
+                            : faultStatus.faultSeverity === 'medium'
+                            ? 'bg-orange-50 border-orange-300'
+                            : 'bg-yellow-50 border-yellow-300'
+                          : 'bg-green-50 border-green-300'
+                      }`}>
+                        <div className="flex items-center gap-3">
+                          {faultStatus.faultDetected ? (
+                            <AlertTriangle className={`w-6 h-6 ${
+                              faultStatus.faultSeverity === 'high' ? 'text-red-600' :
+                              faultStatus.faultSeverity === 'medium' ? 'text-orange-600' :
+                              'text-yellow-600'
+                            }`} />
+                          ) : (
+                            <CheckCircle className="w-6 h-6 text-green-600" />
+                          )}
+                          <div className="flex-1">
+                            <div className="font-bold text-slate-800">
+                              {faultStatus.faultDetected ? 'Fault Detected' : 'System Normal'}
+                            </div>
+                            <div className="text-sm text-slate-600 mt-1">
+                              {faultStatus.faultDetected 
+                                ? `Type: ${faultStatus.faultType.replace('_', ' ').toUpperCase()} | Severity: ${faultStatus.faultSeverity.toUpperCase()}`
+                                : 'No faults detected'}
+                            </div>
+                            <div className="text-xs text-slate-500 mt-1">
+                              Deviation: {faultStatus.deviation > 0 ? '+' : ''}{faultStatus.deviation.toFixed(1)}%
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
                       <div className="w-2 h-6 bg-blue-600 rounded-full"></div>
                       Device Information
@@ -879,10 +826,8 @@ function App() {
                 </div>
               </>
             )}
-          </div>
-        </main>
+        </div>
       </div>
-
       <style>{`
         .custom-scrollbar::-webkit-scrollbar {
           width: 6px;
@@ -899,7 +844,7 @@ function App() {
           background: #94a3b8;
         }
       `}</style>
-    </div>
+    </Layout>
   );
 }
 

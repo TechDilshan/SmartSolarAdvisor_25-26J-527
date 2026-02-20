@@ -255,15 +255,15 @@
 // export default AddDevice;
 
 import React, { useState, useEffect } from "react";
-import { Plus, Trash2, AlertCircle, Menu, RefreshCw } from "lucide-react";
+import { Plus, Trash2, AlertCircle, RefreshCw } from "lucide-react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import SideBar from "../components/SideBar";
+import Layout from "../components/Layout";
 
 function AddDevice() {
   const navigate = useNavigate();
-
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [username, setUsername] = useState('User');
   const [devices, setDevices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -279,24 +279,60 @@ function AddDevice() {
   });
 
   useEffect(() => {
+    const token = localStorage.getItem('token');
+    const userEmail = localStorage.getItem('userEmail');
+    if (!token) {
+      navigate('/login');
+      return;
+    }
+    setIsLoggedIn(true);
+    setUsername(userEmail || 'User');
     fetchDevices();
-  }, []);
+  }, [navigate]);
 
   const fetchDevices = async () => {
     try {
       setLoading(true);
+      setError("");
       const token = localStorage.getItem("token");
+
+      if (!token) {
+        navigate('/login');
+        return;
+      }
 
       const response = await axios.get("http://localhost:5001/api/devices", {
         headers: { Authorization: `Bearer ${token}` },
       });
 
+      console.log('Devices response:', response.data);
+      console.log('Devices count:', response.data?.count);
+      console.log('Devices array:', response.data?.devices);
+
       if (response.data.success) {
-        setDevices(response.data.devices);
+        const deviceList = response.data.devices || response.data.device || [];
+        console.log('Setting devices:', deviceList);
+        console.log('Device list length:', deviceList.length);
+        console.log('Is array?', Array.isArray(deviceList));
+        
+        if (Array.isArray(deviceList) && deviceList.length > 0) {
+          console.log('First device:', deviceList[0]);
+        }
+        
+        setDevices(Array.isArray(deviceList) ? deviceList : []);
+      } else {
+        console.log('Response not successful, setting empty array');
+        setDevices([]);
       }
     } catch (err) {
-      setError("Failed to load devices");
-      console.error(err);
+      console.error('Fetch devices error:', err);
+      console.error('Error response:', err.response?.data);
+      if (err.response?.status === 401) {
+        navigate('/login');
+      } else {
+        setError(err.response?.data?.message || "Failed to load devices");
+        setDevices([]);
+      }
     } finally {
       setLoading(false);
     }
@@ -345,7 +381,11 @@ function AddDevice() {
           tokenId: "",
         });
         setShowForm(false);
-        fetchDevices();
+        setError(""); // Clear any previous errors
+        // Wait a bit then fetch devices to ensure backend has saved
+        setTimeout(() => {
+          fetchDevices();
+        }, 500);
 
         setTimeout(() => {
           setSuccess("");
@@ -354,9 +394,52 @@ function AddDevice() {
         }, 3000);
       }
     } catch (err) {
-      const errorMessage = err.response?.data?.message || err.response?.data?.error || "Failed to add device";
-      setError(errorMessage);
       console.error('Add device error:', err);
+      console.error('Error response:', err.response?.data);
+      
+      // Check if it's a 400 error - might be API connection issue but device could still be created
+      if (err.response?.status === 400) {
+        const errorMsg = err.response?.data?.message || '';
+        
+        // If it's about API connection failure, device might still be created
+        // Try to fetch devices to see if it was actually created
+        if (errorMsg.includes('Failed to connect') || errorMsg.includes('API') || errorMsg.includes('405')) {
+          // Wait a moment then check if device was created
+          setTimeout(async () => {
+            try {
+              await fetchDevices();
+              // If devices were fetched successfully, show success message
+              setSuccess('Device may have been added. Please check the device list. If not visible, the API connection test failed.');
+              setFormData({
+                deviceName: "",
+                apiUrl: "",
+                wifiSN: "",
+                tokenId: "",
+              });
+              setShowForm(false);
+              setError("");
+            } catch (fetchErr) {
+              // If fetch fails, show the original error
+              setError(errorMsg || "Failed to add device. Please check your inputs and try again.");
+            }
+          }, 1000);
+        } else if (errorMsg.includes('already exists') || errorMsg.includes('required')) {
+          // Validation errors - keep form data
+          setError(errorMsg);
+        } else {
+          // Other 400 errors
+          setError(errorMsg || "Failed to add device. Please check your inputs.");
+        }
+      } else {
+        // Other errors (500, network, etc.)
+        const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || "Failed to add device";
+        setError(errorMessage);
+        
+        // Still try to fetch devices in case it was partially successful
+        setTimeout(() => {
+          fetchDevices();
+        }, 1000);
+      }
     }
   };
 
@@ -405,39 +488,28 @@ function AddDevice() {
     }
   };
 
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    localStorage.removeItem('token');
+    localStorage.removeItem('userEmail');
+    navigate('/login');
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
     return new Date(dateString).toLocaleString();
   };
 
   return (
-    <div className="flex h-screen bg-slate-50">
-      <SideBar sidebarOpen={sidebarOpen} />
-
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="bg-white border-b border-slate-200 shadow-sm">
-          <div className="px-6 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="p-2 hover:bg-slate-100 rounded-lg transition"
-              >
-                <Menu className="w-6 h-6 text-slate-600" />
-              </button>
-              <h1 className="text-xl font-bold text-slate-800">
-                Device Management
-              </h1>
-            </div>
-            <button
-              onClick={() => navigate(-1)}
-              className="text-blue-600 hover:text-blue-700 hover:underline transition"
-            >
-              ← Back to Dashboard
-            </button>
+    <Layout isLoggedIn={isLoggedIn} username={username} onLogout={handleLogout}>
+      <div className="p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-slate-800">
+              Device Management
+            </h1>
+            <p className="text-slate-600 mt-1">Add and manage your solar devices</p>
           </div>
-        </header>
-
-        <main className="flex-1 overflow-y-auto p-8">
           {error && (
             <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 flex gap-3 items-start">
               <AlertCircle className="text-red-500 flex-shrink-0 mt-0.5" />
@@ -673,9 +745,9 @@ function AddDevice() {
               ))}
             </div>
           )}
-        </main>
+        </div>
       </div>
-    </div>
+    </Layout>
   );
 }
 

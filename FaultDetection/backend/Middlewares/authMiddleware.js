@@ -132,14 +132,11 @@ const authMiddleware = (req, res, next) => {
 
     // Verify token
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const JWT_SECRET = process.env.JWT_SECRET || 'madusarani**2001'; // Fallback secret
+      const decoded = jwt.verify(token, JWT_SECRET);
       
       // Add user info to request
       req.user = decoded;
-      
-      // Debug log to verify token structure
-      console.log('✅ Token verified for user:', decoded.id);
-      console.log('📦 Decoded token:', decoded);
       
       // Additional check to ensure id exists
       if (!decoded.id) {
