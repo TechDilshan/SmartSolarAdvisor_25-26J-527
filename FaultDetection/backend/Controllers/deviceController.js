@@ -2,180 +2,24 @@ const Device = require('../Models/Device');
 const axios = require('axios');
 const mongoose = require('mongoose');
 const { normalizeUserId, buildUserIdQuery, testConnection } = require('../utils/dbHelper');
+const { fetchRealtimeData, normalizeRealtimeData } = require('../utils/solaxApi');
 
-// Helper function to fetch real-time data from Solar API
+// Helper function to fetch + normalize real-time data for SolaX devices
 const fetchDeviceData = async (apiUrl, tokenId, wifiSN) => {
-  try {
-    // Check if URL contains 'get' - likely a GET endpoint
-    const isGetEndpoint = apiUrl.toLowerCase().includes('/get') || 
-                         apiUrl.toLowerCase().includes('realtimeinfo') ||
-                         apiUrl.toLowerCase().includes('solaxcloud.dynac');
-    
-    let response;
-    let lastError;
-    
-    if (isGetEndpoint) {
-      // Try GET first for weather/realtime APIs (no auth headers needed for public APIs)
-      try {
-        console.log('Trying GET request for:', apiUrl);
-        response = await axios.get(
-          apiUrl,
-          {
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            timeout: 10000 
-          }
-        );
-        console.log('GET request successful');
-      } catch (getError) {
-        console.log('GET failed, trying with auth headers:', getError.response?.status);
-        lastError = getError;
-        // Try GET with auth headers
-        try {
-          response = await axios.get(
-            apiUrl,
-            {
-              headers: {
-                'Content-Type': 'application/json',
-                ...(tokenId && { 'tokenId': tokenId })
-              },
-              timeout: 10000 
-            }
-          );
-          console.log('GET with auth successful');
-        } catch (getAuthError) {
-          console.log('GET with auth also failed, trying POST:', getAuthError.response?.status);
-          lastError = getAuthError;
-          // If GET fails, try POST
-          if (getAuthError.response?.status === 405 || getAuthError.response?.status === 404) {
-            try {
-              response = await axios.post(
-                apiUrl,
-                wifiSN ? { wifiSn: wifiSN } : {},
-                {
-                  headers: {
-                    'tokenId': tokenId,
-                    'Content-Type': 'application/json'
-                  },
-                  timeout: 10000 
-                }
-              );
-              console.log('POST request successful');
-            } catch (postError) {
-              throw postError;
-            }
-          } else {
-            throw getAuthError;
-          }
-        }
-      }
-    } else {
-      // Try POST first (for SolaX API)
-      try {
-        console.log('Trying POST request for:', apiUrl);
-        response = await axios.post(
-          apiUrl,
-          { wifiSn: wifiSN },
-          {
-            headers: {
-              'tokenId': tokenId,
-              'Content-Type': 'application/json'
-            },
-            timeout: 10000 
-          }
-        );
-        console.log('POST request successful');
-      } catch (postError) {
-        console.log('POST failed, trying GET:', postError.response?.status);
-        lastError = postError;
-        // If POST fails with 405, try GET
-        if (postError.response?.status === 405 || postError.code === 'ERR_BAD_REQUEST') {
-          try {
-            response = await axios.get(
-              apiUrl,
-              {
-                headers: {
-                  'Content-Type': 'application/json',
-                  ...(tokenId && { 'tokenId': tokenId })
-                },
-                timeout: 10000 
-              }
-            );
-            console.log('GET fallback successful');
-          } catch (getError) {
-            throw getError;
-          }
-        } else {
-          throw postError;
-        }
-      }
-    }
+  const result = await fetchRealtimeData(apiUrl, tokenId, wifiSN);
+  if (!result.success) return result;
 
-    // Handle different response formats
-    if (response.data) {
-      // SolaX API format: { success: true, result: {...} }
-      if (response.data.success && response.data.result) {
-        return {
-          success: true,
-          data: response.data.result
-        };
-      }
-      
-      // Weather API format: direct data object
-      if (response.data.month !== undefined || response.data.airTemperature !== undefined || 
-          response.data.windSpeed !== undefined) {
-        return {
-          success: true,
-          data: response.data
-        };
-      }
-      
-      // Any other data format
-      if (response.data && typeof response.data === 'object') {
-        return {
-          success: true,
-          data: response.data
-        };
-      }
-    }
+  // If it's weather data, return as-is
+  const d = result.data;
+  const isWeather =
+    d &&
+    typeof d === 'object' &&
+    (d.month !== undefined || d.day !== undefined || d.hour !== undefined || d.airTemperature !== undefined);
 
-    return {
-      success: false,
-      error: response.data?.exception || response.data?.message || 'Invalid API response format'
-    };
-  } catch (error) {
-    console.error('Error fetching device data:', error.message);
-    console.error('Error status:', error.response?.status);
-    console.error('Error details:', error.response?.data || error.message);
-    
-    // Return more specific error messages
-    if (error.response?.status === 405) {
-      return {
-        success: false,
-        error: 'API endpoint does not support this HTTP method. Please check the API URL.'
-      };
-    }
-    
-    if (error.response?.status === 401 || error.response?.status === 403) {
-      return {
-        success: false,
-        error: 'Authentication failed. Please check your Token ID.'
-      };
-    }
-    
-    if (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT') {
-      return {
-        success: false,
-        error: 'Cannot connect to API. Please check the API URL and network connection.'
-      };
-    }
-    
-    return {
-      success: false,
-      error: error.response?.data?.message || error.response?.data?.error || error.message || 'API request failed'
-    };
-  }
+  if (isWeather) return { success: true, data: d };
+
+  // Otherwise normalize as device realtime payload
+  return { success: true, data: normalizeRealtimeData(d) };
 };
 
 // Add new device
@@ -236,10 +80,7 @@ exports.addDevice = async (req, res) => {
       apiUrl: apiUrl.trim(),
       wifiSN: wifiSN.trim().toUpperCase(),
       tokenId: tokenId.trim(),
-      latestData: apiResult.success ? {
-        ...apiResult.data,
-        lastFetched: new Date()
-      } : null,
+      latestData: apiResult.success ? normalizeRealtimeData(apiResult.data) : null,
       status: apiResult.success ? 'active' : 'error'
     });
     
@@ -290,15 +131,45 @@ exports.getDevices = async (req, res) => {
     // Use flexible query builder that handles all userId formats
     const userIdQuery = buildUserIdQuery(userId);
     console.log('🔎 Query object:', JSON.stringify(userIdQuery, null, 2));
+
+    const shouldRefresh =
+      req.query.refresh === 'true' || req.query.refresh === '1' || req.query.refresh === 'yes';
     
     let devices = [];
     
     try {
-      // Try the flexible query first
+      // Optional: refresh latestData from device API (only if stale)
+      if (shouldRefresh) {
+        const deviceDocs = await Device.find(userIdQuery)
+          .sort({ createdAt: -1 })
+          .select('-__v');
+
+        const now = Date.now();
+        const staleAfterMs = 5 * 60 * 1000; // 5 minutes
+
+        for (const d of deviceDocs) {
+          const lastFetchedMs = d.latestData?.lastFetched ? new Date(d.latestData.lastFetched).getTime() : 0;
+          const isFresh = lastFetchedMs && now - lastFetchedMs < staleAfterMs;
+          if (isFresh) continue;
+
+          const apiResult = await fetchDeviceData(d.apiUrl, d.tokenId, d.wifiSN);
+          if (apiResult.success) {
+            d.latestData = apiResult.data;
+            d.status = 'active';
+          } else {
+            // Keep previous latestData; only mark status
+            d.status = 'error';
+          }
+
+          await d.save();
+        }
+      }
+
+      // Fetch devices for response (lean for frontend)
       devices = await Device.find(userIdQuery)
         .sort({ createdAt: -1 })
         .select('-__v')
-        .lean(); // Use lean() for better performance
+        .lean();
       
       console.log('✅ Found devices:', devices.length);
       
@@ -381,14 +252,25 @@ exports.getDeviceById = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
+    const shouldRefresh =
+      req.query.refresh === 'true' || req.query.refresh === '1' || req.query.refresh === 'yes';
 
-    const device = await Device.findOne({ _id: id, userId });
+    const device = await Device.findOne({ _id: id, ...buildUserIdQuery(userId) });
 
     if (!device) {
       return res.status(404).json({
         success: false,
         message: 'Device not found'
       });
+    }
+
+    if (shouldRefresh) {
+      const apiResult = await fetchDeviceData(device.apiUrl, device.tokenId, device.wifiSN);
+      if (apiResult.success) {
+        device.latestData = apiResult.data;
+        device.status = 'active';
+        await device.save();
+      }
     }
 
     res.status(200).json({
@@ -410,7 +292,7 @@ exports.refreshDeviceData = async (req, res) => {
     const { id } = req.params;
     const userId = req.user.id;
 
-    const device = await Device.findOne({ _id: id, userId });
+    const device = await Device.findOne({ _id: id, ...buildUserIdQuery(userId) });
 
     if (!device) {
       return res.status(404).json({
@@ -437,10 +319,7 @@ exports.refreshDeviceData = async (req, res) => {
     }
 
     // Update device with fresh data
-    device.latestData = {
-      ...apiResult.data,
-      lastFetched: new Date()
-    };
+    device.latestData = apiResult.data;
     device.status = 'active';
     await device.save();
 
@@ -465,7 +344,7 @@ exports.updateDevice = async (req, res) => {
     const userId = req.user.id;
     const { deviceName, apiUrl, tokenId } = req.body;
 
-    const device = await Device.findOne({ _id: id, userId });
+    const device = await Device.findOne({ _id: id, ...buildUserIdQuery(userId) });
 
     if (!device) {
       return res.status(404).json({
@@ -501,7 +380,7 @@ exports.deleteDevice = async (req, res) => {
     const { id } = req.params;
     const userId = req.user.id;
 
-    const device = await Device.findOneAndDelete({ _id: id, userId });
+    const device = await Device.findOneAndDelete({ _id: id, ...buildUserIdQuery(userId) });
 
     if (!device) {
       return res.status(404).json({
@@ -528,7 +407,7 @@ exports.refreshAllDevices = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const devices = await Device.find({ userId });
+    const devices = await Device.find(buildUserIdQuery(userId));
 
     if (devices.length === 0) {
       return res.status(200).json({
@@ -548,10 +427,7 @@ exports.refreshAllDevices = async (req, res) => {
         );
 
         if (apiResult.success) {
-          device.latestData = {
-            ...apiResult.data,
-            lastFetched: new Date()
-          };
+          device.latestData = apiResult.data;
           device.status = 'active';
         } else {
           device.status = 'error';

@@ -42,7 +42,7 @@ function LiveData() {
   const fetchDevices = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5001/api/devices', {
+      const response = await axios.get('http://localhost:5001/api/devices?refresh=true', {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -70,7 +70,7 @@ function LiveData() {
       const weatherResponse = await axios.get('http://localhost:5001/api/weather/realtime');
       
       // Fetch device data
-      const deviceResponse = await axios.get(`http://localhost:5001/api/devices/${selectedDevice._id}`, {
+      const deviceResponse = await axios.get(`http://localhost:5001/api/devices/${selectedDevice._id}?refresh=true`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -230,11 +230,16 @@ function LiveData() {
                     </div>
                     <div className="text-right">
                       <div className="text-2xl font-bold">
-                        {faultStatus.deviation > 0 ? '+' : ''}{faultStatus.deviation.toFixed(1)}%
+                        {Number(faultStatus?.deviation || 0) > 0 ? '+' : ''}{Number(faultStatus?.deviation || 0).toFixed(1)}%
                       </div>
                       <div className="text-xs opacity-75">Deviation</div>
                     </div>
                   </div>
+                  {faultStatus.isDaytime === false && (
+                    <div className="mt-3 text-xs opacity-80">
+                      Night time (6:00 AM – 6:00 PM only). Production is expected to be 0.
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="text-center py-8 text-slate-500">
@@ -277,7 +282,7 @@ function LiveData() {
             )}
 
             {/* Production Comparison */}
-            {faultStatus && (
+            {faultStatus && faultStatus.isDaytime !== false && (
               <div className="bg-white rounded-xl shadow-md p-6">
                 <h2 className="text-xl font-bold text-slate-800 mb-4">Production Analysis</h2>
                 <div className="space-y-4">
@@ -287,7 +292,7 @@ function LiveData() {
                       <TrendingUp className="w-4 h-4 text-blue-600" />
                     </div>
                     <div className="text-2xl font-bold text-blue-600">
-                      {faultStatus.predictedProduction.toFixed(2)} W
+                      {Number(faultStatus?.predictedProduction || 0).toFixed(2)} W
                     </div>
                   </div>
                   <div className="bg-green-50 rounded-lg p-4">
@@ -296,7 +301,7 @@ function LiveData() {
                       <Activity className="w-4 h-4 text-green-600" />
                     </div>
                     <div className="text-2xl font-bold text-green-600">
-                      {faultStatus.actualProduction.toFixed(2)} W
+                      {Number(faultStatus?.actualProduction || 0).toFixed(2)} W
                     </div>
                   </div>
                   <div className={`rounded-lg p-4 ${

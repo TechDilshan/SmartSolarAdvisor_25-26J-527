@@ -35,7 +35,7 @@ function Forecast() {
   const fetchDevices = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5001/api/devices', {
+      const response = await axios.get('http://localhost:5001/api/devices?refresh=true', {
         headers: { Authorization: `Bearer ${token}` }
       });
 

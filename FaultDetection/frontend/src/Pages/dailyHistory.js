@@ -40,7 +40,7 @@ function DailyHistory() {
   const fetchDevices = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5001/api/devices', {
+      const response = await axios.get('http://localhost:5001/api/devices?refresh=true', {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -238,29 +238,29 @@ function DailyHistory() {
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                        {record.prediction.predictedProduction.toFixed(2)} W
+                        {Number(record.prediction?.predictedProduction || 0).toFixed(2)} W
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                        {record.prediction.actualProduction.toFixed(2)} W
+                        {Number(record.prediction?.actualProduction || 0).toFixed(2)} W
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex items-center gap-1 text-sm font-semibold ${
-                          record.prediction.deviation < 0 ? 'text-red-600' : 'text-green-600'
+                          Number(record.prediction?.deviation || 0) < 0 ? 'text-red-600' : 'text-green-600'
                         }`}>
-                          {record.prediction.deviation < 0 ? (
+                          {Number(record.prediction?.deviation || 0) < 0 ? (
                             <TrendingDown className="w-4 h-4" />
                           ) : (
                             <TrendingUp className="w-4 h-4" />
                           )}
-                          {Math.abs(record.prediction.deviation).toFixed(1)}%
+                          {Math.abs(Number(record.prediction?.deviation || 0)).toFixed(1)}%
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                        {record.prediction.faultType.replace('_', ' ').toUpperCase()}
+                        {(record.prediction?.faultType || 'none').replace('_', ' ').toUpperCase()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-2 py-1 rounded text-xs font-semibold border ${getFaultColor(record.prediction.faultSeverity)}`}>
-                          {record.prediction.faultSeverity.toUpperCase()}
+                          {(record.prediction?.faultSeverity || 'none').toUpperCase()}
                         </span>
                       </td>
                     </tr>
