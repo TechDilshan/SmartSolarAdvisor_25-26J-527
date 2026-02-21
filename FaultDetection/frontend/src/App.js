@@ -667,7 +667,7 @@ function App() {
                           <Home className="w-10 h-10 text-white" />
                         </div>
                         <div className="mt-3 bg-white px-3 py-1 rounded-lg shadow-sm border border-slate-200">
-                          <div className="text-sm font-bold text-slate-800">-- W</div>
+                          {/* <div className="text-sm font-bold text-slate-800">-- W</div> */}
                           <div className="text-xs text-slate-500">Home</div>
                         </div>
                       </div>
@@ -678,7 +678,7 @@ function App() {
                           <Server className="w-10 h-10 text-white" />
                         </div>
                         <div className="mt-3 bg-white px-3 py-1 rounded-lg shadow-sm border border-slate-200">
-                          <div className="text-sm font-bold text-slate-800">-- W</div>
+                          {/* <div className="text-sm font-bold text-slate-800">-- W</div> */}
                           <div className="text-xs text-slate-500">Grid</div>
                         </div>
                       </div>

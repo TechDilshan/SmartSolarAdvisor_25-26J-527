@@ -683,7 +683,7 @@ function AddDevice() {
                     </div>
                   </div>
 
-                  {device.latestData && (
+                  {/* {device.latestData && (
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t border-slate-200">
                       <div className="bg-blue-50 p-3 rounded-lg">
                         <p className="text-xs text-blue-600 font-medium">AC Power</p>
@@ -734,13 +734,13 @@ function AddDevice() {
                         </p>
                       </div>
                     </div>
-                  )}
+                  )} */}
 
-                  {!device.latestData && (
+                  {/* {!device.latestData && (
                     <div className="mt-4 pt-4 border-t border-slate-200 text-center text-slate-500">
                       <p>No data available. Click refresh to fetch latest data.</p>
                     </div>
-                  )}
+                  )} */}
                 </div>
               ))}
             </div>

@@ -47,9 +47,8 @@ def detect_fault():
     try:
         data = request.json
         
-        # Get predicted production (from predicted_production.py)
-        predicted_production = compute_predicted_production(
-            model,
+        # Extract features for prediction
+        features = np.array([[ 
             data["Hour"],
             data["Day"],
             data["Month"],
@@ -58,8 +57,11 @@ def detect_fault():
             data["AirPressure"],
             data["Radiation"],
             data["AirTemperature"],
-            data["RelativeAirHumidity"],
-        )
+            data["RelativeAirHumidity"]
+        ]])
+
+        # Get predicted production
+        predicted_production = float(model.predict(features)[0])
         actual_production = float(data.get("actualProduction", 0))
         
         # Calculate deviation percentage
