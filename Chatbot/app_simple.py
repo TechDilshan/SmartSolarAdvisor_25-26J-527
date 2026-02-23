@@ -207,6 +207,10 @@ def generate_answer(query: str, embeddings_handler, translator, answer_generator
     # Use AnswerGenerator to create a natural, clean answer
     final_answer = answer_generator.generate_answer(query, documents)
     
+    # Add a greeting for very short answers
+    if len(final_answer.split()) < 10:
+        final_answer = f"Based on my knowledge: {final_answer}"
+    
     # Prepare sources
     sources = []
     for meta in metadatas[:3]:
@@ -305,7 +309,7 @@ with st.sidebar:
         sinhala_questions = [
             "සූර්ය බලශක්තියේ ප්‍රතිලාභ මොනවාද?",
             "සූර්ය පැනල පද්ධතියක මිල කීයද?",
-            "නිකම් මීටරය යනු කුමක්ද?",
+            "ශුද්ධ මීටරය යනු කුමක්ද?",
             "මොනොක්‍රිස්ටලයින් සහ පොලික්‍රිස්ටලයින් පැනල් ගැන කියන්න",
             "ලබා ගත හැකි සූර්ය සේවා මොනවාද?",
         ]
