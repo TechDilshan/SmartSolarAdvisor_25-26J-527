@@ -138,7 +138,7 @@ function Plant() {
             <div className="text-sm opacity-90">Total Devices</div>
           </div>
 
-          <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-md p-6 text-white">
+          {/* <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-md p-6 text-white">
             <div className="flex items-center justify-between mb-2">
               <Zap className="w-8 h-8 opacity-80" />
             </div>
@@ -152,7 +152,7 @@ function Plant() {
             </div>
             <div className="text-3xl font-bold">{summary.totalYield.toFixed(2)}</div>
             <div className="text-sm opacity-90">Daily Yield (kWh)</div>
-          </div>
+          </div> */}
 
           <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-md p-6 text-white">
             <div className="flex items-center justify-between mb-2">

@@ -282,7 +282,7 @@ function LiveData() {
             )}
 
             {/* Production Comparison */}
-            {faultStatus && faultStatus.isDaytime !== false && (
+            {/* {faultStatus && faultStatus.isDaytime !== false && (
               <div className="bg-white rounded-xl shadow-md p-6">
                 <h2 className="text-xl font-bold text-slate-800 mb-4">Production Analysis</h2>
                 <div className="space-y-4">
@@ -323,7 +323,7 @@ function LiveData() {
                   </div>
                 </div>
               </div>
-            )}
+            )} */}
 
             {/* Device Info */}
             {liveData?.device && (

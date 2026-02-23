@@ -11,7 +11,7 @@ function Layout({ children, isLoggedIn, username, onLogout }) {
   // Determine active tab based on current route
   const getActiveTab = () => {
     const path = location.pathname;
-    if (path === '/') return 'overview';
+    if (path === '/dashboard') return 'overview';
     if (path === '/plant') return 'plant';
     if (path === '/add-device') return 'devices';
     if (path === '/live-data') return 'live';
@@ -56,7 +56,7 @@ function Layout({ children, isLoggedIn, username, onLogout }) {
         {/* Navigation */}
         <nav className="flex-1 py-6">
           <Link
-            to="/"
+            to="/dashboard"
             className={getLinkClasses("overview")}
           >
             <Activity className="w-5 h-5 flex-shrink-0" />

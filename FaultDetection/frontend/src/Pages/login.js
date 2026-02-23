@@ -38,7 +38,7 @@ const Login = () => {
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('userEmail', response.data.user.email);
         toast.success('Login successful! Redirecting...');
-        navigate('/', { replace: true });
+        navigate('/dashboard', { replace: true });
       } else {
         toast.error(response.data.message || 'Login failed');
       }
@@ -51,52 +51,73 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gray-100">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 relative overflow-hidden">
+      {/* Decorative Blobs */}
+      <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-blue-500 rounded-full mix-blend-multiply filter blur-[128px] opacity-40 animate-blob"></div>
+      <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-yellow-500 rounded-full mix-blend-multiply filter blur-[128px] opacity-30 animate-blob animation-delay-2000"></div>
+
       <ToastContainer position="top-center" autoClose={3000} />
-      <div className="w-full max-w-md bg-white p-6 rounded shadow-md">
-        <h1 className="text-2xl font-bold mb-4 text-center">Login</h1>
-        <form onSubmit={handleLogin} className="space-y-4">
+
+      <div className="w-full max-w-md bg-white/10 backdrop-blur-xl p-8 rounded-3xl border border-white/20 shadow-[0_8px_32px_0_rgba(0,0,0,0.3)] z-10 relative">
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-extrabold text-white mb-2 tracking-tight">Welcome Back</h1>
+          <p className="text-blue-200 text-sm">Log in to your Smart Solar Advisor account</p>
+        </div>
+
+        <form onSubmit={handleLogin} className="space-y-6">
           <div>
-            <label htmlFor="email" className="block mb-1 font-medium">Email</label>
+            <label htmlFor="email" className="block mb-2 font-medium text-blue-100 text-sm">Email Address</label>
             <input
               id="email"
               name="email"
               type="text"
+              placeholder="you@example.com"
               value={formData.email}
               onChange={handleInputChange}
-              className="w-full border px-3 py-2 rounded"
+              className="w-full bg-black/20 border border-white/10 text-white placeholder-white/30 px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all"
             />
           </div>
+
           <div>
-            <label htmlFor="password" className="block mb-1 font-medium">Password</label>
+            <label htmlFor="password" className="block mb-2 font-medium text-blue-100 text-sm">Password</label>
             <div className="relative">
               <input
                 id="password"
                 name="password"
                 type={showPassword ? 'text' : 'password'}
+                placeholder="••••••••"
                 value={formData.password}
                 onChange={handleInputChange}
-                className="w-full border px-3 py-2 rounded"
+                className="w-full bg-black/20 border border-white/10 text-white placeholder-white/30 px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition-colors"
               >
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
               </button>
             </div>
           </div>
+
+          <div className="flex justify-end">
+            <a href="#" className="text-sm text-yellow-400 hover:text-yellow-300 transition-colors">Forgot password?</a>
+          </div>
+
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+            className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold py-3.5 rounded-xl hover:from-blue-600 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all text-lg"
           >
             {isLoading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
-        <p className="text-center mt-4">
-          Don’t have an account? <Link to="/register" className="text-blue-600 hover:underline">Register</Link>
+
+        <p className="text-center mt-8 text-blue-100/70 text-sm">
+          Don't have an account?{' '}
+          <Link to="/register" className="text-yellow-400 font-semibold hover:text-yellow-300 transition-colors">
+            Register for free
+          </Link>
         </p>
       </div>
     </div>
