@@ -1948,7 +1948,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - react-native-safe-area-context (5.6.2):
+  - react-native-safe-area-context (5.7.0):
     - boost
     - DoubleConversion
     - fast_float
@@ -1966,8 +1966,8 @@ PODS:
     - React-graphics
     - React-ImageManager
     - React-jsi
-    - react-native-safe-area-context/common (= 5.6.2)
-    - react-native-safe-area-context/fabric (= 5.6.2)
+    - react-native-safe-area-context/common (= 5.7.0)
+    - react-native-safe-area-context/fabric (= 5.7.0)
     - React-NativeModulesApple
     - React-RCTFabric
     - React-renderercss
@@ -1978,7 +1978,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - react-native-safe-area-context/common (5.6.2):
+  - react-native-safe-area-context/common (5.7.0):
     - boost
     - DoubleConversion
     - fast_float
@@ -2006,7 +2006,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - react-native-safe-area-context/fabric (5.6.2):
+  - react-native-safe-area-context/fabric (5.7.0):
     - boost
     - DoubleConversion
     - fast_float
@@ -2650,7 +2650,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - RNScreens (4.19.0):
+  - RNScreens (4.24.0):
     - boost
     - DoubleConversion
     - fast_float
@@ -2677,10 +2677,10 @@ PODS:
     - ReactCodegen
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
-    - RNScreens/common (= 4.19.0)
+    - RNScreens/common (= 4.24.0)
     - SocketRocket
     - Yoga
-  - RNScreens/common (4.19.0):
+  - RNScreens/common (4.24.0):
     - boost
     - DoubleConversion
     - fast_float
@@ -2709,7 +2709,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - RNSVG (15.15.1):
+  - RNSVG (15.15.3):
     - boost
     - DoubleConversion
     - fast_float
@@ -2735,10 +2735,10 @@ PODS:
     - ReactCodegen
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
-    - RNSVG/common (= 15.15.1)
+    - RNSVG/common (= 15.15.3)
     - SocketRocket
     - Yoga
-  - RNSVG/common (15.15.1):
+  - RNSVG/common (15.15.3):
     - boost
     - DoubleConversion
     - fast_float
@@ -3081,7 +3081,7 @@ SPEC CHECKSUMS:
   React-microtasksnativemodule: cdc02da075f2857803ed63f24f5f72fc40e094c0
   react-native-image-picker: 0314366753615115fa55c3cc937ac44cb7e75702
   react-native-quick-sqlite: de1270624ef439261969690aec166f647d63c49f
-  react-native-safe-area-context: c00143b4823773bba23f2f19f85663ae89ceb460
+  react-native-safe-area-context: befb5404eb8a16fdc07fa2bebab3568ecabcbb8a
   React-NativeModulesApple: a2c3d2cbec893956a5b3e4060322db2984fff75b
   React-networking: 3f98bd96893a294376e7e03730947a08d474c380
   React-oscompat: 80166b66da22e7af7fad94474e9997bd52d4c8c6
@@ -3118,11 +3118,11 @@ SPEC CHECKSUMS:
   RNCAsyncStorage: 29f0230e1a25f36c20b05f65e2eb8958d6526e82
   RNFS: 89de7d7f4c0f6bafa05343c578f61118c8282ed8
   RNGestureHandler: cd4be101cfa17ea6bbd438710caa02e286a84381
-  RNScreens: ffbb0296608eb3560de641a711bbdb663ed1f6b4
-  RNSVG: ba3c3bc3cf413f32d1a7012274fe503c6fc1eadd
+  RNScreens: 7f643ee0fd1407dc5085c7795460bd93da113b8f
+  RNSVG: 595abfa0f9ac26d56afcaaedf4e37a00f54cab71
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   Yoga: 5456bb010373068fc92221140921b09d126b116e
 
-PODFILE CHECKSUM: 2aa7905a8591adbaf2ae76aeb0de79912b64c409
+PODFILE CHECKSUM: b651af9b19677891f6678f6946a0a65ce0155807
 
 COCOAPODS: 1.16.2

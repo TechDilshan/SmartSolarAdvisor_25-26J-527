@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { sitesAPI, sensorsAPI, predictionsAPI } from '../services/api';
+import { sitesAPI, sensorsAPI, predictionsAPI, weatherAPI, explainabilityAPI } from '../services/api';
 import { SensorData, PredictionData, SolarSystem } from '../types';
 
 // Hook for all solar sites with realtime polling
@@ -24,6 +24,8 @@ export const useSolarSites = (pollInterval: number = 5000) => {
         deviceId: site.device_id,
         customerName: site.customer_name,
         created_at: site.created_at || null,
+        latitude: site.latitude ?? null,
+        longitude: site.longitude ?? null,
       }));
       setSites(formattedSites);
       setError(null);
@@ -663,4 +665,301 @@ export const useDailySensorData = (
 
   return { sensorData, loading, error, refetch: fetchSensorData };
 };
+ 
+// ---------- Seasonal prediction + XAI hooks (mirrored from web app) ----------
 
+// Hook for weather seasonal trends (last 12 months temperature/precipitation by month)
+export const useWeatherSeasonal = (
+  lat: number | null | undefined,
+  lon: number | null | undefined,
+  pollInterval: number = 300000 // 5 minutes
+) => {
+  const [data, setData] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const fetchSeasonal = async () => {
+    try {
+      const result = await weatherAPI.getSeasonal(lat ?? undefined, lon ?? undefined);
+      setData(result);
+      setError(null);
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch seasonal weather');
+      setData(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSeasonal();
+    intervalRef.current = setInterval(fetchSeasonal, pollInterval);
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [lat, lon, pollInterval]);
+
+  return { data, loading, error };
+};
+
+// Hook for prediction monthly breakdown (last 12 months kWh per month)
+export const usePredictionMonthlyBreakdown = (
+  customerName: string | null,
+  siteId: string | null
+) => {
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!customerName || !siteId) {
+      setData([]);
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setLoading(true);
+
+    predictionsAPI
+      .getMonthlyBreakdown(customerName, siteId)
+      .then((res) => {
+        if (!cancelled) {
+          setData(res);
+          setError(null);
+        }
+      })
+      .catch((err: any) => {
+        if (!cancelled) {
+          setError(err.message || 'Failed to fetch monthly breakdown');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [customerName, siteId]);
+
+  return { data, loading, error };
+};
+
+// Hook for daily analysis (realtime collected results)
+export const useDailyAnalysis = (
+  customerName: string | null,
+  siteId: string | null,
+  date?: string,
+  includeXai: boolean = false,
+  pollInterval: number = 10000
+) => {
+  const [data, setData] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const fetchDailyAnalysis = async () => {
+    if (!customerName || !siteId) {
+      setData(null);
+      setLoading(false);
+      return;
+    }
+    try {
+      const result = await explainabilityAPI.getDailyAnalysis(customerName, siteId, date, includeXai);
+      setData(result);
+      setError(null);
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch daily analysis');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDailyAnalysis();
+    intervalRef.current = setInterval(fetchDailyAnalysis, pollInterval);
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [customerName, siteId, date, includeXai, pollInterval]);
+
+  return { data, loading, error, refetch: fetchDailyAnalysis };
+};
+
+// Hook for time-series forecast (Prophet/SARIMA)
+export const useTimeSeriesForecast = (
+  customerName: string | null,
+  siteId: string | null,
+  days: number = 90,
+  periods: number = 30,
+  model: 'prophet' | 'sarima' = 'prophet'
+) => {
+  const [data, setData] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchForecast = async () => {
+    setLoading(true);
+    try {
+      if (!customerName || !siteId) {
+        setData(null);
+        setLoading(false);
+        return;
+      }
+      const res = await explainabilityAPI.getTimeSeriesForecast(
+        customerName,
+        siteId,
+        days,
+        periods,
+        model
+      );
+      setData(res);
+      setError(null);
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch time-series forecast');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      if (!customerName || !siteId) {
+        setData(null);
+        setLoading(false);
+        return;
+      }
+      setLoading(true);
+      try {
+        const res = await explainabilityAPI.getTimeSeriesForecast(
+          customerName,
+          siteId,
+          days,
+          periods,
+          model
+        );
+        if (!cancelled) {
+          setData(res);
+          setError(null);
+        }
+      } catch (err: any) {
+        if (!cancelled) {
+          setError(err.message || 'Failed to fetch time-series forecast');
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [customerName, siteId, days, periods, model]);
+
+  return { data, loading, error, refetch: fetchForecast };
+};
+
+// Hook for full year forecast (12 months ahead)
+export const useFullYearForecast = (
+  customerName: string | null,
+  siteId: string | null,
+  lat?: number | null,
+  lon?: number | null
+) => {
+  const [data, setData] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!customerName || !siteId) {
+      setData(null);
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setLoading(true);
+
+    weatherAPI
+      .getFullYearForecast(customerName, siteId, lat ?? undefined, lon ?? undefined)
+      .then((res) => {
+        if (!cancelled) {
+          setData(res);
+          setError(null);
+        }
+      })
+      .catch((err: any) => {
+        if (!cancelled) {
+          setError(err.message || 'Failed to fetch full year forecast');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [customerName, siteId, lat, lon]);
+
+  return { data, loading, error };
+};
+
+// Hook for feature importance (global)
+export const useFeatureImportance = (
+  customerName: string | null,
+  siteId: string | null
+) => {
+  const [data, setData] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!customerName || !siteId) {
+      setData(null);
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setLoading(true);
+
+    explainabilityAPI
+      .getFeatureImportance(customerName, siteId)
+      .then((res) => {
+        if (!cancelled) {
+          setData(res);
+          setError(null);
+        }
+      })
+      .catch((err: any) => {
+        if (!cancelled) {
+          setError(err.message || 'Failed to fetch feature importance');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [customerName, siteId]);
+
+  return { data, loading, error };
+};
