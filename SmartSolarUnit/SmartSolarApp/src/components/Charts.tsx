@@ -2,8 +2,15 @@ import React from 'react';
 import { View, Text, StyleSheet, Dimensions, ScrollView } from 'react-native';
 import { Svg, Path, Circle, G, Line as SvgLine } from 'react-native-svg';
 
+interface LineChartPoint {
+  x: number;
+  y: number;
+  timestamp?: Date | string;
+  label?: string;
+}
+
 interface LineChartProps {
-  data: { x: number; y: number; timestamp?: Date | string }[];
+  data: LineChartPoint[];
   height?: number;
   color?: string;
   showLabels?: boolean;
@@ -147,9 +154,13 @@ export function LineChart({ data, height = 250, color = '#F97316', showLabels = 
                   // Show labels for every 5th point or first/last
                   if (i % Math.ceil(data.length / 6) === 0 || i === data.length - 1) {
                     let label = i.toString();
-                    if (data[i]?.timestamp) {
+                    const customLabel = data[i]?.label;
+                    if (customLabel) {
+                      label = customLabel;
+                    } else if (data[i]?.timestamp) {
                       const time = new Date(data[i].timestamp);
-                      label = time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                      // If date spans many days, show date; otherwise show time
+                      label = time.toLocaleDateString('en-CA');
                     }
                     return (
                       <Text

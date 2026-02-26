@@ -177,5 +177,88 @@ export const predictionsAPI = {
       `/predictions/${customerName}/${siteId}/range?startDate=${startDate}&endDate=${endDate}`
     );
   },
+
+  getMonthlyBreakdown: async (customerName: string, siteId: string) => {
+    return apiRequest<Array<{
+      yearMonth: string;
+      yearMonthLabel: string;
+      month: number;
+      year: number;
+      totalKwh: number;
+      readingsCount: number;
+    }>>(`/predictions/${customerName}/${siteId}/monthly-breakdown`);
+  },
 };
+
+// Weather API (seasonal trend forecasting)
+export const weatherAPI = {
+  getSeasonal: async (lat?: number, lon?: number) => {
+    const params = new URLSearchParams();
+    if (lat != null) params.append('lat', String(lat));
+    if (lon != null) params.append('lon', String(lon));
+    const q = params.toString();
+    return apiRequest<any>(`/weather/seasonal${q ? `?${q}` : ''}`);
+  },
+
+  getFullYearForecast: async (customerName: string, siteId: string, lat?: number, lon?: number) => {
+    const params = new URLSearchParams();
+    if (lat != null) params.append('lat', String(lat));
+    if (lon != null) params.append('lon', String(lon));
+    const q = params.toString();
+    return apiRequest<any>(`/weather/full-year-forecast/${customerName}/${siteId}${q ? `?${q}` : ''}`);
+  },
+};
+
+// Explainability + XAI API
+export const explainabilityAPI = {
+  getDailyAnalysis: async (
+    customerName: string,
+    siteId: string,
+    date?: string,
+    includeXai: boolean = false
+  ) => {
+    const params = new URLSearchParams();
+    if (date) params.append('date', date);
+    if (includeXai) params.append('includeXai', 'true');
+    const q = params.toString();
+    return apiRequest<any>(`/predictions/${customerName}/${siteId}/daily-analysis${q ? `?${q}` : ''}`);
+  },
+
+  getTimeSeriesForecast: async (
+    customerName: string,
+    siteId: string,
+    days?: number,
+    periods?: number,
+    model?: 'prophet' | 'sarima'
+  ) => {
+    const params = new URLSearchParams();
+    if (days != null) params.append('days', String(days));
+    if (periods != null) params.append('periods', String(periods));
+    if (model) params.append('model', model);
+    const q = params.toString();
+    return apiRequest<any>(`/predictions/${customerName}/${siteId}/timeseries-forecast${q ? `?${q}` : ''}`);
+  },
+
+  getFeatureImportance: async (customerName: string, siteId: string) => {
+    return apiRequest<{
+      features: Array<{ name: string; importance: number }>;
+      method: string;
+      note?: string;
+    }>(`/predictions/${customerName}/${siteId}/feature-importance`);
+  },
+
+  getGlobalXaiSummary: async (customerName: string, siteId: string, days?: number) => {
+    const params = new URLSearchParams();
+    if (days != null) params.append('days', String(days));
+    const q = params.toString();
+    return apiRequest<{
+      summaryText: string;
+      daysAnalyzed: number;
+      lowDaysCount: number;
+      factorsSummary?: Array<{ name: string; count: number; impacts: string[] }>;
+      lowPredictionDays: any[];
+    }>(`/predictions/${customerName}/${siteId}/xai-summary${q ? `?${q}` : ''}`);
+  },
+};
+
 

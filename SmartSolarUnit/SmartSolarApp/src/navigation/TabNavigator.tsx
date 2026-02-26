@@ -3,7 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Home, User, BarChart3 } from 'lucide-react-native';
 import HomeScreen from '../screens/HomeScreen';
 import ProfileScreen from '../screens/ProfileScreen';
-import CustomerAnalysisScreen from '../screens/CustomerAnalysisScreen';
+import AnalysisStack from './AnalysisStack';
 import { useTheme } from '../contexts/ThemeContext';
 
 const Tab = createBottomTabNavigator();
@@ -26,15 +26,15 @@ export default function TabNavigator() {
         name="Home"
         component={HomeScreen}
         options={{
-          title: "Home",
+          title: 'Home',
           tabBarIcon: ({ color }) => <Home size={24} color={color} />,
         }}
       />
       <Tab.Screen
         name="Analysis"
-        component={CustomerAnalysisScreen}
+        component={AnalysisStack}
         options={{
-          title: "Analysis",
+          title: 'Analysis',
           tabBarIcon: ({ color }) => <BarChart3 size={24} color={color} />,
         }}
       />
@@ -42,7 +42,7 @@ export default function TabNavigator() {
         name="Profile"
         component={ProfileScreen}
         options={{
-          title: "Profile",
+          title: 'Profile',
           tabBarIcon: ({ color }) => <User size={24} color={color} />,
         }}
       />
