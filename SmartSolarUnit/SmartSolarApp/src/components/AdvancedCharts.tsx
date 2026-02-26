@@ -13,6 +13,7 @@ const {
   VictoryLegend,
   VictoryGroup,
   VictoryAxis,
+  VictoryScatter,
 } = VictoryNative;
 
 type TimePoint = {
@@ -37,21 +38,33 @@ export const TimeSeriesForecastChart: React.FC<TimeSeriesForecastChartProps> = (
 }) => {
   if (!data || data.length === 0) return null;
 
-  const historyData: TimePoint[] = data
-    .filter((d) => d.type === 'history')
-    .map((d) => ({ x: d.date, y: d.value }));
+  // In the Web App, 'history' and 'forecast' central values are plotted as a single continuous line.
+  const combinedData: TimePoint[] = data.map((d) => ({
+    x: d.date,
+    y: d.value,
+  }));
 
-  const forecastData: TimePoint[] = data
-    .filter((d) => d.type === 'forecast')
-    .map((d) => ({ x: d.date, y: d.value }));
+  const forecastPoints = data.filter((d) => d.type === 'forecast');
 
-  const lowerData: TimePoint[] = data
-    .filter((d) => d.type === 'forecast' && d.lower != null)
+  const lowerData: TimePoint[] = forecastPoints
+    .filter((d) => d.lower != null)
     .map((d) => ({ x: d.date, y: d.lower as number }));
 
-  const upperData: TimePoint[] = data
-    .filter((d) => d.type === 'forecast' && d.upper != null)
+  const upperData: TimePoint[] = forecastPoints
+    .filter((d) => d.upper != null)
     .map((d) => ({ x: d.date, y: d.upper as number }));
+
+  // Connect the bounds to the last history point to make the dashed lines join the main line organically
+  const historyPoints = data.filter((d) => d.type === 'history');
+  if (historyPoints.length > 0 && forecastPoints.length > 0) {
+    const lastHistory = historyPoints[historyPoints.length - 1];
+    if (lowerData.length > 0) {
+      lowerData.unshift({ x: lastHistory.date, y: lastHistory.value });
+    }
+    if (upperData.length > 0) {
+      upperData.unshift({ x: lastHistory.date, y: lastHistory.value });
+    }
+  }
 
   return (
     <View style={styles.chartContainer}>
@@ -61,12 +74,12 @@ export const TimeSeriesForecastChart: React.FC<TimeSeriesForecastChartProps> = (
         domainPadding={{ x: 10, y: 20 }}
       >
         <VictoryAxis
+          fixLabelOverlap={true}
           tickFormat={(t: string | any[]) =>
-            typeof t === 'string'
-              ? t.slice(5) // show MM-DD
-              : t
+            typeof t === 'string' ? t.slice(5) : t
           }
           style={{
+            grid: { stroke: '#f1f5f9', strokeDasharray: '3,3' },
             tickLabels: { fontSize: 9, angle: -45, textAnchor: 'end' },
           }}
         />
@@ -74,24 +87,17 @@ export const TimeSeriesForecastChart: React.FC<TimeSeriesForecastChartProps> = (
           dependentAxis
           label="kWh"
           style={{
+            grid: { stroke: '#f1f5f9', strokeDasharray: '3,3' },
             axisLabel: { padding: 40, fontSize: 10 },
             tickLabels: { fontSize: 10 },
           }}
         />
 
-        {/* History line */}
+        {/* Combined History + Forecast central line */}
         <VictoryLine
-          data={historyData}
+          data={combinedData}
           style={{
             data: { stroke: '#0ea5e9', strokeWidth: 2 },
-          }}
-        />
-
-        {/* Forecast central line */}
-        <VictoryLine
-          data={forecastData}
-          style={{
-            data: { stroke: '#f97316', strokeWidth: 2 },
           }}
         />
 
@@ -131,8 +137,8 @@ export const TimeSeriesForecastChart: React.FC<TimeSeriesForecastChartProps> = (
           }}
           data={[
             { name: 'Daily kWh', symbol: { fill: '#0ea5e9' } },
-            { name: 'Forecast', symbol: { fill: '#f97316' } },
-            { name: 'Bounds', symbol: { fill: '#94a3b8' } },
+            { name: 'Lower bound', symbol: { fill: '#94a3b8' } },
+            { name: 'Upper bound', symbol: { fill: '#94a3b8' } },
           ]}
         />
       </VictoryChart>
@@ -147,66 +153,115 @@ interface SeasonalChartProps {
 export const SeasonalTrendsChart: React.FC<SeasonalChartProps> = ({ data }) => {
   if (!data || data.length === 0) return null;
 
+  // Calculate the max for each axis with some padding (10%)
+  const maxKwh = Math.max(...data.map((d) => d.solarKwh), 10) * 1.1;
+  const maxTemp = Math.max(...data.map((d) => d.avgTemp ?? 0), 10) * 1.1;
+
+  // Normalize data to a 0-1 scale so we can use a single [0, 1] domain chart
+  const normalizedTemp = data.map((d) => ({
+    x: d.label,
+    y: Math.max(0, (d.avgTemp ?? 0) / maxTemp),
+  }));
+  const normalizedKwh = data.map((d) => ({
+    x: d.label,
+    y: Math.max(0, d.solarKwh / maxKwh),
+  }));
+
   return (
     <View style={styles.chartContainer}>
       <VictoryChart
         theme={VictoryTheme.material}
-        padding={{ top: 20, bottom: 60, left: 60, right: 60 }}
-        domainPadding={{ x: 10, y: 20 }}
+        padding={{ top: 30, bottom: 60, left: 50, right: 60 }}
+        domain={{ y: [0, 1] }}
+        domainPadding={{ x: 10 }}
       >
+        {/* X Axis */}
         <VictoryAxis
+          fixLabelOverlap={true}
           tickValues={data.map((d) => d.label)}
           tickFormat={(t: any) => t}
           style={{
-            tickLabels: { fontSize: 9, angle: -45, textAnchor: 'end' },
-          }}
-        />
-        <VictoryAxis
-          dependentAxis
-          offsetX={60}
-          tickFormat={(t: any) => `${t}°`}
-          style={{
-            tickLabels: { fontSize: 9 },
-          }}
-        />
-        <VictoryAxis
-          dependentAxis
-          offsetX={320}
-          orientation="right"
-          tickFormat={(t: any) => `${t}`}
-          style={{
-            tickLabels: { fontSize: 9 },
+            grid: { stroke: '#f1f5f9', strokeDasharray: '3,3' },
+            tickLabels: { fontSize: 9, fill: '#64748b' },
           }}
         />
 
+        {/* Y Axis (Left - Temperature) */}
+        <VictoryAxis
+          dependentAxis
+          tickValues={[0, 0.25, 0.5, 0.75, 1]}
+          tickFormat={(t: number) => `${Math.round(t * maxTemp)} °C`}
+          style={{
+            grid: { stroke: '#f1f5f9', strokeDasharray: '3,3' },
+            tickLabels: { fontSize: 9, fill: '#ef4444' },
+          }}
+        />
+
+        {/* Y Axis (Right - kWh) */}
+        <VictoryAxis
+          dependentAxis
+          orientation="right"
+          tickValues={[0, 0.25, 0.5, 0.75, 1]}
+          tickFormat={(t: number) => `${Math.round(t * maxKwh)} kWh`}
+          style={{
+            tickLabels: { fontSize: 9, fill: '#334155' },
+          }}
+        />
+
+        {/* Temperature line + dots */}
         <VictoryGroup>
-          {/* Temperature line */}
           <VictoryLine
-            data={data.map((d) => ({ x: d.label, y: d.avgTemp ?? 0 }))}
+            data={normalizedTemp}
             style={{
-              data: { stroke: '#ef4444', strokeWidth: 2 },
+              data: { stroke: '#ef4444', strokeWidth: 1.5 },
             }}
           />
-          {/* Solar kWh line */}
-          <VictoryLine
-            data={data.map((d) => ({ x: d.label, y: d.solarKwh }))}
+          <VictoryScatter
+            data={normalizedTemp}
+            size={3}
             style={{
-              data: { stroke: '#0ea5e9', strokeWidth: 2 },
+              data: { fill: '#ffffff', stroke: '#ef4444', strokeWidth: 1.5 },
+            }}
+          />
+        </VictoryGroup>
+
+        {/* Solar kWh line + dots */}
+        <VictoryGroup>
+          <VictoryLine
+            data={normalizedKwh}
+            style={{
+              data: { stroke: '#0ea5e9', strokeWidth: 1.5 },
+            }}
+          />
+          <VictoryScatter
+            data={normalizedKwh}
+            size={3}
+            style={{
+              data: { fill: '#ffffff', stroke: '#0ea5e9', strokeWidth: 1.5 },
             }}
           />
         </VictoryGroup>
 
         <VictoryLegend
-          x={40}
-          y={10}
+          x={60}
+          y={0}
           orientation="horizontal"
           gutter={12}
+          symbolSpacer={6}
           style={{
-            labels: { fontSize: 10 },
+            labels: { fontSize: 10, fill: '#64748b' },
           }}
           data={[
-            { name: 'Avg temperature', symbol: { fill: '#ef4444' } },
-            { name: 'Predicted solar (kWh)', symbol: { fill: '#0ea5e9' } },
+            {
+              name: 'Avg temperature',
+              symbol: { type: 'circle', fill: '#ffffff', stroke: '#ef4444', strokeWidth: 1.5 },
+              labels: { fill: '#ef4444' }
+            },
+            {
+              name: 'Predicted solar (kWh)',
+              symbol: { type: 'minus', fill: 'transparent' },
+              labels: { fill: '#334155' }
+            },
           ]}
         />
       </VictoryChart>
@@ -215,7 +270,7 @@ export const SeasonalTrendsChart: React.FC<SeasonalChartProps> = ({ data }) => {
 };
 
 interface FullYearForecastChartMobileProps {
-  data: { label: string; value: number }[];
+  data: { label: string; solarKwh: number; temperature: number | null; confidence?: string }[];
 }
 
 export const FullYearForecastChartMobile: React.FC<
@@ -223,33 +278,116 @@ export const FullYearForecastChartMobile: React.FC<
 > = ({ data }) => {
   if (!data || data.length === 0) return null;
 
+  // Calculate the max for each axis with some padding (10%)
+  const maxKwh = Math.max(...data.map((d) => d.solarKwh), 10) * 1.1;
+  const maxTemp = Math.max(...data.map((d) => d.temperature ?? 0), 10) * 1.1;
+
+  // Normalize data to a 0-1 scale so we can use a single [0, 1] domain chart
+  const normalizedTemp = data.map((d) => ({
+    x: d.label,
+    y: Math.max(0, (d.temperature ?? 0) / maxTemp),
+  }));
+  const normalizedKwh = data.map((d) => ({
+    x: d.label,
+    y: Math.max(0, d.solarKwh / maxKwh),
+  }));
+
   return (
     <View style={styles.chartContainer}>
       <VictoryChart
         theme={VictoryTheme.material}
-        padding={{ top: 20, bottom: 60, left: 60, right: 40 }}
-        domainPadding={{ x: 10, y: 20 }}
+        padding={{ top: 30, bottom: 60, left: 50, right: 60 }}
+        domain={{ y: [0, 1] }}
+        domainPadding={{ x: 10 }}
       >
+        {/* X Axis */}
         <VictoryAxis
+          fixLabelOverlap={true}
           tickValues={data.map((d) => d.label)}
           tickFormat={(t: any) => t}
           style={{
-            tickLabels: { fontSize: 9, angle: -45, textAnchor: 'end' },
-          }}
-        />
-        <VictoryAxis
-          dependentAxis
-          tickFormat={(t: any) => `${t}`}
-          style={{
-            tickLabels: { fontSize: 10 },
+            grid: { stroke: '#f1f5f9', strokeDasharray: '3,3' },
+            tickLabels: { fontSize: 9, fill: '#64748b', angle: -45, textAnchor: 'end' },
           }}
         />
 
-        <VictoryLine
-          data={data.map((d) => ({ x: d.label, y: d.value }))}
+        {/* Y Axis (Left - Temperature) */}
+        <VictoryAxis
+          dependentAxis
+          tickValues={[0, 0.25, 0.5, 0.75, 1]}
+          tickFormat={(t: number) => `${Math.round(t * maxTemp)} °C`}
           style={{
-            data: { stroke: '#f97316', strokeWidth: 2 },
+            grid: { stroke: '#f1f5f9', strokeDasharray: '3,3' },
+            tickLabels: { fontSize: 9, fill: '#ef4444' },
           }}
+        />
+
+        {/* Y Axis (Right - kWh) */}
+        <VictoryAxis
+          dependentAxis
+          orientation="right"
+          tickValues={[0, 0.25, 0.5, 0.75, 1]}
+          tickFormat={(t: number) => `${Math.round(t * maxKwh)} kWh`}
+          style={{
+            tickLabels: { fontSize: 9, fill: '#f97316' },
+          }}
+        />
+
+        {/* Temperature line + dots */}
+        <VictoryGroup>
+          <VictoryLine
+            data={normalizedTemp}
+            style={{
+              data: { stroke: '#ef4444', strokeWidth: 1.5 },
+            }}
+          />
+          <VictoryScatter
+            data={normalizedTemp}
+            size={3}
+            style={{
+              data: { fill: '#ffffff', stroke: '#ef4444', strokeWidth: 1.5 },
+            }}
+          />
+        </VictoryGroup>
+
+        {/* Solar kWh line + dots */}
+        <VictoryGroup>
+          <VictoryLine
+            data={normalizedKwh}
+            style={{
+              data: { stroke: '#f97316', strokeWidth: 1.5 },
+            }}
+          />
+          <VictoryScatter
+            data={normalizedKwh}
+            size={3}
+            style={{
+              data: { fill: '#ffffff', stroke: '#f97316', strokeWidth: 1.5 },
+            }}
+          />
+        </VictoryGroup>
+
+        <VictoryLegend
+          x={60}
+          y={0}
+          orientation="horizontal"
+          gutter={12}
+          symbolSpacer={6}
+          style={{
+            labels: { fontSize: 10, fill: '#64748b' },
+          }}
+          data={[
+            {
+              name: 'Avg temperature',
+              symbol: { type: 'circle', fill: '#ffffff', stroke: '#ef4444', strokeWidth: 1.5 },
+              labels: { fill: '#ef4444' }
+            },
+            {
+              name: 'Predicted solar (kWh)',
+              symbol: { type: 'minus', fill: 'transparent' },
+              labels: { fill: '#334155' }
+            },
+          ]}
         />
       </VictoryChart>
     </View>

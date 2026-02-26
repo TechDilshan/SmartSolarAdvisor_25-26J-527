@@ -194,24 +194,24 @@ export default function SeasonalPredictionScreen() {
   const dailyCards =
     dailyAnalysis && !dailyAnalysis.error
       ? [
-          {
-            label: 'Date',
-            value: dailyAnalysis.date || 'Today',
-          },
-          {
-            label: 'Total kWh',
-            value: dailyAnalysis.totalKwh?.toFixed(4) ?? '0.0000',
-          },
-          {
-            label: 'Readings',
-            value: String(dailyAnalysis.readingsCount ?? 0),
-          },
-          {
-            label: 'Latest (5min)',
-            value:
-              dailyAnalysis.latestPrediction?.predictedKwh?.toFixed(4) ?? 'N/A',
-          },
-        ]
+        {
+          label: 'Date',
+          value: dailyAnalysis.date || 'Today',
+        },
+        {
+          label: 'Total kWh',
+          value: dailyAnalysis.totalKwh?.toFixed(4) ?? '0.0000',
+        },
+        {
+          label: 'Readings',
+          value: String(dailyAnalysis.readingsCount ?? 0),
+        },
+        {
+          label: 'Latest (5min)',
+          value:
+            dailyAnalysis.latestPrediction?.predictedKwh?.toFixed(4) ?? 'N/A',
+        },
+      ]
       : [];
 
   const timeSeriesVictoryData = useMemo(() => {
@@ -248,10 +248,12 @@ export default function SeasonalPredictionScreen() {
   }, [timeSeriesForecast]);
 
   const fullYearVictoryData = useMemo(() => {
-    const months = fullYearForecast?.months || fullYearForecast?.data || [];
-    return (months as any[]).map((m, idx) => ({
-      label: m.label || m.monthLabel || m.month || String(idx + 1),
-      value: m.totalKwh ?? m.value ?? 0,
+    if (!fullYearForecast || !fullYearForecast.forecast) return [];
+    return fullYearForecast.forecast.map((item: any) => ({
+      label: `${item.monthName} ${item.year?.toString().slice(2) || ''}`,
+      temperature: item.avgTemperature,
+      solarKwh: Math.round((item.predictedSolarKwh || 0) * 100) / 100,
+      confidence: item.confidence,
     }));
   }, [fullYearForecast]);
 
