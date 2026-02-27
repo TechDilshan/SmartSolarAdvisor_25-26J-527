@@ -138,7 +138,7 @@ def create_app(config_name=None):
 
 
 if __name__ == '__main__':
-    PORT = 5000
+    PORT = 5004
 
     app = create_app()
 

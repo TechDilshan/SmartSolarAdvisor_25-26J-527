@@ -299,7 +299,7 @@ function PredictionForm({ onPredictionComplete }) {
           </div>
         </div>
 
-        <div className="form-section">
+        {/* <div className="form-section">
           <div className="section-header">
             <h3>Climate Data</h3>
             {loadingWeather && (
@@ -367,9 +367,9 @@ function PredictionForm({ onPredictionComplete }) {
               />
             </div>
           </div>
-        </div>
+        </div> */}
 
-        <div className="form-section">
+        {/* <div className="form-section">
           <h3> System Configuration</h3>
           <div className="form-grid">
             <div className="form-group">
@@ -452,6 +452,24 @@ function PredictionForm({ onPredictionComplete }) {
               <small>1.0 = No shading</small>
             </div>
           </div>
+        </div> */}
+
+        <div className="form-section">
+          <h3>System Requirements</h3>
+          <div className="form-grid">
+            <div className="form-group">
+              <label>Number of KW plan to place</label>
+              <input
+                type="number"
+                name="installed_capacity_kw"
+                value={formData.installed_capacity_kw}
+                onChange={handleChange}
+                step="0.1"
+                min="0.1"
+                required
+              />
+            </div>
+          </div>
         </div>
 
         <div className="form-section">
@@ -470,7 +488,7 @@ function PredictionForm({ onPredictionComplete }) {
               />
             </div>
             <div className="form-group">
-              <label>System Cost per kW (LKR)</label>
+              <label>Full System Cost </label>
               <input
                 type="number"
                 name="system_cost_per_kw"
