@@ -63,7 +63,7 @@ const Register = () => {
                 toast.success('Registration successful! Redirecting...');
 
                 setTimeout(() => {
-                    navigate('/', { replace: true });
+                    navigate('/dashboard', { replace: true });
                 }, 1500);
             } else {
                 toast.error(response.data.message || 'Registration failed');
@@ -78,20 +78,25 @@ const Register = () => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50">
+        <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 relative overflow-hidden">
+            {/* Decorative Blobs */}
+            <div className="absolute top-[-10%] right-[-10%] w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-[128px] opacity-30 animate-blob"></div>
+            <div className="absolute bottom-[-10%] left-[-10%] w-96 h-96 bg-blue-500 rounded-full mix-blend-multiply filter blur-[128px] opacity-40 animate-blob animation-delay-4000"></div>
+
             <ToastContainer position="top-center" autoClose={3000} />
-            <div className="w-full max-w-md bg-white p-8 rounded-xl shadow-lg border border-slate-100">
+
+            <div className="w-full max-w-md bg-white/10 backdrop-blur-xl p-8 rounded-3xl border border-white/20 shadow-[0_8px_32px_0_rgba(0,0,0,0.3)] z-10 relative mt-8 mb-8">
                 <div className="text-center mb-8">
-                    <h1 className="text-3xl font-bold text-slate-800">Create Account</h1>
-                    <p className="text-slate-500 mt-2">Join Smart Solar Advisor today</p>
+                    <h1 className="text-4xl font-extrabold text-white mb-2 tracking-tight">Create Account</h1>
+                    <p className="text-blue-200 text-sm">Join Smart Solar Advisor today</p>
                 </div>
 
                 <form onSubmit={handleRegister} className="space-y-5">
                     <div>
-                        <label htmlFor="name" className="block mb-1.5 font-medium text-slate-700 text-sm">Full Name</label>
+                        <label htmlFor="name" className="block mb-2 font-medium text-blue-100 text-sm">Full Name</label>
                         <div className="relative">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <User className="h-5 w-5 text-slate-400" />
+                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                <User className="h-5 w-5 text-white/50" />
                             </div>
                             <input
                                 id="name"
@@ -100,16 +105,16 @@ const Register = () => {
                                 placeholder="John Doe"
                                 value={formData.name}
                                 onChange={handleInputChange}
-                                className="w-full border border-slate-300 pl-10 pr-3 py-2.5 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                className="w-full bg-black/20 border border-white/10 text-white placeholder-white/30 pl-11 pr-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all"
                             />
                         </div>
                     </div>
 
                     <div>
-                        <label htmlFor="email" className="block mb-1.5 font-medium text-slate-700 text-sm">Email Address</label>
+                        <label htmlFor="email" className="block mb-2 font-medium text-blue-100 text-sm">Email Address</label>
                         <div className="relative">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <Mail className="h-5 w-5 text-slate-400" />
+                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                <Mail className="h-5 w-5 text-white/50" />
                             </div>
                             <input
                                 id="email"
@@ -118,16 +123,16 @@ const Register = () => {
                                 placeholder="you@example.com"
                                 value={formData.email}
                                 onChange={handleInputChange}
-                                className="w-full border border-slate-300 pl-10 pr-3 py-2.5 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                className="w-full bg-black/20 border border-white/10 text-white placeholder-white/30 pl-11 pr-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all"
                             />
                         </div>
                     </div>
 
                     <div>
-                        <label htmlFor="password" className="block mb-1.5 font-medium text-slate-700 text-sm">Password</label>
+                        <label htmlFor="password" className="block mb-2 font-medium text-blue-100 text-sm">Password</label>
                         <div className="relative">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <Lock className="h-5 w-5 text-slate-400" />
+                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                <Lock className="h-5 w-5 text-white/50" />
                             </div>
                             <input
                                 id="password"
@@ -136,24 +141,24 @@ const Register = () => {
                                 placeholder="••••••••"
                                 value={formData.password}
                                 onChange={handleInputChange}
-                                className="w-full border border-slate-300 pl-10 pr-10 py-2.5 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                className="w-full bg-black/20 border border-white/10 text-white placeholder-white/30 pl-11 pr-11 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all"
                             />
                             <button
                                 type="button"
                                 onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition-colors"
                             >
-                                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                             </button>
                         </div>
-                        <p className="text-xs text-slate-500 mt-1">Must be at least 6 characters</p>
+                        <p className="text-xs text-blue-200/50 mt-2">Must be at least 6 characters</p>
                     </div>
 
                     <div>
-                        <label htmlFor="confirmPassword" className="block mb-1.5 font-medium text-slate-700 text-sm">Confirm Password</label>
+                        <label htmlFor="confirmPassword" className="block mb-2 font-medium text-blue-100 text-sm">Confirm Password</label>
                         <div className="relative">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <Lock className="h-5 w-5 text-slate-400" />
+                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                <Lock className="h-5 w-5 text-white/50" />
                             </div>
                             <input
                                 id="confirmPassword"
@@ -162,7 +167,7 @@ const Register = () => {
                                 placeholder="••••••••"
                                 value={formData.confirmPassword}
                                 onChange={handleInputChange}
-                                className="w-full border border-slate-300 pl-10 pr-10 py-2.5 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                className="w-full bg-black/20 border border-white/10 text-white placeholder-white/30 pl-11 pr-11 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all"
                             />
                         </div>
                     </div>
@@ -170,21 +175,21 @@ const Register = () => {
                     <button
                         type="submit"
                         disabled={isLoading}
-                        className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-70 disabled:cursor-not-allowed transition-colors shadow-md mt-2"
+                        className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold py-3.5 rounded-xl hover:from-blue-600 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all text-lg mt-4"
                     >
                         {isLoading ? (
                             <span className="flex items-center justify-center gap-2">
-                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                Creating Account...
+                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                Creating...
                             </span>
                         ) : 'Create Account'}
                     </button>
                 </form>
 
-                <div className="mt-6 text-center pt-6 border-t border-slate-100">
-                    <p className="text-slate-600 text-sm">
+                <div className="mt-8 text-center pt-6 border-t border-white/10">
+                    <p className="text-blue-100/70 text-sm">
                         Already have an account?{' '}
-                        <Link to="/login" className="text-blue-600 font-semibold hover:text-blue-700 hover:underline">
+                        <Link to="/login" className="text-yellow-400 font-semibold hover:text-yellow-300 transition-colors">
                             Sign In
                         </Link>
                     </p>
