@@ -40,7 +40,7 @@ function DailyHistory() {
   const fetchDevices = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5001/api/devices?refresh=true', {
+      const response = await axios.get(`${process.env.REACT_APP_BASE_URL}/api/devices?refresh=true`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -62,7 +62,7 @@ function DailyHistory() {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(
-        `http://localhost:5001/api/faults/history/${selectedDevice._id}?date=${selectedDate}`,
+        `${process.env.REACT_APP_BASE_URL}/api/faults/history/${selectedDevice._id}?date=${selectedDate}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -94,10 +94,10 @@ function DailyHistory() {
 
   const formatTime = (timestamp) => {
     const date = new Date(timestamp);
-    return date.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
       minute: '2-digit',
-      hour12: true 
+      hour12: true
     });
   };
 
@@ -120,158 +120,157 @@ function DailyHistory() {
   return (
     <Layout isLoggedIn={isLoggedIn} username={username} onLogout={handleLogout}>
       <div className="p-6">
-      <div className="max-w-7xl mx-auto">
-        <div className="p-6">
-        {/* Header */}
-        <div className="bg-white rounded-xl shadow-md p-6 mb-6">
-          <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-            <Calendar className="w-6 h-6 text-blue-600" />
-            Daily History
-          </h1>
-          <p className="text-slate-600 mt-1">View fault detection history for selected date</p>
-        </div>
+        <div className="max-w-7xl mx-auto">
+          <div className="p-6">
+            {/* Header */}
+            <div className="bg-white rounded-xl shadow-md p-6 mb-6">
+              <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                <Calendar className="w-6 h-6 text-blue-600" />
+                Daily History
+              </h1>
+              <p className="text-slate-600 mt-1">View fault detection history for selected date</p>
+            </div>
 
-        {/* Filters */}
-        <div className="bg-white rounded-xl shadow-md p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Select Device</label>
-              <select
-                value={selectedDevice?._id || ''}
-                onChange={(e) => {
-                  const device = devices.find(d => d._id === e.target.value);
-                  setSelectedDevice(device);
-                }}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                {devices.map(device => (
-                  <option key={device._id} value={device._id}>
-                    {device.deviceName} ({device.wifiSN})
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Select Date</label>
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                max={new Date().toISOString().split('T')[0]}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Statistics */}
-        {history.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            <div className="bg-white rounded-xl shadow-md p-6">
-              <div className="text-sm text-slate-600 mb-1">Total Records</div>
-              <div className="text-3xl font-bold text-slate-800">{stats.totalRecords}</div>
-              <div className="text-xs text-slate-500 mt-1">5-minute intervals</div>
-            </div>
-            <div className="bg-white rounded-xl shadow-md p-6">
-              <div className="text-sm text-slate-600 mb-1">Faults Detected</div>
-              <div className="text-3xl font-bold text-red-600">{stats.faultsDetected}</div>
-              <div className="text-xs text-slate-500 mt-1">
-                {stats.totalRecords > 0 
-                  ? ((stats.faultsDetected / stats.totalRecords) * 100).toFixed(1) 
-                  : 0}% of total
+            {/* Filters */}
+            <div className="bg-white rounded-xl shadow-md p-6 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Select Device</label>
+                  <select
+                    value={selectedDevice?._id || ''}
+                    onChange={(e) => {
+                      const device = devices.find(d => d._id === e.target.value);
+                      setSelectedDevice(device);
+                    }}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    {devices.map(device => (
+                      <option key={device._id} value={device._id}>
+                        {device.deviceName} ({device.wifiSN})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Select Date</label>
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    max={new Date().toISOString().split('T')[0]}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
               </div>
             </div>
-            <div className="bg-white rounded-xl shadow-md p-6">
-              <div className="text-sm text-slate-600 mb-1">Avg Deviation</div>
-              <div className="text-3xl font-bold text-blue-600">{stats.avgDeviation}%</div>
-              <div className="text-xs text-slate-500 mt-1">From predicted</div>
-            </div>
-          </div>
-        )}
 
-        {/* History Table */}
-        {!selectedDevice ? (
-          <div className="bg-white rounded-xl shadow-md p-12 text-center">
-            <p className="text-slate-600">Please select a device to view history</p>
+            {/* Statistics */}
+            {history.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <div className="bg-white rounded-xl shadow-md p-6">
+                  <div className="text-sm text-slate-600 mb-1">Total Records</div>
+                  <div className="text-3xl font-bold text-slate-800">{stats.totalRecords}</div>
+                  <div className="text-xs text-slate-500 mt-1">5-minute intervals</div>
+                </div>
+                <div className="bg-white rounded-xl shadow-md p-6">
+                  <div className="text-sm text-slate-600 mb-1">Faults Detected</div>
+                  <div className="text-3xl font-bold text-red-600">{stats.faultsDetected}</div>
+                  <div className="text-xs text-slate-500 mt-1">
+                    {stats.totalRecords > 0
+                      ? ((stats.faultsDetected / stats.totalRecords) * 100).toFixed(1)
+                      : 0}% of total
+                  </div>
+                </div>
+                <div className="bg-white rounded-xl shadow-md p-6">
+                  <div className="text-sm text-slate-600 mb-1">Avg Deviation</div>
+                  <div className="text-3xl font-bold text-blue-600">{stats.avgDeviation}%</div>
+                  <div className="text-xs text-slate-500 mt-1">From predicted</div>
+                </div>
+              </div>
+            )}
+
+            {/* History Table */}
+            {!selectedDevice ? (
+              <div className="bg-white rounded-xl shadow-md p-12 text-center">
+                <p className="text-slate-600">Please select a device to view history</p>
+              </div>
+            ) : loading ? (
+              <div className="bg-white rounded-xl shadow-md p-12 text-center">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <p className="mt-4 text-slate-600">Loading history...</p>
+              </div>
+            ) : history.length === 0 ? (
+              <div className="bg-white rounded-xl shadow-md p-12 text-center">
+                <p className="text-slate-600">No history found for selected date</p>
+              </div>
+            ) : (
+              <div className="bg-white rounded-xl shadow-md overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-slate-50 border-b border-slate-200">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Time</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Predicted</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Actual</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Deviation</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Fault Type</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Severity</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-slate-200">
+                      {history.map((record, index) => (
+                        <tr key={index} className="hover:bg-slate-50">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
+                            {formatTime(record.timestamp)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {record.prediction.faultDetected ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold bg-red-100 text-red-700">
+                                <AlertTriangle className="w-3 h-3" />
+                                Fault
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold bg-green-100 text-green-700">
+                                <CheckCircle className="w-3 h-3" />
+                                Normal
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
+                            {Number(record.prediction?.predictedProduction || 0).toFixed(2)} W
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
+                            {Number(record.prediction?.actualProduction || 0).toFixed(2)} W
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`inline-flex items-center gap-1 text-sm font-semibold ${Number(record.prediction?.deviation || 0) < 0 ? 'text-red-600' : 'text-green-600'
+                              }`}>
+                              {Number(record.prediction?.deviation || 0) < 0 ? (
+                                <TrendingDown className="w-4 h-4" />
+                              ) : (
+                                <TrendingUp className="w-4 h-4" />
+                              )}
+                              {Math.abs(Number(record.prediction?.deviation || 0)).toFixed(1)}%
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
+                            {(record.prediction?.faultType || 'none').replace('_', ' ').toUpperCase()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-2 py-1 rounded text-xs font-semibold border ${getFaultColor(record.prediction.faultSeverity)}`}>
+                              {(record.prediction?.faultSeverity || 'none').toUpperCase()}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
-        ) : loading ? (
-          <div className="bg-white rounded-xl shadow-md p-12 text-center">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <p className="mt-4 text-slate-600">Loading history...</p>
-          </div>
-        ) : history.length === 0 ? (
-          <div className="bg-white rounded-xl shadow-md p-12 text-center">
-            <p className="text-slate-600">No history found for selected date</p>
-          </div>
-        ) : (
-          <div className="bg-white rounded-xl shadow-md overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-slate-50 border-b border-slate-200">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Time</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Predicted</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Actual</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Deviation</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Fault Type</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Severity</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-slate-200">
-                  {history.map((record, index) => (
-                    <tr key={index} className="hover:bg-slate-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                        {formatTime(record.timestamp)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {record.prediction.faultDetected ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold bg-red-100 text-red-700">
-                            <AlertTriangle className="w-3 h-3" />
-                            Fault
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold bg-green-100 text-green-700">
-                            <CheckCircle className="w-3 h-3" />
-                            Normal
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                        {Number(record.prediction?.predictedProduction || 0).toFixed(2)} W
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                        {Number(record.prediction?.actualProduction || 0).toFixed(2)} W
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center gap-1 text-sm font-semibold ${
-                          Number(record.prediction?.deviation || 0) < 0 ? 'text-red-600' : 'text-green-600'
-                        }`}>
-                          {Number(record.prediction?.deviation || 0) < 0 ? (
-                            <TrendingDown className="w-4 h-4" />
-                          ) : (
-                            <TrendingUp className="w-4 h-4" />
-                          )}
-                          {Math.abs(Number(record.prediction?.deviation || 0)).toFixed(1)}%
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                        {(record.prediction?.faultType || 'none').replace('_', ' ').toUpperCase()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 rounded text-xs font-semibold border ${getFaultColor(record.prediction.faultSeverity)}`}>
-                          {(record.prediction?.faultSeverity || 'none').toUpperCase()}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-      </div>
-      </div>
+        </div>
       </div>
     </Layout>
   );
