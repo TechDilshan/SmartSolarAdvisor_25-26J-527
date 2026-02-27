@@ -7,7 +7,74 @@ class AnswerGenerator:
     
     def __init__(self):
         """Initialize the answer generator"""
-        pass
+        # Define solar-related keywords
+        self.solar_keywords = [
+            'solar', 'photovoltaic', 'pv', 'panel', 'renewable', 'energy',
+            'electricity', 'inverter', 'battery', 'net metering', 'grid',
+            'installation', 'monocrystalline', 'polycrystalline', 'efficiency',
+            'sunlight', 'rooftop', 'power', 'watt', 'kilowatt', 'ceb',
+            'sun', 'irradiance', 'system', 'benefit', 'cost', 'price',
+            'saving', 'subsidy', 'incentive', 'feed-in', 'tariff'
+        ]
+    
+    def is_query_relevant(self, query: str) -> bool:
+        """
+        Check if the query is related to solar energy
+        
+        Args:
+            query: User's question
+            
+        Returns:
+            True if solar-related, False otherwise
+        """
+        query_lower = query.lower()
+        
+        # Check for solar keywords in query
+        keyword_count = sum(1 for keyword in self.solar_keywords if keyword in query_lower)
+        
+        # If at least 1 solar keyword found, consider it relevant
+        if keyword_count >= 1:
+            return True
+        
+        # Check for implicit solar queries (benefit, cost, install without explicit "solar")
+        # These are only valid if they're about home energy systems
+        implicit_terms = [
+            'benefit', 'advantage', 'cost', 'price', 'install', 'setup',
+            'how much', 'save money', 'electricity bill', 'power cut',
+            'backup power', 'renewable', 'clean energy', 'green energy'
+        ]
+        
+        has_implicit = any(term in query_lower for term in implicit_terms)
+        has_home_context = any(word in query_lower for word in ['home', 'house', 'residential', 'rooftop'])
+        
+        # Only accept if both implicit term and home context are present
+        if has_implicit and has_home_context:
+            return True
+        
+        return False
+    
+    def is_retrieved_content_relevant(self, documents: List[str], query: str) -> bool:
+        """
+        Check if retrieved documents are actually about solar energy
+        
+        Args:
+            documents: Retrieved document chunks
+            query: User's question
+            
+        Returns:
+            True if documents contain solar content, False otherwise
+        """
+        if not documents:
+            return False
+        
+        # Combine all documents
+        combined_text = ' '.join(documents).lower()
+        
+        # Count solar keywords in retrieved content
+        keyword_count = sum(1 for keyword in self.solar_keywords if keyword in combined_text)
+        
+        # Need at least 3 solar keywords in retrieved content
+        return keyword_count >= 3
     
     def clean_text(self, text: str) -> str:
         """Clean retrieved text by removing citations, URLs, and formatting"""
@@ -134,10 +201,15 @@ class AnswerGenerator:
             documents: List of retrieved document chunks
             
         Returns:
-            Clean, formatted answer
+            Clean, formatted answer or "not relevant" message
         """
-        if not documents:
-            return "I don't have enough information to answer that question."
+        # First check: Is the query about solar energy?
+        if not self.is_query_relevant(query):
+            return "I'm sorry, but I can only answer questions related to solar energy systems, solar panels, installation, costs, and benefits in Sri Lanka. Please ask me about solar energy topics."
+        
+        # Second check: Are retrieved documents relevant?
+        if not documents or not self.is_retrieved_content_relevant(documents, query):
+            return "I don't have enough information to answer that specific question about solar energy. Please try rephrasing your question or ask about solar panels, costs, installation, benefits, or technical specifications."
         
         # Extract key information
         answer = self.extract_key_information(query, documents)

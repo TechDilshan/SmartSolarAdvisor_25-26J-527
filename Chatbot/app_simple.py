@@ -181,6 +181,22 @@ def generate_answer(query: str, embeddings_handler, translator, answer_generator
         if st.session_state.show_debug:
             st.info(f"🔄 Translation: {original_query} → {translated_query}")
     
+    # Use AnswerGenerator to check relevance BEFORE searching
+    if not answer_generator.is_query_relevant(query):
+        no_answer = "I'm sorry, but I can only answer questions related to solar energy systems, solar panels, installation, costs, and benefits in Sri Lanka. Please ask me about solar energy topics."
+        
+        # Translate if needed
+        if query_language == 'sinhala':
+            no_answer = translator.translate_to_sinhala(no_answer)
+        
+        return {
+            "answer": no_answer,
+            "sources": [],
+            "chunks_used": 0,
+            "language": query_language,
+            "translated_query": translated_query
+        }
+    
     # Search using English query - retrieve top 5 results
     results = embeddings_handler.search(query, n_results=5)
     
@@ -193,7 +209,7 @@ def generate_answer(query: str, embeddings_handler, translator, answer_generator
         st.info(f"📊 Top result distance: {distances[0]:.4f}")
     
     if not documents:
-        no_answer = "❌ I don't have any information to answer that question."
+        no_answer = "I don't have any information to answer that question."
         if query_language == 'sinhala':
             no_answer = translator.translate_to_sinhala(no_answer)
         return {
@@ -205,11 +221,22 @@ def generate_answer(query: str, embeddings_handler, translator, answer_generator
         }
     
     # Use AnswerGenerator to create a natural, clean answer
+    # This will also check if retrieved content is relevant
     final_answer = answer_generator.generate_answer(query, documents)
     
-    # Add a greeting for very short answers
-    if len(final_answer.split()) < 10:
-        final_answer = f"Based on my knowledge: {final_answer}"
+    # Check if answer indicates irrelevant content
+    if "I'm sorry" in final_answer or "I don't have enough information" in final_answer:
+        # Translate if needed
+        if query_language == 'sinhala':
+            final_answer = translator.translate_to_sinhala(final_answer)
+        
+        return {
+            "answer": final_answer,
+            "sources": [],
+            "chunks_used": 0,
+            "language": query_language,
+            "translated_query": translated_query
+        }
     
     # Prepare sources
     sources = []
