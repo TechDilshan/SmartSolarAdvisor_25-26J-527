@@ -10,6 +10,7 @@ from config import Config
 from embeddings.embeddings_handler import EmbeddingsHandler
 from utils.translator import LanguageTranslator
 from rag.answer_generator import AnswerGenerator
+from utils.conversation_manager import ConversationManager  # Add this
 
 # Page configuration
 st.set_page_config(
@@ -165,27 +166,99 @@ def clean_retrieved_text(text: str) -> str:
     
     return text
 
-def generate_answer(query: str, embeddings_handler, translator, answer_generator):
-    """Generate concise answer with translation support and proper formatting"""
+def generate_answer(query: str, embeddings_handler, translator, answer_generator, conversation_manager):
+    """Generate answer with conversation support"""
     # Detect query language
     query_language = translator.detect_language(query)
     original_query = query
     translated_query = None
     
+    is_sinhala = query_language == 'sinhala'
+    
+    # Detect conversation intent
+    intent = conversation_manager.detect_intent(query)
+    
+    # Handle conversational intents
+    if intent == 'greeting':
+        return {
+            "answer": conversation_manager.generate_greeting_response(is_sinhala),
+            "sources": [],
+            "chunks_used": 0,
+            "language": query_language,
+            "translated_query": None,
+            "intent": "greeting"
+        }
+    
+    elif intent == 'farewell':
+        return {
+            "answer": conversation_manager.generate_farewell_response(is_sinhala),
+            "sources": [],
+            "chunks_used": 0,
+            "language": query_language,
+            "translated_query": None,
+            "intent": "farewell"
+        }
+    
+    elif intent == 'thanks':
+        return {
+            "answer": conversation_manager.generate_thanks_response(is_sinhala),
+            "sources": [],
+            "chunks_used": 0,
+            "language": query_language,
+            "translated_query": None,
+            "intent": "thanks"
+        }
+    
+    elif intent == 'help':
+        return {
+            "answer": conversation_manager.generate_help_response(is_sinhala),
+            "sources": [],
+            "chunks_used": 0,
+            "language": query_language,
+            "translated_query": None,
+            "intent": "help"
+        }
+    
+    elif intent == 'chitchat':
+        return {
+            "answer": conversation_manager.generate_chitchat_response(query, is_sinhala),
+            "sources": [],
+            "chunks_used": 0,
+            "language": query_language,
+            "translated_query": None,
+            "intent": "chitchat"
+        }
+    
+    elif intent == 'affirmation':
+        # Get last bot message for context
+        last_bot_msg = None
+        for msg in reversed(st.session_state.messages):
+            if msg['role'] == 'assistant':
+                last_bot_msg = msg.get('content', '')
+                break
+        
+        return {
+            "answer": conversation_manager.generate_affirmation_response(last_bot_msg, is_sinhala),
+            "sources": [],
+            "chunks_used": 0,
+            "language": query_language,
+            "translated_query": None,
+            "intent": "affirmation"
+        }
+    
+    # For questions, proceed with RAG pipeline
     # If Sinhala, translate to English for search
     if query_language == 'sinhala':
         translated_query = translator.translate_to_english(query)
         query = translated_query
         
-        # Debug: Show translation
         if st.session_state.show_debug:
             st.info(f"🔄 Translation: {original_query} → {translated_query}")
     
-    # Use AnswerGenerator to check relevance BEFORE searching
+    # Check relevance before searching
     if not answer_generator.is_query_relevant(query):
         no_answer = "I'm sorry, but I can only answer questions related to solar energy systems, solar panels, installation, costs, and benefits in Sri Lanka. Please ask me about solar energy topics."
         
-        # Translate if needed
         if query_language == 'sinhala':
             no_answer = translator.translate_to_sinhala(no_answer)
         
@@ -194,18 +267,18 @@ def generate_answer(query: str, embeddings_handler, translator, answer_generator
             "sources": [],
             "chunks_used": 0,
             "language": query_language,
-            "translated_query": translated_query
+            "translated_query": translated_query,
+            "intent": "out_of_scope"
         }
     
-    # Search using English query - retrieve top 5 results
+    # Search using English query
     results = embeddings_handler.search(query, n_results=5)
     
     documents = results.get('documents', [[]])[0]
     metadatas = results.get('metadatas', [[]])[0]
     distances = results.get('distances', [[]])[0]
     
-    # Debug: Show distances
-    if distances and st.session_state.show_debug:
+    if st.session_state.show_debug and distances:
         st.info(f"📊 Top result distance: {distances[0]:.4f}")
     
     if not documents:
@@ -217,16 +290,15 @@ def generate_answer(query: str, embeddings_handler, translator, answer_generator
             "sources": [],
             "chunks_used": 0,
             "language": query_language,
-            "translated_query": translated_query
+            "translated_query": translated_query,
+            "intent": "no_data"
         }
     
-    # Use AnswerGenerator to create a natural, clean answer
-    # This will also check if retrieved content is relevant
+    # Generate answer
     final_answer = answer_generator.generate_answer(query, documents)
     
     # Check if answer indicates irrelevant content
     if "I'm sorry" in final_answer or "I don't have enough information" in final_answer:
-        # Translate if needed
         if query_language == 'sinhala':
             final_answer = translator.translate_to_sinhala(final_answer)
         
@@ -235,7 +307,8 @@ def generate_answer(query: str, embeddings_handler, translator, answer_generator
             "sources": [],
             "chunks_used": 0,
             "language": query_language,
-            "translated_query": translated_query
+            "translated_query": translated_query,
+            "intent": "irrelevant"
         }
     
     # Prepare sources
@@ -250,7 +323,7 @@ def generate_answer(query: str, embeddings_handler, translator, answer_generator
         if source_info not in sources:
             sources.append(source_info)
     
-    # Translate answer to Sinhala if query was in Sinhala
+    # Translate answer if needed
     if query_language == 'sinhala':
         if st.session_state.show_debug:
             st.info("🔄 Translating answer to Sinhala...")
@@ -261,7 +334,8 @@ def generate_answer(query: str, embeddings_handler, translator, answer_generator
         "sources": sources,
         "chunks_used": len(documents),
         "language": query_language,
-        "translated_query": translated_query
+        "translated_query": translated_query,
+        "intent": "question"
     }
 
 # Initialize session state
@@ -280,7 +354,8 @@ if 'embeddings_handler' not in st.session_state:
                 db_path=str(config.VECTORDB_DIR)
             )
             st.session_state.translator = LanguageTranslator()
-            st.session_state.answer_generator = AnswerGenerator()  # Add this line
+            st.session_state.answer_generator = AnswerGenerator()
+            st.session_state.conversation_manager = ConversationManager()
             st.session_state.system_ready = True
         except Exception as e:
             st.error(f"Error initializing system: {str(e)}")
@@ -404,10 +479,22 @@ for message in st.session_state.messages:
         lang_badge = "english-badge" if message.get('language') == 'english' else "sinhala-badge"
         lang_text = "English" if message.get('language') == 'english' else "සිංහල"
         
+        # Show emoji based on intent
+        intent_emoji = {
+            'greeting': '👋',
+            'farewell': '👋',
+            'thanks': '😊',
+            'help': '💡',
+            'chitchat': '💬',
+            'question': '🤖',
+            'affirmation': '✅'
+        }
+        emoji = intent_emoji.get(message.get('intent', 'question'), '🤖')
+        
         st.markdown(f"""
         <div class="chat-message assistant-message">
             <span class="language-badge {lang_badge}">{lang_text}</span><br>
-            <b>🤖 Solar Advisor:</b><br>
+            <b>{emoji} Solar Advisor:</b><br>
             {message['content']}
         </div>
         """, unsafe_allow_html=True)
@@ -450,24 +537,26 @@ if user_input:
         })
         
         # Generate response
-        with st.spinner("🔍 Searching knowledge base... | දත්ත සමුදාය සොයමින්..."):
+        with st.spinner("🔍 Thinking... | සිතමින්..."):
             try:
                 response = generate_answer(
                     user_input, 
                     st.session_state.embeddings_handler,
                     st.session_state.translator,
-                    st.session_state.answer_generator  # Add this parameter
+                    st.session_state.answer_generator,
+                    st.session_state.conversation_manager  # Add this
                 )
                 
                 # Add assistant message
                 st.session_state.messages.append({
                     "role": "assistant",
                     "content": response['answer'],
-                    "sources": response['sources'],
-                    "chunks_used": response['chunks_used'],
+                    "sources": response.get('sources', []),
+                    "chunks_used": response.get('chunks_used', 0),
                     "language": response['language'],
                     "translated_query": response.get('translated_query'),
                     "original_query": user_input if response['language'] == 'sinhala' else None,
+                    "intent": response.get('intent', 'question'),
                     "timestamp": datetime.now().isoformat()
                 })
                 
