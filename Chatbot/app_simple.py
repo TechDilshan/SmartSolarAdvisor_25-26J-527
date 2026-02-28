@@ -10,6 +10,8 @@ from config import Config
 from embeddings.embeddings_handler import EmbeddingsHandler
 from utils.translator import LanguageTranslator
 from rag.answer_generator import AnswerGenerator
+from utils.conversation_manager import ConversationManager
+from voice.voice_handler import VoiceHandler  # NEW
 
 # Page configuration
 st.set_page_config(
@@ -19,7 +21,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS (keep existing CSS)
+# Custom CSS (add voice button styles)
 st.markdown("""
 <style>
     .main-header {
@@ -69,6 +71,19 @@ st.markdown("""
     .english-badge {
         background-color: #2196F3;
         color: white;
+    }
+    .voice-indicator {
+        background-color: #FF5722;
+        color: white;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        text-align: center;
+        font-weight: bold;
+        animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -165,35 +180,123 @@ def clean_retrieved_text(text: str) -> str:
     
     return text
 
-def generate_answer(query: str, embeddings_handler, translator, answer_generator):
-    """Generate concise answer with translation support and proper formatting"""
+def generate_answer(query: str, embeddings_handler, translator, answer_generator, conversation_manager):
+    """Generate answer with conversation support"""
     # Detect query language
     query_language = translator.detect_language(query)
     original_query = query
     translated_query = None
     
+    is_sinhala = query_language == 'sinhala'
+    
+    # Detect conversation intent
+    intent = conversation_manager.detect_intent(query)
+    
+    # Handle conversational intents
+    if intent == 'greeting':
+        return {
+            "answer": conversation_manager.generate_greeting_response(is_sinhala),
+            "sources": [],
+            "chunks_used": 0,
+            "language": query_language,
+            "translated_query": None,
+            "intent": "greeting"
+        }
+    
+    elif intent == 'farewell':
+        return {
+            "answer": conversation_manager.generate_farewell_response(is_sinhala),
+            "sources": [],
+            "chunks_used": 0,
+            "language": query_language,
+            "translated_query": None,
+            "intent": "farewell"
+        }
+    
+    elif intent == 'thanks':
+        return {
+            "answer": conversation_manager.generate_thanks_response(is_sinhala),
+            "sources": [],
+            "chunks_used": 0,
+            "language": query_language,
+            "translated_query": None,
+            "intent": "thanks"
+        }
+    
+    elif intent == 'help':
+        return {
+            "answer": conversation_manager.generate_help_response(is_sinhala),
+            "sources": [],
+            "chunks_used": 0,
+            "language": query_language,
+            "translated_query": None,
+            "intent": "help"
+        }
+    
+    elif intent == 'chitchat':
+        return {
+            "answer": conversation_manager.generate_chitchat_response(query, is_sinhala),
+            "sources": [],
+            "chunks_used": 0,
+            "language": query_language,
+            "translated_query": None,
+            "intent": "chitchat"
+        }
+    
+    elif intent == 'affirmation':
+        # Get last bot message for context
+        last_bot_msg = None
+        for msg in reversed(st.session_state.messages):
+            if msg['role'] == 'assistant':
+                last_bot_msg = msg.get('content', '')
+                break
+        
+        return {
+            "answer": conversation_manager.generate_affirmation_response(last_bot_msg, is_sinhala),
+            "sources": [],
+            "chunks_used": 0,
+            "language": query_language,
+            "translated_query": None,
+            "intent": "affirmation"
+        }
+    
+    # For questions, proceed with RAG pipeline
     # If Sinhala, translate to English for search
     if query_language == 'sinhala':
         translated_query = translator.translate_to_english(query)
         query = translated_query
         
-        # Debug: Show translation
         if st.session_state.show_debug:
             st.info(f"🔄 Translation: {original_query} → {translated_query}")
     
-    # Search using English query - retrieve top 5 results
+    # Check relevance before searching
+    if not answer_generator.is_query_relevant(query):
+        no_answer = "I'm sorry, but I can only answer questions related to solar energy systems, solar panels, installation, costs, and benefits in Sri Lanka. Please ask me about solar energy topics."
+        
+        if query_language == 'sinhala':
+            no_answer = translator.translate_to_sinhala(no_answer)
+        
+        return {
+            "answer": no_answer,
+            "sources": [],
+            "chunks_used": 0,
+            "language": query_language,
+            "translated_query": translated_query,
+            "intent": "out_of_scope"
+        }
+    
+    # Search using English query
     results = embeddings_handler.search(query, n_results=5)
     
     documents = results.get('documents', [[]])[0]
     metadatas = results.get('metadatas', [[]])[0]
     distances = results.get('distances', [[]])[0]
     
-    # Debug: Show distances
-    if distances and st.session_state.show_debug:
+    if st.session_state.show_debug and distances:
         st.info(f"📊 Top result distance: {distances[0]:.4f}")
     
     if not documents:
-        no_answer = "❌ I don't have any information to answer that question."
+        no_answer = "I don't have any information to answer that question."
         if query_language == 'sinhala':
             no_answer = translator.translate_to_sinhala(no_answer)
         return {
@@ -201,11 +304,26 @@ def generate_answer(query: str, embeddings_handler, translator, answer_generator
             "sources": [],
             "chunks_used": 0,
             "language": query_language,
-            "translated_query": translated_query
+            "translated_query": translated_query,
+            "intent": "no_data"
         }
     
-    # Use AnswerGenerator to create a natural, clean answer
+    # Generate answer
     final_answer = answer_generator.generate_answer(query, documents)
+    
+    # Check if answer indicates irrelevant content
+    if "I'm sorry" in final_answer or "I don't have enough information" in final_answer:
+        if query_language == 'sinhala':
+            final_answer = translator.translate_to_sinhala(final_answer)
+        
+        return {
+            "answer": final_answer,
+            "sources": [],
+            "chunks_used": 0,
+            "language": query_language,
+            "translated_query": translated_query,
+            "intent": "irrelevant"
+        }
     
     # Prepare sources
     sources = []
@@ -219,7 +337,7 @@ def generate_answer(query: str, embeddings_handler, translator, answer_generator
         if source_info not in sources:
             sources.append(source_info)
     
-    # Translate answer to Sinhala if query was in Sinhala
+    # Translate answer if needed
     if query_language == 'sinhala':
         if st.session_state.show_debug:
             st.info("🔄 Translating answer to Sinhala...")
@@ -230,7 +348,8 @@ def generate_answer(query: str, embeddings_handler, translator, answer_generator
         "sources": sources,
         "chunks_used": len(documents),
         "language": query_language,
-        "translated_query": translated_query
+        "translated_query": translated_query,
+        "intent": "question"
     }
 
 # Initialize session state
@@ -239,6 +358,12 @@ if 'messages' not in st.session_state:
 
 if 'system_ready' not in st.session_state:
     st.session_state.system_ready = False
+
+if 'voice_enabled' not in st.session_state:
+    st.session_state.voice_enabled = False
+
+if 'listening' not in st.session_state:
+    st.session_state.listening = False
 
 if 'embeddings_handler' not in st.session_state:
     with st.spinner("🔄 Initializing Solar Advisor System..."):
@@ -249,7 +374,9 @@ if 'embeddings_handler' not in st.session_state:
                 db_path=str(config.VECTORDB_DIR)
             )
             st.session_state.translator = LanguageTranslator()
-            st.session_state.answer_generator = AnswerGenerator()  # Add this line
+            st.session_state.answer_generator = AnswerGenerator()
+            st.session_state.conversation_manager = ConversationManager()
+            st.session_state.voice_handler = VoiceHandler()  # NEW
             st.session_state.system_ready = True
         except Exception as e:
             st.error(f"Error initializing system: {str(e)}")
@@ -272,7 +399,7 @@ with st.sidebar:
             <b>Status:</b> ✅ Ready<br>
             <b>Knowledge Base:</b> {info['total_chunks']} chunks<br>
             <b>Embedding Model:</b> {info['model']}<br>
-            <b>Mode:</b> Concise Answers + Translation<br>
+            <b>Mode:</b> RAG + Translation + Voice<br>
             <b>Languages:</b> English, සිංහල
             </div>
             """, unsafe_allow_html=True)
@@ -280,6 +407,29 @@ with st.sidebar:
             st.error(f"Error getting system info: {str(e)}")
     else:
         st.warning("System not ready")
+    
+    st.markdown("---")
+    
+    # Voice Settings - NEW
+    st.header("🎤 Voice Settings")
+    st.session_state.voice_enabled = st.checkbox(
+        "Enable Voice Input", 
+        value=st.session_state.voice_enabled,
+        help="Click to enable microphone for voice questions"
+    )
+    
+    if st.session_state.voice_enabled:
+        st.info("🎤 Voice input ready! Click the microphone button below to speak.")
+    
+    voice_output = st.checkbox(
+        "Enable Voice Output", 
+        value=False,
+        help="Bot will speak the answers"
+    )
+    
+    if 'voice_output' not in st.session_state:
+        st.session_state.voice_output = False
+    st.session_state.voice_output = voice_output
     
     st.markdown("---")
     
@@ -305,7 +455,7 @@ with st.sidebar:
         sinhala_questions = [
             "සූර්ය බලශක්තියේ ප්‍රතිලාභ මොනවාද?",
             "සූර්ය පැනල පද්ධතියක මිල කීයද?",
-            "නිකම් මීටරය යනු කුමක්ද?",
+            "ශුද්ධ මීටරය යනු කුමක්ද?",
             "මොනොක්‍රිස්ටලයින් සහ පොලික්‍රිස්ටලයින් පැනල් ගැන කියන්න",
             "ලබා ගත හැකි සූර්ය සේවා මොනවාද?",
         ]
@@ -323,7 +473,7 @@ with st.sidebar:
         st.session_state.show_sources = True
     
     if 'show_translation' not in st.session_state:
-        st.session_state.show_translation = False  # Changed default to False
+        st.session_state.show_translation = False
     
     if 'show_debug' not in st.session_state:
         st.session_state.show_debug = False
@@ -359,12 +509,26 @@ with st.sidebar:
 # Main chat interface
 st.markdown("### 💬 Chat")
 
+# Voice Input Section - NEW
+if st.session_state.voice_enabled:
+    col1, col2 = st.columns([1, 5])
+    
+    with col1:
+        if st.button("🎤", help="Click and speak your question", use_container_width=True):
+            st.session_state.listening = True
+    
+    with col2:
+        if st.session_state.listening:
+            st.markdown('<div class="voice-indicator">🎤 Listening... Speak now!</div>', unsafe_allow_html=True)
+
 # Display chat messages
 for message in st.session_state.messages:
     if message['role'] == 'user':
+        # Show microphone icon if message was voice input
+        voice_icon = "🎤 " if message.get('from_voice', False) else ""
         st.markdown(f"""
         <div class="chat-message user-message">
-            <b>👤 You:</b><br>
+            <b>👤 You:</b> {voice_icon}<br>
             {message['content']}
         </div>
         """, unsafe_allow_html=True)
@@ -373,13 +537,29 @@ for message in st.session_state.messages:
         lang_badge = "english-badge" if message.get('language') == 'english' else "sinhala-badge"
         lang_text = "English" if message.get('language') == 'english' else "සිංහල"
         
+        # Show emoji based on intent
+        intent_emoji = {
+            'greeting': '👋',
+            'farewell': '👋',
+            'thanks': '😊',
+            'help': '💡',
+            'chitchat': '💬',
+            'question': '🤖',
+            'affirmation': '✅'
+        }
+        emoji = intent_emoji.get(message.get('intent', 'question'), '🤖')
+        
         st.markdown(f"""
         <div class="chat-message assistant-message">
             <span class="language-badge {lang_badge}">{lang_text}</span><br>
-            <b>🤖 Solar Advisor:</b><br>
+            <b>{emoji} Solar Advisor:</b><br>
             {message['content']}
         </div>
         """, unsafe_allow_html=True)
+        
+        # Voice output - NEW
+        if st.session_state.voice_output and message.get('audio_file'):
+            st.audio(message['audio_file'], format='audio/mp3')
         
         # Show translation info if enabled
         if st.session_state.show_translation and message.get('translated_query'):
@@ -396,8 +576,41 @@ for message in st.session_state.messages:
                         source_text += f" - Page {source['page']}"
                     st.markdown(source_text)
 
+# Handle voice input - NEW
+if st.session_state.listening:
+    with st.spinner("🎤 Listening... Please speak your question..."):
+        try:
+            detected_lang, recognized_text = st.session_state.voice_handler.listen_from_microphone(
+                timeout=5,
+                phrase_time_limit=10
+            )
+            
+            if recognized_text:
+                st.success(f"✅ Recognized ({detected_lang}): {recognized_text}")
+                st.session_state.voice_input = recognized_text
+                st.session_state.voice_detected_lang = detected_lang
+                st.session_state.from_voice = True
+            else:
+                st.error("❌ Could not recognize speech. Please try again.")
+        
+        except Exception as e:
+            st.error(f"Error with voice input: {str(e)}")
+        
+        finally:
+            st.session_state.listening = False
+            st.rerun()
+
 # Handle sample question
 user_input = None
+from_voice = False
+
+if 'voice_input' in st.session_state:
+    user_input = st.session_state.voice_input
+    from_voice = st.session_state.get('from_voice', False)
+    del st.session_state.voice_input
+    if 'from_voice' in st.session_state:
+        del st.session_state.from_voice
+
 if 'sample_question' in st.session_state:
     user_input = st.session_state.sample_question
     del st.session_state.sample_question
@@ -415,29 +628,42 @@ if user_input:
         st.session_state.messages.append({
             "role": "user",
             "content": user_input,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
+            "from_voice": from_voice  # NEW
         })
         
         # Generate response
-        with st.spinner("🔍 Searching knowledge base... | දත්ත සමුදාය සොයමින්..."):
+        with st.spinner("🔍 Thinking... | සිතමින්..."):
             try:
                 response = generate_answer(
                     user_input, 
                     st.session_state.embeddings_handler,
                     st.session_state.translator,
-                    st.session_state.answer_generator  # Add this parameter
+                    st.session_state.answer_generator,
+                    st.session_state.conversation_manager
                 )
+                
+                # Generate voice output if enabled - NEW
+                audio_file = None
+                if st.session_state.voice_output:
+                    with st.spinner("🔊 Generating voice response..."):
+                        audio_file = st.session_state.voice_handler.text_to_speech(
+                            response['answer'],
+                            response['language']
+                        )
                 
                 # Add assistant message
                 st.session_state.messages.append({
                     "role": "assistant",
                     "content": response['answer'],
-                    "sources": response['sources'],
-                    "chunks_used": response['chunks_used'],
+                    "sources": response.get('sources', []),
+                    "chunks_used": response.get('chunks_used', 0),
                     "language": response['language'],
                     "translated_query": response.get('translated_query'),
                     "original_query": user_input if response['language'] == 'sinhala' else None,
-                    "timestamp": datetime.now().isoformat()
+                    "intent": response.get('intent', 'question'),
+                    "timestamp": datetime.now().isoformat(),
+                    "audio_file": audio_file  # NEW
                 })
                 
             except Exception as e:
@@ -453,7 +679,7 @@ if user_input:
 st.markdown("---")
 st.markdown("""
 <div style="text-align: center; color: #888; font-size: 0.9rem;">
-    <p>🌱 Powered by Vector Search + Translation | දෛශික සෙවුම + පරිවර්තනය මගින් බලගන්වයි</p>
-    <p>💡 Ask questions in English or Sinhala | ඉංග්‍රීසි හෝ සිංහලෙන් ප්‍රශ්න අසන්න</p>
+    <p>🌱 Powered by RAG + Voice AI | RAG + හඬ AI මගින් බලගන්වයි</p>
+    <p>💡 Type or speak in English or Sinhala | ඉංග්‍රීසි හෝ සිංහලෙන් ටයිප් කරන්න හෝ කතා කරන්න</p>
 </div>
 """, unsafe_allow_html=True)

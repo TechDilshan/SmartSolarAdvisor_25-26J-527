@@ -1,149 +1,228 @@
-"""Generate natural conversational answers from retrieved context"""
+"""Answer generation using summarization and formatting"""
 import re
-from typing import List, Dict
+from typing import List
 
 class AnswerGenerator:
-    """Generate conversational answers from retrieved chunks"""
+    """Generate clean, concise answers from retrieved chunks"""
     
     def __init__(self):
-        pass
+        """Initialize the answer generator"""
+        # Define solar-related keywords
+        self.solar_keywords = [
+            'solar', 'photovoltaic', 'pv', 'panel', 'renewable', 'energy',
+            'electricity', 'inverter', 'battery', 'net metering', 'grid',
+            'installation', 'monocrystalline', 'polycrystalline', 'efficiency',
+            'sunlight', 'rooftop', 'power', 'watt', 'kilowatt', 'ceb',
+            'sun', 'irradiance', 'system', 'benefit', 'cost', 'price',
+            'saving', 'subsidy', 'incentive', 'feed-in', 'tariff'
+        ]
     
-    def _clean_text(self, text: str) -> str:
-        """Clean text removing citations and references"""
+    def is_query_relevant(self, query: str) -> bool:
+        """
+        Check if the query is related to solar energy
+        
+        Args:
+            query: User's question
+            
+        Returns:
+            True if solar-related, False otherwise
+        """
+        query_lower = query.lower()
+        
+        # Check for solar keywords in query
+        keyword_count = sum(1 for keyword in self.solar_keywords if keyword in query_lower)
+        
+        # If at least 1 solar keyword found, consider it relevant
+        if keyword_count >= 1:
+            return True
+        
+        # Check for implicit solar queries (benefit, cost, install without explicit "solar")
+        # These are only valid if they're about home energy systems
+        implicit_terms = [
+            'benefit', 'advantage', 'cost', 'price', 'install', 'setup',
+            'how much', 'save money', 'electricity bill', 'power cut',
+            'backup power', 'renewable', 'clean energy', 'green energy'
+        ]
+        
+        has_implicit = any(term in query_lower for term in implicit_terms)
+        has_home_context = any(word in query_lower for word in ['home', 'house', 'residential', 'rooftop'])
+        
+        # Only accept if both implicit term and home context are present
+        if has_implicit and has_home_context:
+            return True
+        
+        return False
+    
+    def is_retrieved_content_relevant(self, documents: List[str], query: str) -> bool:
+        """
+        Check if retrieved documents are actually about solar energy
+        
+        Args:
+            documents: Retrieved document chunks
+            query: User's question
+            
+        Returns:
+            True if documents contain solar content, False otherwise
+        """
+        if not documents:
+            return False
+        
+        # Combine all documents
+        combined_text = ' '.join(documents).lower()
+        
+        # Count solar keywords in retrieved content
+        keyword_count = sum(1 for keyword in self.solar_keywords if keyword in combined_text)
+        
+        # Need at least 3 solar keywords in retrieved content
+        return keyword_count >= 3
+    
+    def clean_text(self, text: str) -> str:
+        """Clean retrieved text by removing citations, URLs, and formatting"""
         # Remove citations like [1], [2], [1,2,3]
         text = re.sub(r'\[[\d,\s]+\]', '', text)
         text = re.sub(r'\[\d+\]', '', text)
         
         # Remove URLs
         text = re.sub(r'http[s]?://\S+', '', text)
-        text = re.sub(r'www\.\S+', '', text)
-        
-        # Remove "Available :" patterns
-        text = re.sub(r'\[?online\]?\s*Available\s*:\s*', '', text, flags=re.IGNORECASE)
-        text = re.sub(r'loads/[\w\-/]+', '', text)
-        text = re.sub(r'downloads/[\w\-/]+', '', text)
+        text = re.sub(r'\[online\]\s*Available\s*:\s*\S+', '', text, flags=re.IGNORECASE)
+        text = re.sub(r'Available\s*:\s*\S+', '', text, flags=re.IGNORECASE)
         
         # Remove file references
-        text = re.sub(r'[\w\-]+\.pdf\s*', '', text)
-        text = re.sub(r'\.pdf\s*\[\d+\]', '', text)
+        text = re.sub(r'[\w\-]+\.pdf\s*\[\d+\]', '', text)
+        text = re.sub(r'\[online\]', '', text, flags=re.IGNORECASE)
         
-        # Remove author citations with special characters
-        text = re.sub(r'[A-Z][a-z]+\s+[A-Z][a-z]+\s+and\s+[A-Z][a-z]+.*?―.*?‖', '', text)
-        text = re.sub(r'―.*?‖', '', text)
+        # Remove page references
+        text = re.sub(r'Page\s+\d+\s+of\s+\d+', '', text)
         
-        # Remove "Annual Report" citations
-        text = re.sub(r'Annual Report \d+,\s*Central Bank of Sri Lanka', '', text)
-        
-        # Remove "The Environmental..." title pattern
-        text = re.sub(r'The Environmental and Public Health Benefits of Achieving.*?United States', '', text)
-        
-        # Remove partial URLs and paths
-        text = re.sub(r'l-and-public\s*-health\s*-benefits\s*-achieving\s*-high-penetration\s*-\s*solar', '', text)
-        text = re.sub(r'-paper/\d+/\d+\s*-[A-Z]\s*-\s*\d+', '', text)
-        
-        # Clean whitespace
+        # Clean up multiple spaces and newlines
         text = re.sub(r'\s+', ' ', text).strip()
-        text = re.sub(r'\s*-\s*', ' ', text)
         
         return text
     
-    def extract_key_points(self, text: str, query: str) -> List[str]:
-        """Extract key points from text relevant to the query"""
-        # Clean the text first
-        text = self._clean_text(text)
-        
-        # If text is too short or just references, skip it
-        if len(text) < 30:
-            return []
-        
-        # Split into sentences
-        sentences = re.split(r'[.!?]+', text)
-        sentences = [s.strip() for s in sentences if len(s.strip()) > 30]
-        
-        # Score sentences based on query relevance
-        query_words = set(query.lower().split())
-        scored_sentences = []
-        
-        for sentence in sentences:
-            # Skip if sentence is just references or numbers
-            if re.match(r'^[\d\s\[\],]+$', sentence):
-                continue
-            
-            sentence_words = set(sentence.lower().split())
-            overlap = len(query_words & sentence_words)
-            
-            if overlap > 0:
-                scored_sentences.append((overlap, sentence))
-        
-        # Sort by relevance and return top sentences
-        scored_sentences.sort(reverse=True, key=lambda x: x[0])
-        return [s[1] for s in scored_sentences[:5]]
-    
-    def generate_answer(self, query: str, chunks: List[str]) -> str:
-        """Generate a natural conversational answer"""
+    def extract_key_information(self, query: str, documents: List[str]) -> str:
+        """Extract key information relevant to the query"""
         query_lower = query.lower()
         
-        # Extract and clean key points from all chunks
-        all_points = []
-        for chunk in chunks[:5]:  # Use top 5 chunks
-            points = self.extract_key_points(chunk, query)
-            all_points.extend(points)
+        # Clean all documents first
+        cleaned_docs = [self.clean_text(doc) for doc in documents]
         
-        # Remove duplicates and very similar sentences
-        unique_points = []
-        seen = set()
+        # Combine and split into sentences
+        combined_text = ' '.join(cleaned_docs)
+        sentences = re.split(r'[.!?]+', combined_text)
+        sentences = [s.strip() for s in sentences if len(s.strip()) > 20]
         
-        for point in all_points:
-            # Create fingerprint (first 60 characters)
-            key = point[:60].lower().strip()
+        if not sentences:
+            return combined_text
+        
+        # Extract query keywords (remove common words)
+        stop_words = {'what', 'is', 'are', 'the', 'a', 'an', 'how', 'why', 'when', 'where', 'which', 'who', 'tell', 'me', 'about'}
+        query_words = set(query_lower.split()) - stop_words
+        
+        # Score sentences based on relevance
+        scored_sentences = []
+        for sentence in sentences:
+            sentence_lower = sentence.lower()
             
-            # Skip if empty or already seen
-            if not key or key in seen:
-                continue
+            # Count keyword matches
+            matches = sum(1 for word in query_words if word in sentence_lower)
             
-            # Skip if it's just a reference or citation
-            if len(point) < 40:
-                continue
+            # Prioritize sentences with numbers (for costs, specs)
+            has_numbers = bool(re.search(r'\d+', sentence))
             
-            seen.add(key)
-            unique_points.append(point.strip())
+            # Prioritize sentences with key terms
+            has_key_terms = any(term in sentence_lower for term in ['benefit', 'cost', 'price', 'advantage', 'save', 'efficient'])
+            
+            # Calculate score
+            score = matches * 2
+            if has_numbers:
+                score += 1
+            if has_key_terms:
+                score += 1
+            
+            if score > 0:
+                scored_sentences.append((score, sentence))
         
-        if not unique_points:
-            return "I don't have enough specific information to answer that question clearly. Please try rephrasing your question."
+        if not scored_sentences:
+            # Return first few sentences if no good matches
+            return '. '.join(sentences[:3]) + '.'
         
-        # Generate conversational answer based on topic
-        if any(word in query_lower for word in ['benefit', 'advantage', 'why', 'ප්‍රතිලාභ']):
-            answer = "**Benefits of Solar Energy:**\n\n"
-            for point in unique_points[:6]:
-                answer += f"• {point}\n\n"
+        # Sort by score and take top sentences
+        scored_sentences.sort(reverse=True, key=lambda x: x[0])
+        top_sentences = [s[1] for s in scored_sentences[:5]]
         
-        elif any(word in query_lower for word in ['cost', 'price', 'expensive', 'how much', 'මිල']):
-            answer = "**Solar System Costs:**\n\n"
-            for point in unique_points[:6]:
-                answer += f"• {point}\n\n"
+        # Maintain original order
+        result = []
+        for sentence in sentences:
+            if sentence in top_sentences:
+                result.append(sentence)
         
-        elif any(word in query_lower for word in ['install', 'setup', 'process', 'installation']):
-            answer = "**Solar Installation Process:**\n\n"
-            for point in unique_points[:6]:
-                answer += f"• {point}\n\n"
+        return '. '.join(result) + '.'
+    
+    def format_answer(self, answer: str, query: str) -> str:
+        """Format the answer nicely with structure"""
+        query_lower = query.lower()
         
-        elif any(word in query_lower for word in ['maintain', 'maintenance', 'care']):
-            answer = "**Solar System Maintenance:**\n\n"
-            for point in unique_points[:6]:
-                answer += f"• {point}\n\n"
+        # For "what is" questions, keep it concise
+        if any(phrase in query_lower for phrase in ['what is', 'what are', 'define']):
+            # Take first 2-3 sentences
+            sentences = re.split(r'[.!?]+', answer)
+            sentences = [s.strip() for s in sentences if len(s.strip()) > 20]
+            return '. '.join(sentences[:2]) + '.'
         
-        elif any(word in query_lower for word in ['net metering', 'metering', 'ceb']):
-            answer = "**Net Metering Information:**\n\n"
-            for point in unique_points[:6]:
-                answer += f"• {point}\n\n"
+        # For "how much" or cost questions, emphasize numbers
+        if any(phrase in query_lower for phrase in ['how much', 'cost', 'price']):
+            return answer
         
-        elif any(word in query_lower for word in ['panel', 'monocrystalline', 'polycrystalline']):
-            answer = "**Solar Panel Information:**\n\n"
-            for point in unique_points[:6]:
-                answer += f"• {point}\n\n"
+        # For benefit/advantage questions, structure as list if possible
+        if any(phrase in query_lower for phrase in ['benefit', 'advantage', 'why']):
+            # Try to detect list items
+            if any(marker in answer for marker in ['•', '-', '1.', '2.', 'First', 'Second']):
+                return answer
+            
+            # Split into points if answer is long
+            sentences = re.split(r'[.!?]+', answer)
+            sentences = [s.strip() for s in sentences if len(s.strip()) > 20]
+            
+            if len(sentences) > 3:
+                # Format as numbered list
+                formatted = []
+                for i, sentence in enumerate(sentences[:5], 1):
+                    formatted.append(f"{i}. {sentence}")
+                return '\n'.join(formatted)
         
-        else:
-            # General answer format - just list the points
-            answer = "\n\n".join(unique_points[:5])
+        return answer
+    
+    def generate_answer(self, query: str, documents: List[str]) -> str:
+        """
+        Generate a clean, concise answer from retrieved documents
         
-        return answer.strip()
+        Args:
+            query: User's question
+            documents: List of retrieved document chunks
+            
+        Returns:
+            Clean, formatted answer or "not relevant" message
+        """
+        # First check: Is the query about solar energy?
+        if not self.is_query_relevant(query):
+            return "I'm sorry, but I can only answer questions related to solar energy systems, solar panels, installation, costs, and benefits in Sri Lanka. Please ask me about solar energy topics."
+        
+        # Second check: Are retrieved documents relevant?
+        if not documents or not self.is_retrieved_content_relevant(documents, query):
+            return "I don't have enough information to answer that specific question about solar energy. Please try rephrasing your question or ask about solar panels, costs, installation, benefits, or technical specifications."
+        
+        # Extract key information
+        answer = self.extract_key_information(query, documents)
+        
+        # Remove any remaining artifacts
+        answer = self.clean_text(answer)
+        
+        # Format nicely
+        answer = self.format_answer(answer, query)
+        
+        # Ensure answer is not too long (max 500 words)
+        words = answer.split()
+        if len(words) > 500:
+            answer = ' '.join(words[:500]) + '...'
+        
+        return answer

@@ -43,12 +43,19 @@ class Config:
     
     # RAG Configuration
     SIMILARITY_THRESHOLD = 0.6
-    TOP_K_RESULTS = 3  # Number of chunks to retrieve
+    TOP_K_RESULTS = 5  # Number of chunks to retrieve
+    MAX_ANSWER_LENGTH = 500  # Maximum words in answer
+    MAX_SENTENCES_IN_ANSWER = 5  # Maximum sentences to include
     
     # Supported file types
     SUPPORTED_PDF_EXTENSIONS = [".pdf"]
     SUPPORTED_DATASET_EXTENSIONS = [".csv", ".json", ".xlsx"]
     SUPPORTED_WEB_EXTENSIONS = [".html", ".txt"]
+    
+    # Pipeline Configuration
+    PIPELINE_BATCH_SIZE = 100
+    REQUEST_DELAY = 2  # seconds between web requests
+    MAX_RETRIES = 3
     
     def __init__(self):
         """Create directories if they don't exist"""
