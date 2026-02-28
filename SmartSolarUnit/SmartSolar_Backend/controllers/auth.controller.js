@@ -34,7 +34,7 @@ export const login = async (req, res) => {
     // We need to use the REST API or create a custom token
     // For now, we'll verify the user exists and get their role from Firestore
     const user = await UserModel.getByEmail(email);
-    
+
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -46,7 +46,7 @@ export const login = async (req, res) => {
     // Note: The signInWithPassword endpoint requires the Web API Key
     // We'll try to get it from environment variable, or extract from service account if possible
     let firebaseApiKey = process.env.FIREBASE_API_KEY || 'AIzaSyD85ffkSKNDVAgEXLZOubnqBbTh_mtmjm4';
-    
+
     // If not in env, try to get from service account (though it's typically not there)
     if (!firebaseApiKey) {
       return res.status(500).json({
@@ -73,18 +73,18 @@ export const login = async (req, res) => {
       );
 
       const authData = await response.json();
-      
+
       if (!response.ok || authData.error) {
         // Log the actual error for debugging
         console.error('Firebase Auth error:', authData.error);
-        
+
         if (authData.error?.message?.includes('API key') || authData.error?.message?.includes('INVALID_API_KEY')) {
           return res.status(500).json({
             success: false,
             message: 'Server configuration error: Invalid FIREBASE_API_KEY. Please check your .env file and get the correct Web API Key from Firebase Console → Project Settings → General → Web API Key'
           });
         }
-        
+
         return res.status(401).json({
           success: false,
           message: authData.error?.message || 'Invalid email or password'
@@ -93,12 +93,12 @@ export const login = async (req, res) => {
 
       // User authenticated successfully, get role from Firestore
       const userRole = user.role || 'site_owner';
-      
+
       // Generate our own JWT token with user info and role
       const token = jwt.sign(
-        { 
-          userId: firebaseUser.uid, 
-          email: user.email, 
+        {
+          userId: firebaseUser.uid,
+          email: user.email,
           role: userRole,
           firebaseUid: firebaseUser.uid
         },
@@ -135,40 +135,40 @@ export const login = async (req, res) => {
 };
 
 export const getProfile = async (req, res) => {
-    try {
+  try {
     const userId = req.user.userId;
     const userEmail = req.user.email;
-    
+
     // Try to get user by ID first (Firebase UID), then by email as fallback
     let user = await UserModel.getById(userId);
     if (!user && userEmail) {
       user = await UserModel.getByEmail(userEmail);
     }
-      
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message: 'User not found'
-        });
-      }
 
-      res.json({
-        success: true,
-        data: {
-        id: user.id,
-        email: user.email,
-          role: user.role,
-        name: user.name,
-          ...user
-        }
-      });
-    } catch (error) {
-      console.error('Get profile error:', error);
-      res.status(500).json({
+    if (!user) {
+      return res.status(404).json({
         success: false,
-        message: 'Failed to get profile'
+        message: 'User not found'
       });
     }
+
+    res.json({
+      success: true,
+      data: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        name: user.name,
+        ...user
+      }
+    });
+  } catch (error) {
+    console.error('Get profile error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get profile'
+    });
+  }
 };
 
 export const updateProfile = async (req, res) => {
@@ -253,7 +253,7 @@ export const changePassword = async (req, res) => {
       );
 
       const verifyData = await verifyResponse.json();
-      
+
       if (!verifyResponse.ok || verifyData.error) {
         return res.status(401).json({
           success: false,
@@ -291,26 +291,26 @@ export const changePassword = async (req, res) => {
 };
 
 export const verifyAdmin = async (req, res) => {
-    try {
-      if (!req.isAdmin) {
-        return res.status(403).json({
-          success: false,
-          message: 'Not an admin user'
-        });
-      }
-
-      res.json({
-        success: true,
-        data: {
-          isAdmin: true,
-          email: req.user.email
-        }
-      });
-    } catch (error) {
-      console.error('Verify admin error:', error);
-      res.status(500).json({
+  try {
+    if (!req.isAdmin) {
+      return res.status(403).json({
         success: false,
-        message: 'Failed to verify admin status'
+        message: 'Not an admin user'
       });
     }
+
+    res.json({
+      success: true,
+      data: {
+        isAdmin: true,
+        email: req.user.email
+      }
+    });
+  } catch (error) {
+    console.error('Verify admin error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to verify admin status'
+    });
+  }
 };

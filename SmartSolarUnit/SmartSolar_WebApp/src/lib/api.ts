@@ -24,7 +24,7 @@ const apiRequest = async <T>(
   options: RequestInit = {}
 ): Promise<T> => {
   const token = getAuthToken();
-  
+
   const headers: HeadersInit = {
     "Content-Type": "application/json",
     ...options.headers,
@@ -66,15 +66,51 @@ export const authAPI = {
 
     const data = await response.json();
     const token = data.data?.token;
-    
+
     if (token) {
       setAuthToken(token);
+    }
+
+    // Also call Fault Detection backend to login simultaneously
+    try {
+      let fdResponse = await fetch(`http://localhost:5051/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      // If user is missing from Fault Detection, create them seamlessly
+      if (!fdResponse.ok) {
+        const fallbackName = data.data?.user?.name || email.split('@')[0];
+        await fetch(`http://localhost:5051/api/auth/createUser`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: fallbackName, email, password }),
+        });
+
+        // Try login again
+        fdResponse = await fetch(`http://localhost:5051/api/auth/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
+      }
+
+      if (fdResponse.ok) {
+        const fdData = await fdResponse.json();
+        if (fdData.success && fdData.token) {
+          localStorage.setItem('fd_token', fdData.token);
+        }
+      }
+    } catch (err) {
+      console.error("FaultDetection login error:", err);
     }
 
     return data.data;
   },
   logout: () => {
     removeAuthToken();
+    localStorage.removeItem('fd_token');
   },
   getProfile: async () => {
     return apiRequest<{
@@ -94,7 +130,7 @@ export const sitesAPI = {
     const params = new URLSearchParams();
     if (filters?.status) params.append("status", filters.status);
     if (filters?.customer) params.append("customer", filters.customer);
-    
+
     const query = params.toString();
     return apiRequest<Array<any>>(`/sites${query ? `?${query}` : ""}`);
   },
@@ -156,10 +192,29 @@ export const usersAPI = {
     return apiRequest<any>(`/users/${userId}`);
   },
   create: async (userData: { email: string; password: string; name: string; role?: string }) => {
-    return apiRequest<any>("/users", {
+    // 1. Call SmartSolar Backend
+    const response = await apiRequest<any>("/users", {
       method: "POST",
       body: JSON.stringify(userData),
     });
+
+    // 2. Call Fault Detection Backend to also create the user
+    try {
+      await fetch(`http://localhost:5051/api/auth/createUser`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // Use the same data
+        body: JSON.stringify({
+          name: userData.name,
+          email: userData.email,
+          password: userData.password,
+        }),
+      });
+    } catch (fdCreateError) {
+      console.error("FaultDetection user creation error:", fdCreateError);
+    }
+
+    return response;
   },
   update: async (userId: string, userData: any) => {
     return apiRequest<any>(`/users/${userId}`, {

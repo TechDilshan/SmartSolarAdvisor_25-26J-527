@@ -32,6 +32,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
     { path: "/sites", icon: Sun, label: "Solar Sites" },
     { path: "/analyze", icon: LineChartIcon, label: "Seasonal Prediction" },
     { path: "/xai-insights", icon: Sparkles, label: "XAI Insights" },
+    { path: "/fault-detection", icon: Zap, label: "Fault Detection" },
     { path: "/summary", icon: BarChart3, label: "Summary" },
     { path: "/profile", icon: User, label: "Profile" },
   ];
@@ -41,6 +42,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
     { path: "/sites", icon: Sun, label: "My Sites" },
     { path: "/analyze", icon: LineChartIcon, label: "Seasonal Prediction" },
     { path: "/xai-insights", icon: Sparkles, label: "XAI Insights" },
+    { path: "/fault-detection", icon: Zap, label: "Fault Detection" },
     { path: "/profile", icon: User, label: "Profile" },
   ];
 
@@ -71,13 +73,13 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="flex items-center gap-3 px-6 py-6 border-b border-sidebar-border">
-            
-              <img 
-                src="/Logo.png" 
-                alt="Smart Solar Advisor Logo" 
-                className="w-6 h-6 rounded-md object-contain"
-              />
-            
+
+            <img
+              src="/Logo.png"
+              alt="Smart Solar Advisor Logo"
+              className="w-6 h-6 rounded-md object-contain"
+            />
+
             <div>
               <h1 className="font-bold text-sidebar-foreground text-lg">Solar Advisor</h1>
               <p className="text-xs text-sidebar-foreground/60">IoT Platform</p>
@@ -160,8 +162,10 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
                 {location.pathname === "/analyze"
                   ? "Seasonal Prediction"
                   : location.pathname === "/xai-insights"
-                  ? "Explainable AI Summary"
-                  : (location.pathname.split("/").pop() || "Dashboard")}
+                    ? "Explainable AI Summary"
+                    : location.pathname === "/fault-detection"
+                      ? "Fault Detection"
+                      : (location.pathname.split("/").pop() || "Dashboard")}
               </h2>
             </div>
             <div className="flex items-center gap-2">
