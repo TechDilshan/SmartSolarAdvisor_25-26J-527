@@ -29,7 +29,7 @@
 //   try {
 //     // Get token from header
 //     const authHeader = req.header('Authorization');
-    
+
 //     if (!authHeader) {
 //       return res.status(401).json({
 //         success: false,
@@ -58,23 +58,23 @@
 //     // Verify token
 //     try {
 //       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      
+
 //       // Add user info to request
 //       req.user = decoded;
-      
+
 //       console.log('✅ Token verified for user:', decoded.id); // Debug log
-      
+
 //       next();
 //     } catch (jwtError) {
 //       console.error('JWT Error:', jwtError.message);
-      
+
 //       if (jwtError.name === 'JsonWebTokenError') {
 //         return res.status(401).json({
 //           success: false,
 //           message: 'Invalid token'
 //         });
 //       }
-      
+
 //       if (jwtError.name === 'TokenExpiredError') {
 //         return res.status(401).json({
 //           success: false,
@@ -104,7 +104,7 @@ const authMiddleware = (req, res, next) => {
   try {
     // Get token from header
     const authHeader = req.header('Authorization');
-    
+
     if (!authHeader) {
       return res.status(401).json({
         success: false,
@@ -132,34 +132,41 @@ const authMiddleware = (req, res, next) => {
 
     // Verify token
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      
+      const JWT_SECRET = process.env.JWT_SECRET || 'madusarani**2001'; // Fallback secret
+      let decoded;
+      try {
+        decoded = jwt.verify(token, JWT_SECRET);
+      } catch (err) {
+        // Fallback to SmartSolar_Backend JWT Secret if the primary fails
+        decoded = jwt.verify(token, 'your-jwt-secret-key');
+      }
+
       // Add user info to request
       req.user = decoded;
-      
-      // Debug log to verify token structure
-      console.log('✅ Token verified for user:', decoded.id);
-      console.log('📦 Decoded token:', decoded);
-      
+      // Normalizing the ID
+      if (!req.user.id && req.user.userId) {
+        req.user.id = req.user.userId;
+      }
+
       // Additional check to ensure id exists
-      if (!decoded.id) {
+      if (!req.user.id) {
         return res.status(401).json({
           success: false,
           message: 'Invalid token structure - missing user id'
         });
       }
-      
+
       next();
     } catch (jwtError) {
       console.error('JWT Error:', jwtError.message);
-      
+
       if (jwtError.name === 'JsonWebTokenError') {
         return res.status(401).json({
           success: false,
           message: 'Invalid token'
         });
       }
-      
+
       if (jwtError.name === 'TokenExpiredError') {
         return res.status(401).json({
           success: false,

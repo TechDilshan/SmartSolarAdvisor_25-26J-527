@@ -24,7 +24,7 @@ const apiRequest = async <T>(
   options: RequestInit = {}
 ): Promise<T> => {
   const token = getAuthToken();
-  
+
   const headers: HeadersInit = {
     "Content-Type": "application/json",
     ...options.headers,
@@ -66,15 +66,51 @@ export const authAPI = {
 
     const data = await response.json();
     const token = data.data?.token;
-    
+
     if (token) {
       setAuthToken(token);
+    }
+
+    // Also call Fault Detection backend to login simultaneously
+    try {
+      let fdResponse = await fetch(`http://localhost:5051/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      // If user is missing from Fault Detection, create them seamlessly
+      if (!fdResponse.ok) {
+        const fallbackName = data.data?.user?.name || email.split('@')[0];
+        await fetch(`http://localhost:5051/api/auth/createUser`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: fallbackName, email, password }),
+        });
+
+        // Try login again
+        fdResponse = await fetch(`http://localhost:5051/api/auth/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
+      }
+
+      if (fdResponse.ok) {
+        const fdData = await fdResponse.json();
+        if (fdData.success && fdData.token) {
+          localStorage.setItem('fd_token', fdData.token);
+        }
+      }
+    } catch (err) {
+      console.error("FaultDetection login error:", err);
     }
 
     return data.data;
   },
   logout: () => {
     removeAuthToken();
+    localStorage.removeItem('fd_token');
   },
   getProfile: async () => {
     return apiRequest<{
@@ -94,7 +130,7 @@ export const sitesAPI = {
     const params = new URLSearchParams();
     if (filters?.status) params.append("status", filters.status);
     if (filters?.customer) params.append("customer", filters.customer);
-    
+
     const query = params.toString();
     return apiRequest<Array<any>>(`/sites${query ? `?${query}` : ""}`);
   },
@@ -156,10 +192,29 @@ export const usersAPI = {
     return apiRequest<any>(`/users/${userId}`);
   },
   create: async (userData: { email: string; password: string; name: string; role?: string }) => {
-    return apiRequest<any>("/users", {
+    // 1. Call SmartSolar Backend
+    const response = await apiRequest<any>("/users", {
       method: "POST",
       body: JSON.stringify(userData),
     });
+
+    // 2. Call Fault Detection Backend to also create the user
+    try {
+      await fetch(`http://localhost:5051/api/auth/createUser`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // Use the same data
+        body: JSON.stringify({
+          name: userData.name,
+          email: userData.email,
+          password: userData.password,
+        }),
+      });
+    } catch (fdCreateError) {
+      console.error("FaultDetection user creation error:", fdCreateError);
+    }
+
+    return response;
   },
   update: async (userId: string, userData: any) => {
     return apiRequest<any>(`/users/${userId}`, {
@@ -205,6 +260,144 @@ export const predictionsAPI = {
     return apiRequest<Array<any>>(
       `/predictions/${customerName}/${siteId}/range?startDate=${startDate}&endDate=${endDate}`
     );
+  },
+  getMonthlyBreakdown: async (customerName: string, siteId: string) => {
+    return apiRequest<Array<{
+      yearMonth: string;
+      yearMonthLabel: string;
+      month: number;
+      year: number;
+      totalKwh: number;
+      readingsCount: number;
+    }>>(`/predictions/${customerName}/${siteId}/monthly-breakdown`);
+  },
+};
+
+// Weather API (seasonal trend forecasting)
+export const weatherAPI = {
+  getCurrent: async (lat?: number, lon?: number) => {
+    const params = new URLSearchParams();
+    if (lat != null) params.append("lat", String(lat));
+    if (lon != null) params.append("lon", String(lon));
+    const q = params.toString();
+    return apiRequest<any>(`/weather/current${q ? `?${q}` : ""}`);
+  },
+  getForecast: async (lat?: number, lon?: number, days: number = 7) => {
+    const params = new URLSearchParams();
+    if (lat != null) params.append("lat", String(lat));
+    if (lon != null) params.append("lon", String(lon));
+    params.append("days", String(days));
+    return apiRequest<any>(`/weather/forecast?${params}`);
+  },
+  getSeasonal: async (lat?: number, lon?: number) => {
+    const params = new URLSearchParams();
+    if (lat != null) params.append("lat", String(lat));
+    if (lon != null) params.append("lon", String(lon));
+    const q = params.toString();
+    return apiRequest<any>(`/weather/seasonal${q ? `?${q}` : ""}`);
+  },
+  getFullYearForecast: async (customerName: string, siteId: string, lat?: number, lon?: number) => {
+    const params = new URLSearchParams();
+    if (lat != null) params.append("lat", String(lat));
+    if (lon != null) params.append("lon", String(lon));
+    const q = params.toString();
+    return apiRequest<any>(`/weather/full-year-forecast/${customerName}/${siteId}${q ? `?${q}` : ""}`);
+  },
+};
+
+// Explainability API
+export const explainabilityAPI = {
+  explainLow: async (customerName: string, siteId: string, date?: string, threshold?: number) => {
+    const params = new URLSearchParams();
+    if (date) params.append("date", date);
+    if (threshold != null) params.append("threshold", String(threshold));
+    const q = params.toString();
+    return apiRequest<any>(`/predictions/${customerName}/${siteId}/explain-low${q ? `?${q}` : ""}`);
+  },
+  getLowPredictionDates: async (
+    customerName: string,
+    siteId: string,
+    days?: number,
+    threshold?: number
+  ) => {
+    const params = new URLSearchParams();
+    if (days != null) params.append("days", String(days));
+    if (threshold != null) params.append("threshold", String(threshold));
+    const q = params.toString();
+    return apiRequest<{
+      averageDailyKwh: number;
+      threshold: number;
+      count: number;
+      daysAnalyzed: number;
+      lowPredictionDays: Array<{
+        date: string;
+        dateStr: string;
+        predictedKwh: number;
+        averageKwh: number;
+        percentage: number;
+        factors: any[];
+        recommendations: string[];
+        explanationText: string;
+      }>;
+    }>(`/predictions/${customerName}/${siteId}/low-prediction-dates${q ? `?${q}` : ""}`);
+  },
+  getFeatureImportance: async (customerName: string, siteId: string) => {
+    return apiRequest<{
+      features: Array<{ name: string; importance: number }>;
+      method: string;
+      note?: string;
+    }>(`/predictions/${customerName}/${siteId}/feature-importance`);
+  },
+  getShapExplanation: async (customerName: string, siteId: string, timestamp: string) => {
+    return apiRequest<any>(`/predictions/${customerName}/${siteId}/explain/${timestamp}`);
+  },
+  getLimeExplanation: async (customerName: string, siteId: string, timestamp: string) => {
+    return apiRequest<any>(`/predictions/${customerName}/${siteId}/explain-lime/${timestamp}`);
+  },
+  getMonthlyAdjusted: async (customerName: string, siteId: string, yearMonth?: string, lat?: number, lon?: number) => {
+    const params = new URLSearchParams();
+    if (yearMonth) params.append("yearMonth", yearMonth);
+    if (lat != null) params.append("lat", String(lat));
+    if (lon != null) params.append("lon", String(lon));
+    const q = params.toString();
+    return apiRequest<any>(`/predictions/${customerName}/${siteId}/monthly-adjusted${q ? `?${q}` : ""}`);
+  },
+  getDailyAnalysis: async (customerName: string, siteId: string, date?: string, includeXai: boolean = false) => {
+    const params = new URLSearchParams();
+    if (date) params.append("date", date);
+    if (includeXai) params.append("includeXai", "true");
+    const q = params.toString();
+    return apiRequest<any>(`/predictions/${customerName}/${siteId}/daily-analysis${q ? `?${q}` : ""}`);
+  },
+  getTimeSeriesForecast: async (
+    customerName: string,
+    siteId: string,
+    days?: number,
+    periods?: number,
+    model?: "prophet" | "sarima"
+  ) => {
+    const params = new URLSearchParams();
+    if (days != null) params.append("days", String(days));
+    if (periods != null) params.append("periods", String(periods));
+    if (model) params.append("model", model);
+    const q = params.toString();
+    return apiRequest<any>(`/predictions/${customerName}/${siteId}/timeseries-forecast${q ? `?${q}` : ""}`);
+  },
+  getGlobalXaiSummary: async (
+    customerName: string,
+    siteId: string,
+    days?: number
+  ) => {
+    const params = new URLSearchParams();
+    if (days != null) params.append("days", String(days));
+    const q = params.toString();
+    return apiRequest<{
+      summaryText: string;
+      daysAnalyzed: number;
+      lowDaysCount: number;
+      factorsSummary: Array<{ name: string; count: number; impacts: string[] }>;
+      lowPredictionDays: any[];
+    }>(`/predictions/${customerName}/${siteId}/xai-summary${q ? `?${q}` : ""}`);
   },
 };
 

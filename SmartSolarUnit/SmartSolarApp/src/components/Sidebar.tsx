@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, Alert, Animated, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Home, BarChart3, User, LogOut, X } from 'lucide-react-native';
+import { Home, BarChart3, User, LogOut, X, Sparkles } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSidebar } from '../contexts/SidebarContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -24,10 +24,14 @@ export default function Sidebar() {
     }).start();
   }, [isOpen, slideAnim]);
 
-  const handleNavigate = (screenName: string) => {
+  const handleNavigate = (screenName: string, params?: any) => {
     closeSidebar();
-    // Navigate to the tab screen
-    navigation.navigate('Tabs', { screen: screenName });
+    // Navigate to the tab screen (optionally to nested screen)
+    if (params) {
+      navigation.navigate('Tabs', { screen: screenName, params });
+    } else {
+      navigation.navigate('Tabs', { screen: screenName });
+    }
   };
 
   const handleLogout = () => {
@@ -50,7 +54,9 @@ export default function Sidebar() {
 
   const menuItems = [
     { icon: Home, label: 'Home', screen: 'Home' },
-    { icon: BarChart3, label: 'Analysis', screen: 'Analysis' },
+    { icon: BarChart3, label: 'Customer Analysis', screen: 'Analysis' },
+    { icon: BarChart3, label: 'Seasonal Prediction', screen: 'Analysis', params: { screen: 'SeasonalPrediction' } },
+    { icon: Sparkles, label: 'XAI Insights', screen: 'Analysis', params: { screen: 'XAIInsights' } },
     { icon: User, label: 'Profile', screen: 'Profile' },
   ];
 
@@ -105,9 +111,9 @@ export default function Sidebar() {
                 const Icon = item.icon;
                 return (
                   <TouchableOpacity
-                    key={item.screen}
+                    key={item.label}
                     style={styles.menuItem}
-                    onPress={() => handleNavigate(item.screen)}
+                    onPress={() => handleNavigate(item.screen, (item as any).params)}
                   >
                     <Icon size={24} color={colors.white} />
                     <Text style={[styles.menuItemText, { color: colors.white }]}>{item.label}</Text>

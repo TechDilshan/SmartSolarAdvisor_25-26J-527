@@ -109,6 +109,7 @@ const deviceSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
+    // Index is created via schema.index() below to avoid duplicates
   },
   deviceName: {
     type: String,
@@ -125,6 +126,7 @@ const deviceSchema = new mongoose.Schema({
     required: true,
     trim: true,
     unique: true
+    // Index is created via schema.index() below to avoid duplicates
   },
   tokenId: {
     type: String,
@@ -162,8 +164,9 @@ const deviceSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Index for faster queries
-// deviceSchema.index({ userId: 1 });
-// deviceSchema.index({ wifiSN: 1 });
+// Indexes for faster queries
+deviceSchema.index({ userId: 1 });
+// wifiSN already has unique: true which creates an index automatically
+deviceSchema.index({ userId: 1, createdAt: -1 }); // Compound index for user's devices sorted by date
 
 module.exports = mongoose.model('Device', deviceSchema);

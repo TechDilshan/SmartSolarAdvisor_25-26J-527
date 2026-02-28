@@ -132,7 +132,7 @@
 
 // //   try {
 // //     const userfind = await User.findOne({ email: email });
-    
+//     
 // //     if (!userfind) {
 // //       return res.status(404).json({ status: 404, message: "User not found" });
 // //     }
@@ -140,7 +140,7 @@
 // //     const token = jwt.sign({ _id: userfind._id }, keysecret, {
 // //       expiresIn: "520s"
 // //     });
-    
+//     
 // //     const setusertoken = await User.findByIdAndUpdate({_id:userfind._id}, {verifytoken:token},{new:true})
 
 // //     if(setusertoken){
@@ -289,15 +289,16 @@
 //       res.status(200).json({ message: 'Logged out successfully' });
 //     });
 //   };
-  
+
 const User = require('../Models/Users');
 const jwt = require('jsonwebtoken');
 
 // Generate JWT Token with userId as 'id'
 const generateToken = (userId) => {
+  const JWT_SECRET = process.env.JWT_SECRET || 'madusarani**2001'; // Fallback secret
   return jwt.sign(
     { id: userId }, // ← IMPORTANT: Use 'id' not '_id' or 'userId'
-    process.env.JWT_SECRET,
+    JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRE || '7d' }
   );
 };
@@ -419,7 +420,7 @@ exports.getCurrentUser = async (req, res) => {
   try {
     // req.user.id comes from authMiddleware
     const user = await User.findById(req.user.id).select('-password');
-    
+
     if (!user) {
       return res.status(404).json({
         success: false,

@@ -27,4 +27,23 @@ router.delete('/:id', deviceController.deleteDevice);
 // Refresh all devices
 router.post('/refresh-all', deviceController.refreshAllDevices);
 
+// Debug endpoint - get all devices (temporary, for debugging)
+router.get('/debug/all', async (req, res) => {
+  try {
+    const Device = require('../Models/Device');
+    const devices = await Device.find({}).select('-__v').limit(10);
+    res.json({
+      success: true,
+      count: devices.length,
+      devices: devices,
+      currentUserId: req.user.id
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;

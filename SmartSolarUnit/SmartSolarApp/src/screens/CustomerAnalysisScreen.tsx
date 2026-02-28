@@ -8,6 +8,7 @@ import { CandleChart } from '../components/Charts';
 import { useSidebar } from '../contexts/SidebarContext';
 import HamburgerIcon from '../components/HamburgerIcon';
 import { useTheme } from '../contexts/ThemeContext';
+import { useNavigation } from '@react-navigation/native';
 
 const logoImage = require('../assets/Logo.png');
 
@@ -16,6 +17,7 @@ export default function CustomerAnalysisScreen() {
   const { openSidebar, closeSidebar, isOpen } = useSidebar();
   const { colors } = useTheme();
   const { sites, loading, error, refetch } = useSolarSites(10000);
+  const navigation = useNavigation<any>();
 
   // Calculate aggregated statistics across all sites
   const aggregatedStats = useMemo(() => {
@@ -148,6 +150,20 @@ export default function CustomerAnalysisScreen() {
           ) : (
             <HamburgerIcon size={24} color={colors.white} />
           )}
+        </TouchableOpacity>
+      </View>
+      <View style={styles.topButtonsRow}>
+        <TouchableOpacity
+          style={[styles.topButton, { backgroundColor: colors.card, borderColor: colors.solarOrange }]}
+          onPress={() => navigation.navigate('SeasonalPrediction')}
+        >
+          <Text style={[styles.topButtonText, { color: colors.text }]}>Seasonal Prediction</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.topButton, { backgroundColor: colors.card, borderColor: colors.gray }]}
+          onPress={() => navigation.navigate('XAIInsights')}
+        >
+          <Text style={[styles.topButtonText, { color: colors.text }]}>XAI Insights</Text>
         </TouchableOpacity>
       </View>
       <ScrollView
@@ -368,6 +384,25 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 16,
     gap: 16,
+  },
+  topButtonsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+    gap: 12,
+  },
+  topButton: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  topButtonText: {
+    fontSize: 13,
+    fontWeight: '600' as const,
   },
   card: {
     borderRadius: 16,

@@ -10,6 +10,8 @@ import {
   Menu,
   X,
   Zap,
+  LineChart as LineChartIcon,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -17,13 +19,6 @@ import { cn } from "@/lib/utils";
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
-
-const navItems = [
-  { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { path: "/sites", icon: Sun, label: "Solar Sites" },
-  { path: "/summary", icon: BarChart3, label: "Summary" },
-  { path: "/profile", icon: User, label: "Profile" },
-];
 
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const { user, logout, isAdmin } = useAuth();
@@ -35,6 +30,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
   const adminNavItems = [
     { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { path: "/sites", icon: Sun, label: "Solar Sites" },
+    { path: "/analyze", icon: LineChartIcon, label: "Seasonal Prediction" },
+    { path: "/xai-insights", icon: Sparkles, label: "XAI Insights" },
+    { path: "/fault-detection", icon: Zap, label: "Fault Detection" },
     { path: "/summary", icon: BarChart3, label: "Summary" },
     { path: "/profile", icon: User, label: "Profile" },
   ];
@@ -42,6 +40,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
   const siteOwnerNavItems = [
     { path: "/dashboard", icon: LayoutDashboard, label: "My Dashboard" },
     { path: "/sites", icon: Sun, label: "My Sites" },
+    { path: "/analyze", icon: LineChartIcon, label: "Seasonal Prediction" },
+    { path: "/xai-insights", icon: Sparkles, label: "XAI Insights" },
+    { path: "/fault-detection", icon: Zap, label: "Fault Detection" },
     { path: "/profile", icon: User, label: "Profile" },
   ];
 
@@ -72,13 +73,13 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="flex items-center gap-3 px-6 py-6 border-b border-sidebar-border">
-            
-              <img 
-                src="/Logo.png" 
-                alt="Smart Solar Advisor Logo" 
-                className="w-6 h-6 rounded-md object-contain"
-              />
-            
+
+            <img
+              src="/Logo.png"
+              alt="Smart Solar Advisor Logo"
+              className="w-6 h-6 rounded-md object-contain"
+            />
+
             <div>
               <h1 className="font-bold text-sidebar-foreground text-lg">Solar Advisor</h1>
               <p className="text-xs text-sidebar-foreground/60">IoT Platform</p>
@@ -158,7 +159,13 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
             </Button>
             <div className="flex-1">
               <h2 className="text-lg font-semibold text-foreground capitalize">
-                {location.pathname.split("/").pop() || "Dashboard"}
+                {location.pathname === "/analyze"
+                  ? "Seasonal Prediction"
+                  : location.pathname === "/xai-insights"
+                    ? "Explainable AI Summary"
+                    : location.pathname === "/fault-detection"
+                      ? "Fault Detection"
+                      : (location.pathname.split("/").pop() || "Dashboard")}
               </h2>
             </div>
             <div className="flex items-center gap-2">

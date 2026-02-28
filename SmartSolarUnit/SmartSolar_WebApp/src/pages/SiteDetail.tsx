@@ -199,14 +199,17 @@ const SiteDetail: React.FC = () => {
     humidity: d.dht_avg?.["hum_%"] || 0,
   }));
 
-  const dustRainChartData = sensorData.slice(-30).map((d) => ({
-    time: new Date(d.timestamp).toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-    }),
-    dust: d.dust?.mg_m3 || 0,
-    rain: ((d.rain?.pct1 || 0) + (d.rain?.pct2 || 0)) / 2,
-  }));
+  const dustRainChartData = sensorData.slice(-30).map((d) => {
+    const avgRain = ((d.rain?.pct1 || 0) + (d.rain?.pct2 || 0)) / 2;
+    return {
+      time: new Date(d.timestamp).toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+      dust: d.dust?.mg_m3 || 0,
+      rain: 100 - avgRain,
+    };
+  });
 
   const predictionChartData = predictionData.slice(-30).map((d) => {
     // Format timestamp as time (HH:MM)
@@ -376,7 +379,7 @@ const SiteDetail: React.FC = () => {
                         <span className="text-xs">Rain</span>
                       </div>
                       <p className="text-xl font-bold text-foreground">
-                        {((latestSensor.rain?.pct1 || 0) + (latestSensor.rain?.pct2 || 0)) / 2}%
+                        {100 - (((latestSensor.rain?.pct1 || 0) + (latestSensor.rain?.pct2 || 0)) / 2)}%
                       </p>
                     </div>
                     <div className="p-4 rounded-lg bg-muted/50">
@@ -549,11 +552,12 @@ const SiteDetail: React.FC = () => {
           <SensorChart
             data={dustRainChartData}
             dataKeys={[
-              { key: "dust", color: "hsl(var(--muted-foreground))", label: "Dust (mg/m³)" },
-              { key: "rain", color: "hsl(var(--chart-humidity))", label: "Rain (%)" },
+              { key: "dust", color: "hsl(var(--muted-foreground))", label: "Dust (mg/m³)", yAxisId: "left" },
+              { key: "rain", color: "hsl(var(--chart-humidity))", label: "Rain (%)", yAxisId: "right" },
             ]}
             title="Dust & Rain"
             unit=""
+            rightYAxisDomain={[0, 100]}
           />
           <SensorChart
             data={predictionChartData}

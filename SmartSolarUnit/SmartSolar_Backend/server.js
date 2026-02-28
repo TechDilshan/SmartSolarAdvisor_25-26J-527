@@ -127,12 +127,14 @@ import userRoutes from './routes/user.routes.js';
 import siteRoutes from './routes/site.routes.js';
 import sensorRoutes from './routes/sensor.routes.js';
 import predictionRoutes from './routes/prediction.routes.js';
+import weatherRoutes from './routes/weather.routes.js';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/sites', siteRoutes);
 app.use('/api/sensors', sensorRoutes);
 app.use('/api/predictions', predictionRoutes);
+app.use('/api/weather', weatherRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
