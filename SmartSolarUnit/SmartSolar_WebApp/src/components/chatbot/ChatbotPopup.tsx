@@ -6,6 +6,8 @@ export const ChatbotPopup = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
 
+    const CHATBOT_URL = import.meta.env.VITE_CHATBOT_URL;
+
     return (
         <>
             {/* Floating Action Button */}
@@ -67,7 +69,7 @@ export const ChatbotPopup = () => {
                     {/* Iframe Container */}
                     <div className="flex-1 w-full bg-gray-50 dark:bg-gray-800">
                         <iframe
-                            src="http://localhost:8501/"
+                            src={CHATBOT_URL}
                             title="SmartSolar Chatbot"
                             className="w-full h-full border-none"
                             allow="clipboard-read; clipboard-write; microphone"

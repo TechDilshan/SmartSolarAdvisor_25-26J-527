@@ -3,6 +3,8 @@ import { useAuth } from '@/contexts/AuthContext';
 
 import { useNavigate } from 'react-router-dom';
 
+const FD_FRONTEND_URL = import.meta.env.VITE_FD_FRONTEND_URL;
+
 const FaultDetection = () => {
     const { user } = useAuth();
     const [iframeUrl, setIframeUrl] = useState('');
@@ -18,7 +20,7 @@ const FaultDetection = () => {
 
         // Construct the URL with token in query params if the other app supports it,
         // otherwise just embed the URL
-        setIframeUrl(`http://localhost:8082?token=${token}&email=${userEmail}`);
+        setIframeUrl(`${FD_FRONTEND_URL}?token=${token}&email=${userEmail}`);
 
         const handleMessage = (event: MessageEvent) => {
             if (event.data?.type === 'redirect_login') {

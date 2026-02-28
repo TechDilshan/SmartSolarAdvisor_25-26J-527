@@ -1,4 +1,5 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5001/api";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const FD_API_BASE_URL = import.meta.env.VITE_FD_API_BASE_URL;
 
 // Get auth token from localStorage
 const getAuthToken = (): string | null => {
@@ -73,7 +74,7 @@ export const authAPI = {
 
     // Also call Fault Detection backend to login simultaneously
     try {
-      let fdResponse = await fetch(`http://localhost:5051/api/auth/login`, {
+      let fdResponse = await fetch(`${FD_API_BASE_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -82,14 +83,14 @@ export const authAPI = {
       // If user is missing from Fault Detection, create them seamlessly
       if (!fdResponse.ok) {
         const fallbackName = data.data?.user?.name || email.split('@')[0];
-        await fetch(`http://localhost:5051/api/auth/createUser`, {
+        await fetch(`${FD_API_BASE_URL}/auth/createUser`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name: fallbackName, email, password }),
         });
 
         // Try login again
-        fdResponse = await fetch(`http://localhost:5051/api/auth/login`, {
+        fdResponse = await fetch(`${FD_API_BASE_URL}/auth/login`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, password }),
@@ -200,7 +201,7 @@ export const usersAPI = {
 
     // 2. Call Fault Detection Backend to also create the user
     try {
-      await fetch(`http://localhost:5051/api/auth/createUser`, {
+      await fetch(`${FD_API_BASE_URL}/auth/createUser`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         // Use the same data

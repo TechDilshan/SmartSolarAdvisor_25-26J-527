@@ -2,6 +2,8 @@ import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { Sun, ShieldCheck, Activity, Zap } from 'lucide-react';
 
+const BASE_URL = import.meta.env.VITE_BASE_URL;
+
 const Landing = () => {
     const isIframe = window !== window.parent;
     if (isIframe) {
@@ -53,7 +55,7 @@ const Landing = () => {
                             if (window !== window.parent) {
                                 window.parent.postMessage({ type: 'redirect_login' }, '*');
                             } else {
-                                window.location.href = 'http://localhost:8081/login';
+                                window.location.href = `${BASE_URL}/login`;
                             }
                         }}
                         className="flex-1 bg-white text-blue-900 font-bold text-lg py-4 px-8 rounded-xl hover:bg-blue-50 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1 text-center"

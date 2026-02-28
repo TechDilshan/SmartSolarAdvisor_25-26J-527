@@ -1,12 +1,14 @@
 import React, { useEffect } from 'react';
 
+const BASE_URL = import.meta.env.VITE_BASE_URL;
+
 const Login = () => {
   useEffect(() => {
     // Redirect to the main SmartSolar_WebApp login page
     if (window !== window.parent) {
       window.parent.postMessage({ type: 'redirect_login' }, '*');
     } else {
-      window.location.href = 'http://localhost:8081/login';
+      window.location.href = `${BASE_URL}/login`;
     }
   }, []);
 

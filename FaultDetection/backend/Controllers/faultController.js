@@ -4,7 +4,7 @@ const axios = require('axios');
 const { buildUserIdQuery } = require('../utils/dbHelper');
 const { fetchRealtimeData, normalizeRealtimeData, toNumber } = require('../utils/solaxApi');
 
-const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:5002';
+const ML_SERVICE_URL = process.env.ML_SERVICE_URL;
 const WEATHER_API_URL = process.env.WEATHER_API_URL || 'https://solaxcloud.dynac.space/api/v2/dataAccess/realtimeInfo/get';
 
 const isDaytimeHour = (hour) => Number.isFinite(Number(hour)) && Number(hour) >= 6 && Number(hour) < 18;
