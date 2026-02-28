@@ -6,6 +6,7 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8081,
+    allowedHosts: ['solaradvisor.site'],
   },
   plugins: [react()],
   resolve: {
