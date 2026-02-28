@@ -38,7 +38,7 @@ app.use(cors({
     if (!origin) return callback(null, true);
 
     // Check if origin is allowed
-    const allowedOrigins = ['http://localhost:3000', 'http://127.0.0.1:3000'];
+    const allowedOrigins = ['http://localhost:8082', 'http://127.0.0.1:8082'];
     if (allowedOrigins.indexOf(origin) !== -1 || true) { // Temporarily allow all for debugging
       callback(null, true);
     } else {

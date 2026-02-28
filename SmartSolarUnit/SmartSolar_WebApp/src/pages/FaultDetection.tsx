@@ -9,7 +9,7 @@ const FaultDetection = () => {
     const navigate = useNavigate();
 
     useEffect(() => {
-        // Assuming Fault Detection frontend runs on port 3000
+        // Assuming Fault Detection frontend runs on port 8082
         // We pass user email or token if needed, or just embed the URL.
         // In many development setups localstorage is shared across localhost if port is ignored by browser,
         // but typically we can pass auth data if needed.
@@ -18,7 +18,7 @@ const FaultDetection = () => {
 
         // Construct the URL with token in query params if the other app supports it,
         // otherwise just embed the URL
-        setIframeUrl(`http://localhost:3000?token=${token}&email=${userEmail}`);
+        setIframeUrl(`http://localhost:8082?token=${token}&email=${userEmail}`);
 
         const handleMessage = (event: MessageEvent) => {
             if (event.data?.type === 'redirect_login') {
