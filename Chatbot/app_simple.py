@@ -10,7 +10,8 @@ from config import Config
 from embeddings.embeddings_handler import EmbeddingsHandler
 from utils.translator import LanguageTranslator
 from rag.answer_generator import AnswerGenerator
-from utils.conversation_manager import ConversationManager  # Add this
+from utils.conversation_manager import ConversationManager
+from voice.voice_handler import VoiceHandler  # NEW
 
 # Page configuration
 st.set_page_config(
@@ -20,7 +21,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS (keep existing CSS)
+# Custom CSS (add voice button styles)
 st.markdown("""
 <style>
     .main-header {
@@ -70,6 +71,19 @@ st.markdown("""
     .english-badge {
         background-color: #2196F3;
         color: white;
+    }
+    .voice-indicator {
+        background-color: #FF5722;
+        color: white;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        text-align: center;
+        font-weight: bold;
+        animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -345,6 +359,12 @@ if 'messages' not in st.session_state:
 if 'system_ready' not in st.session_state:
     st.session_state.system_ready = False
 
+if 'voice_enabled' not in st.session_state:
+    st.session_state.voice_enabled = False
+
+if 'listening' not in st.session_state:
+    st.session_state.listening = False
+
 if 'embeddings_handler' not in st.session_state:
     with st.spinner("🔄 Initializing Solar Advisor System..."):
         try:
@@ -356,6 +376,7 @@ if 'embeddings_handler' not in st.session_state:
             st.session_state.translator = LanguageTranslator()
             st.session_state.answer_generator = AnswerGenerator()
             st.session_state.conversation_manager = ConversationManager()
+            st.session_state.voice_handler = VoiceHandler()  # NEW
             st.session_state.system_ready = True
         except Exception as e:
             st.error(f"Error initializing system: {str(e)}")
@@ -378,7 +399,7 @@ with st.sidebar:
             <b>Status:</b> ✅ Ready<br>
             <b>Knowledge Base:</b> {info['total_chunks']} chunks<br>
             <b>Embedding Model:</b> {info['model']}<br>
-            <b>Mode:</b> Concise Answers + Translation<br>
+            <b>Mode:</b> RAG + Translation + Voice<br>
             <b>Languages:</b> English, සිංහල
             </div>
             """, unsafe_allow_html=True)
@@ -386,6 +407,29 @@ with st.sidebar:
             st.error(f"Error getting system info: {str(e)}")
     else:
         st.warning("System not ready")
+    
+    st.markdown("---")
+    
+    # Voice Settings - NEW
+    st.header("🎤 Voice Settings")
+    st.session_state.voice_enabled = st.checkbox(
+        "Enable Voice Input", 
+        value=st.session_state.voice_enabled,
+        help="Click to enable microphone for voice questions"
+    )
+    
+    if st.session_state.voice_enabled:
+        st.info("🎤 Voice input ready! Click the microphone button below to speak.")
+    
+    voice_output = st.checkbox(
+        "Enable Voice Output", 
+        value=False,
+        help="Bot will speak the answers"
+    )
+    
+    if 'voice_output' not in st.session_state:
+        st.session_state.voice_output = False
+    st.session_state.voice_output = voice_output
     
     st.markdown("---")
     
@@ -429,7 +473,7 @@ with st.sidebar:
         st.session_state.show_sources = True
     
     if 'show_translation' not in st.session_state:
-        st.session_state.show_translation = False  # Changed default to False
+        st.session_state.show_translation = False
     
     if 'show_debug' not in st.session_state:
         st.session_state.show_debug = False
@@ -465,12 +509,26 @@ with st.sidebar:
 # Main chat interface
 st.markdown("### 💬 Chat")
 
+# Voice Input Section - NEW
+if st.session_state.voice_enabled:
+    col1, col2 = st.columns([1, 5])
+    
+    with col1:
+        if st.button("🎤", help="Click and speak your question", use_container_width=True):
+            st.session_state.listening = True
+    
+    with col2:
+        if st.session_state.listening:
+            st.markdown('<div class="voice-indicator">🎤 Listening... Speak now!</div>', unsafe_allow_html=True)
+
 # Display chat messages
 for message in st.session_state.messages:
     if message['role'] == 'user':
+        # Show microphone icon if message was voice input
+        voice_icon = "🎤 " if message.get('from_voice', False) else ""
         st.markdown(f"""
         <div class="chat-message user-message">
-            <b>👤 You:</b><br>
+            <b>👤 You:</b> {voice_icon}<br>
             {message['content']}
         </div>
         """, unsafe_allow_html=True)
@@ -499,6 +557,10 @@ for message in st.session_state.messages:
         </div>
         """, unsafe_allow_html=True)
         
+        # Voice output - NEW
+        if st.session_state.voice_output and message.get('audio_file'):
+            st.audio(message['audio_file'], format='audio/mp3')
+        
         # Show translation info if enabled
         if st.session_state.show_translation and message.get('translated_query'):
             with st.expander("🔄 Translation Info"):
@@ -514,8 +576,41 @@ for message in st.session_state.messages:
                         source_text += f" - Page {source['page']}"
                     st.markdown(source_text)
 
+# Handle voice input - NEW
+if st.session_state.listening:
+    with st.spinner("🎤 Listening... Please speak your question..."):
+        try:
+            detected_lang, recognized_text = st.session_state.voice_handler.listen_from_microphone(
+                timeout=5,
+                phrase_time_limit=10
+            )
+            
+            if recognized_text:
+                st.success(f"✅ Recognized ({detected_lang}): {recognized_text}")
+                st.session_state.voice_input = recognized_text
+                st.session_state.voice_detected_lang = detected_lang
+                st.session_state.from_voice = True
+            else:
+                st.error("❌ Could not recognize speech. Please try again.")
+        
+        except Exception as e:
+            st.error(f"Error with voice input: {str(e)}")
+        
+        finally:
+            st.session_state.listening = False
+            st.rerun()
+
 # Handle sample question
 user_input = None
+from_voice = False
+
+if 'voice_input' in st.session_state:
+    user_input = st.session_state.voice_input
+    from_voice = st.session_state.get('from_voice', False)
+    del st.session_state.voice_input
+    if 'from_voice' in st.session_state:
+        del st.session_state.from_voice
+
 if 'sample_question' in st.session_state:
     user_input = st.session_state.sample_question
     del st.session_state.sample_question
@@ -533,7 +628,8 @@ if user_input:
         st.session_state.messages.append({
             "role": "user",
             "content": user_input,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
+            "from_voice": from_voice  # NEW
         })
         
         # Generate response
@@ -544,8 +640,17 @@ if user_input:
                     st.session_state.embeddings_handler,
                     st.session_state.translator,
                     st.session_state.answer_generator,
-                    st.session_state.conversation_manager  # Add this
+                    st.session_state.conversation_manager
                 )
+                
+                # Generate voice output if enabled - NEW
+                audio_file = None
+                if st.session_state.voice_output:
+                    with st.spinner("🔊 Generating voice response..."):
+                        audio_file = st.session_state.voice_handler.text_to_speech(
+                            response['answer'],
+                            response['language']
+                        )
                 
                 # Add assistant message
                 st.session_state.messages.append({
@@ -557,7 +662,8 @@ if user_input:
                     "translated_query": response.get('translated_query'),
                     "original_query": user_input if response['language'] == 'sinhala' else None,
                     "intent": response.get('intent', 'question'),
-                    "timestamp": datetime.now().isoformat()
+                    "timestamp": datetime.now().isoformat(),
+                    "audio_file": audio_file  # NEW
                 })
                 
             except Exception as e:
@@ -573,7 +679,7 @@ if user_input:
 st.markdown("---")
 st.markdown("""
 <div style="text-align: center; color: #888; font-size: 0.9rem;">
-    <p>🌱 Powered by Vector Search + Translation | දෛශික සෙවුම + පරිවර්තනය මගින් බලගන්වයි</p>
-    <p>💡 Ask questions in English or Sinhala | ඉංග්‍රීසි හෝ සිංහලෙන් ප්‍රශ්න අසන්න</p>
+    <p>🌱 Powered by RAG + Voice AI | RAG + හඬ AI මගින් බලගන්වයි</p>
+    <p>💡 Type or speak in English or Sinhala | ඉංග්‍රීසි හෝ සිංහලෙන් ටයිප් කරන්න හෝ කතා කරන්න</p>
 </div>
 """, unsafe_allow_html=True)
