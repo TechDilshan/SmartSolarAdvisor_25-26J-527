@@ -89,6 +89,9 @@ python run_pipeline.py
 # Test search
 python test_search.py
 
+#Get & Process data automatically from sources
+python pipeline_runner.py
+
 # Run web app
 python -m streamlit run app_simple.py
 
