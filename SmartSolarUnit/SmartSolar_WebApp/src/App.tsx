@@ -16,6 +16,7 @@ import XAIInsights from "@/pages/XAIInsights";
 import FaultDetection from "@/pages/FaultDetection";
 import NotFound from "@/pages/NotFound";
 import { ChatbotPopup } from "@/components/chatbot/ChatbotPopup";
+import NearbyForecasting from "@/pages/NearbyForecasting";
 
 const queryClient = new QueryClient();
 
@@ -74,6 +75,18 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <FaultDetection />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/nearby-forecasting"
+              element={<Navigate to="/nearby-forecasting/overview" replace />}
+            />
+            <Route
+              path="/nearby-forecasting/:tab"
+              element={
+                <ProtectedRoute>
+                  <NearbyForecasting />
                 </ProtectedRoute>
               }
             />

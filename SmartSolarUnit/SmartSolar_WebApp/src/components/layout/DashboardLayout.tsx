@@ -12,6 +12,9 @@ import {
   Zap,
   LineChart as LineChartIcon,
   Sparkles,
+  Map,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -25,15 +28,31 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
+  const [expanded, setExpanded] = React.useState<Record<string, boolean>>({
+    "Near by forecasting": true
+  });
+
+  const toggleExpand = (label: string) => {
+    setExpanded((prev) => ({ ...prev, [label]: !prev[label] }));
+  };
 
   // Different navigation items based on role
-  const adminNavItems = [
+  const adminNavItems: any[] = [
     { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { path: "/sites", icon: Sun, label: "Solar Sites" },
     { path: "/analyze", icon: LineChartIcon, label: "Seasonal Prediction" },
     { path: "/xai-insights", icon: Sparkles, label: "XAI Insights" },
     { path: "/fault-detection", icon: Zap, label: "Fault Detection" },
-    { path: "/summary", icon: BarChart3, label: "Summary" },
+    {
+      path: "/nearby-forecasting",
+      icon: Map,
+      label: "Near by forecasting",
+      children: [
+        { path: "/nearby-forecasting/overview", label: "Overview" },
+        { path: "/nearby-forecasting/sites", label: "Map Sites" },
+        { path: "/nearby-forecasting/analytics", label: "Map Analytics" },
+      ]
+    },
     { path: "/profile", icon: User, label: "Profile" },
   ];
 
@@ -43,6 +62,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
     { path: "/analyze", icon: LineChartIcon, label: "Seasonal Prediction" },
     { path: "/xai-insights", icon: Sparkles, label: "XAI Insights" },
     { path: "/fault-detection", icon: Zap, label: "Fault Detection" },
+    { path: "/nearby-forecasting/overview", icon: Map, label: "Near by Forecasting" },
     { path: "/profile", icon: User, label: "Profile" },
   ];
 
@@ -97,7 +117,47 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
           {/* Navigation */}
           <nav className="flex-1 px-4 py-6 space-y-2">
             {navItems.map((item) => {
-              const isActive = location.pathname === item.path;
+              const isActive = location.pathname === item.path || (item.children && item.children.some((child: any) => location.pathname === child.path));
+
+              if (item.children) {
+                return (
+                  <div key={item.label} className="space-y-1">
+                    <button
+                      onClick={() => toggleExpand(item.label)}
+                      className={cn(
+                        "w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200",
+                        isActive || expanded[item.label]
+                          ? "bg-sidebar-primary/50 text-sidebar-foreground"
+                          : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                      )}
+                    >
+                      <item.icon className="w-5 h-5" />
+                      <span className="font-medium flex-1 text-left">{item.label}</span>
+                      {expanded[item.label] ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                    </button>
+                    {expanded[item.label] && (
+                      <div className="pl-11 pr-4 space-y-1">
+                        {item.children.map((child: any) => (
+                          <Link
+                            key={child.path}
+                            to={child.path}
+                            onClick={() => setSidebarOpen(false)}
+                            className={cn(
+                              "block px-4 py-2 rounded-lg transition-all duration-200 text-sm",
+                              location.pathname === child.path
+                                ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium shadow-md"
+                                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                            )}
+                          >
+                            {child.label}
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
               return (
                 <Link
                   key={item.path}
@@ -105,7 +165,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
                   className={cn(
                     "flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200",
                     isActive
-                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-md"
                       : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                   )}
                   onClick={() => setSidebarOpen(false)}
@@ -165,7 +225,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
                     ? "Explainable AI Summary"
                     : location.pathname === "/fault-detection"
                       ? "Fault Detection"
-                      : (location.pathname.split("/").pop() || "Dashboard")}
+                      : location.pathname.includes("/nearby-forecasting")
+                        ? "Near by Forecasting"
+                        : (location.pathname.split("/").pop() || "Dashboard")}
               </h2>
             </div>
             <div className="flex items-center gap-2">
