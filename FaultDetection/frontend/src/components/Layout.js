@@ -3,6 +3,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Sun, Battery, Zap, Menu, Bell, Plus, User, LogOut, Activity, History, TrendingUp } from 'lucide-react';
 import Logo from '../images/Logo.png';
 
+const BASE_URL = import.meta.env.VITE_BASE_URL;
+
 function Layout({ children, isLoggedIn, username, onLogout }) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -132,7 +134,7 @@ function Layout({ children, isLoggedIn, username, onLogout }) {
                   if (window !== window.parent) {
                     window.parent.postMessage({ type: 'navigate', path: '/dashboard' }, '*');
                   } else {
-                    window.location.href = 'http://localhost:8081/dashboard';
+                    window.location.href = `${BASE_URL}/dashboard`;
                   }
                 }}
                 className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors flex items-center gap-2 text-sm font-medium mr-2"

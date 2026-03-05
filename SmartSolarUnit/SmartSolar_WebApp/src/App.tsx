@@ -15,6 +15,7 @@ import Analyze from "@/pages/Analyze";
 import XAIInsights from "@/pages/XAIInsights";
 import FaultDetection from "@/pages/FaultDetection";
 import NotFound from "@/pages/NotFound";
+import { ChatbotPopup } from "@/components/chatbot/ChatbotPopup";
 
 const queryClient = new QueryClient();
 
@@ -94,6 +95,7 @@ const App = () => (
             />
             <Route path="*" element={<NotFound />} />
           </Routes>
+          <ChatbotPopup />
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>
