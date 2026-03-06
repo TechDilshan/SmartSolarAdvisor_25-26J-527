@@ -1,5 +1,8 @@
 import streamlit as st
 import sys
+import subprocess
+import threading
+import time
 from pathlib import Path
 from datetime import datetime
 
@@ -13,6 +16,60 @@ from rag.answer_generator import AnswerGenerator
 from utils.conversation_manager import ConversationManager
 from voice.voice_handler import VoiceHandler  # NEW
 
+# ---------------------------------------------------------------------------
+# Pipeline scheduler (module-level — persists across Streamlit reruns)
+# ---------------------------------------------------------------------------
+_PIPELINE_INTERVAL = 6 * 60 * 60  # 6 hours in seconds
+_PIPELINE_SCRIPT = str(Path(__file__).parent / "pipeline_runner.py")
+
+_pipeline_state: dict = {
+    "thread": None,
+    "last_run": None,
+    "next_run": None,
+    "status": "not started",
+}
+
+
+def _pipeline_worker() -> None:
+    """Background daemon thread: runs pipeline_runner.py on startup, then every 6 hours."""
+    first_run = True
+    while True:
+        if not first_run:
+            time.sleep(_PIPELINE_INTERVAL)
+        first_run = False
+
+        _pipeline_state["status"] = "running"
+        _pipeline_state["last_run"] = datetime.now()
+        try:
+            result = subprocess.run(
+                [sys.executable, _PIPELINE_SCRIPT],
+                capture_output=True,
+                text=True,
+                cwd=str(Path(__file__).parent),
+            )
+            if result.returncode == 0:
+                _pipeline_state["status"] = "success"
+            else:
+                _pipeline_state["status"] = f"failed (exit {result.returncode})"
+        except Exception as exc:
+            _pipeline_state["status"] = f"error: {exc}"
+
+        _pipeline_state["next_run"] = datetime.fromtimestamp(
+            time.time() + _PIPELINE_INTERVAL
+        )
+
+
+def start_pipeline_scheduler() -> None:
+    """Start the background pipeline scheduler if it is not already running."""
+    thread = _pipeline_state["thread"]
+    if thread is None or not thread.is_alive():
+        t = threading.Thread(target=_pipeline_worker, daemon=True)
+        t.start()
+        _pipeline_state["thread"] = t
+        _pipeline_state["next_run"] = datetime.now()  # first run is immediate
+
+
+# ---------------------------------------------------------------------------
 # Page configuration
 st.set_page_config(
     page_title="Smart Solar Advisor",
@@ -382,6 +439,9 @@ if 'embeddings_handler' not in st.session_state:
             st.error(f"Error initializing system: {str(e)}")
             st.session_state.system_ready = False
 
+# Start the background pipeline scheduler (runs immediately, then every 6 hours)
+start_pipeline_scheduler()
+
 # Header
 st.markdown('<h1 class="main-header">🌞 Smart Solar Advisor</h1>', unsafe_allow_html=True)
 st.markdown('<p class="sub-header">Your Solar Energy Consultant for Sri Lanka | සූර්ය බලශක්ති උපදේශකයා</p>', unsafe_allow_html=True)
@@ -408,8 +468,34 @@ with st.sidebar:
     else:
         st.warning("System not ready")
     
+    # st.markdown("---")
+
+    # # Pipeline Scheduler Status
+    # st.header("🔄 Pipeline Status")
+    # _status = _pipeline_state["status"]
+    # _last_run = _pipeline_state["last_run"]
+    # _next_run = _pipeline_state["next_run"]
+
+    # if "success" in _status:
+    #     _icon = "🟢"
+    # elif "running" in _status:
+    #     _icon = "🟡"
+    # elif "not started" in _status:
+    #     _icon = "⚪"
+    # else:
+    #     _icon = "🔴"
+
+    # st.markdown(f"""
+    # <div class="stats-box">
+    # <b>Status:</b> {_icon} {_status}<br>
+    # <b>Last Run:</b> {_last_run.strftime('%H:%M %d/%m/%Y') if _last_run else 'Never'}<br>
+    # <b>Next Run:</b> {_next_run.strftime('%H:%M %d/%m/%Y') if _next_run else 'N/A'}<br>
+    # <b>Interval:</b> Every 6 hours
+    # </div>
+    # """, unsafe_allow_html=True)
+
     st.markdown("---")
-    
+
     # Voice Settings - NEW
     st.header("🎤 Voice Settings")
     st.session_state.voice_enabled = st.checkbox(
