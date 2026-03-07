@@ -92,7 +92,7 @@ python test_search.py
 #Get & Process data automatically from sources
 python pipeline_runner.py
 
-# Run web app
+# Run web app (Pipeline run scheduled in app_simple.py)
 python -m streamlit run app_simple.py
 
 # Stop app
