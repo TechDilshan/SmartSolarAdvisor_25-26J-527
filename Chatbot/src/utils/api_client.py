@@ -174,9 +174,81 @@ def extract_time_mode(query: str) -> str:
     return "daily"
 
 
+# Mapping: (keywords, live_field, agg_field, label, unit)
+# agg_field is None when the metric does not appear in /aggregate-data.
+_METRIC_MAP = [
+    (["dust level", "dust"],               "dust_level",            "average_dust_level",  "Dust Level",       ""),
+    (["humidity"],                          "humidity",              "average_humidity",    "Humidity",         "%"),
+    (["irradiance"],                        "irradiance",            "average_irradiance",  "Irradiance",       "W/m²"),
+    (["temperature"],                       "temperature",           "average_temperature", "Temperature",      "°C"),
+    (["rainfall", "rain"],                  "rainfall",              "average_rainfall",    "Rainfall",         "mm"),
+    (["predicted output", "output", "kwh"], "predicted_kwh_per5min", None,                  "Predicted Output", "kWh (per 5 min)"),
+    (["panel area"],                        "panel_area_m2",         None,                  "Panel Area",       "m²"),
+]
+
+
+def extract_requested_metric(query: str):
+    """Return ``(live_field, agg_field, label, unit)`` for the metric the user
+    asked about, or ``None`` when no specific metric is detected.
+
+    ``agg_field`` is ``None`` for metrics that only appear in live readings.
+    """
+    q = query.lower()
+    for keywords, live_field, agg_field, label, unit in _METRIC_MAP:
+        if any(kw in q for kw in keywords):
+            return live_field, agg_field, label, unit
+    return None
+
+
 # ---------------------------------------------------------------------------
-# Response formatters
+# Date extraction from natural-language queries
 # ---------------------------------------------------------------------------
+
+_MONTH_NUM = {
+    'january': '01', 'february': '02', 'march': '03', 'april': '04',
+    'may': '05', 'june': '06', 'july': '07', 'august': '08',
+    'september': '09', 'october': '10', 'november': '11', 'december': '12',
+    'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04',
+    'jun': '06', 'jul': '07', 'aug': '08', 'sep': '09',
+    'oct': '10', 'nov': '11', 'dec': '12',
+}
+
+
+def extract_date_from_query(query: str) -> Optional[str]:
+    """Return an ISO date string (``YYYY-MM-DD``) found in *query*, or ``None``.
+
+    Recognises:
+    - ISO format:           ``2026-02-14``
+    - Day-Month-Year:       ``14 February 2026``, ``14th Feb 2026``
+    - Month-Day-Year:       ``February 14, 2026``, ``Feb 14 2026``
+    """
+    # ISO format
+    m = re.search(r'\b(\d{4}-\d{2}-\d{2})\b', query)
+    if m:
+        return m.group(1)
+
+    q = query.lower()
+
+    # Day-first: "14 february 2026", "14th feb 2026"
+    m = re.search(
+        r'\b(\d{1,2})(?:st|nd|rd|th)?\s+'
+        r'(' + '|'.join(_MONTH_NUM) + r')\s+(\d{4})\b',
+        q,
+    )
+    if m:
+        day, month_name, year = m.group(1), m.group(2), m.group(3)
+        return f"{year}-{_MONTH_NUM[month_name]}-{int(day):02d}"
+
+    # Month-first: "february 14, 2026", "feb 14 2026"
+    m = re.search(
+        r'\b(' + '|'.join(_MONTH_NUM) + r')\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})\b',
+        q,
+    )
+    if m:
+        month_name, day, year = m.group(1), m.group(2), m.group(3)
+        return f"{year}-{_MONTH_NUM[month_name]}-{int(day):02d}"
+
+    return None
 
 def format_sites_response(sites: List[Dict]) -> str:
     if not sites:
@@ -197,10 +269,35 @@ def format_sites_response(sites: List[Dict]) -> str:
     return "\n\n".join(lines)
 
 
-def format_live_data_response(records: List[Dict], location_name: str) -> str:
+def format_live_data_response(records: List[Dict], location_name: str, metric=None) -> str:
+    """Format live sensor records for display.
+
+    Args:
+        records: List of sensor reading dicts from the API.
+        location_name: Human-readable location name.
+        metric: Optional ``(field_key, label, unit)`` tuple.  When provided
+                only that metric is included in the response.
+    """
     if not records:
         return f"No data found for **{location_name}**."
 
+    if metric:
+        field, _agg_field, label, unit = metric
+        lines = [f"**{label} for {location_name}:**\n"]
+        for rec in records:
+            val = rec.get(field, "N/A")
+            if isinstance(val, float) and field == "predicted_kwh_per5min":
+                val_str = f"{val:.4f}"
+            else:
+                val_str = str(val)
+            suffix = f" {unit}" if unit else ""
+            lines.append(
+                f"Date: {rec.get('date', 'N/A')} | Time: {rec.get('time', 'N/A')}\n"
+                f"{label}: {val_str}{suffix}"
+            )
+        return "\n\n".join(lines)
+
+    # Full response — all fields
     lines = [f"**Latest Solar Data for {location_name}:**\n"]
     for rec in records:
         kwh = rec.get("predicted_kwh_per5min")
@@ -237,3 +334,63 @@ def format_aggregate_response(data: Dict, location_name: str, mode: str) -> str:
             f"- Avg Rainfall: {_fmt(stats.get('average_rainfall', 'N/A'))} mm"
         )
     return "\n\n".join(lines)
+
+
+def format_aggregate_metric_response(
+    agg_data: Dict,
+    location_name: str,
+    metric,                       # (live_field, agg_field, label, unit)
+    target_date: Optional[str] = None,
+) -> str:
+    """Return a single-metric answer from daily aggregate data.
+
+    When *target_date* is given the exact date is used (or the nearest
+    available one if that date has no data).  When omitted the latest
+    recorded date is used.
+    """
+    if not agg_data:
+        return f"No aggregate data found for **{location_name}**."
+
+    _live_field, agg_field, label, unit = metric
+    suffix = f" {unit}" if unit else ""
+
+    from datetime import datetime as _dt
+
+    def _parse(d: str):
+        try:
+            return _dt.strptime(d, "%Y-%m-%d")
+        except ValueError:
+            return None
+
+    valid_keys = [k for k in agg_data if _parse(k) is not None]
+
+    note = ""
+    if target_date:
+        if target_date in agg_data:
+            period = target_date
+        else:
+            try:
+                target_dt = _dt.strptime(target_date, "%Y-%m-%d")
+                period = min(valid_keys, key=lambda d: abs((_parse(d) - target_dt).days))
+                note = f" *(requested {target_date} — nearest available: {period})*"
+            except (ValueError, TypeError):
+                period = valid_keys[-1] if valid_keys else list(agg_data.keys())[-1]
+    else:
+        # Use the most recent date
+        try:
+            period = max(valid_keys, key=_parse)
+        except (ValueError, TypeError):
+            period = list(agg_data.keys())[-1]
+
+    stats = agg_data[period]
+    val = stats.get(agg_field, "N/A")
+    if isinstance(val, float):
+        val_str = f"{val:.4f}" if "dust" in agg_field else f"{val:.2f}"
+    else:
+        val_str = str(val)
+
+    return (
+        f"**{label} for {location_name}:**\n\n"
+        f"Date: {period}{note}\n"
+        f"{label}: {val_str}{suffix}"
+    )

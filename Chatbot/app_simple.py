@@ -17,9 +17,10 @@ from utils.conversation_manager import ConversationManager
 from voice.voice_handler import VoiceHandler  # NEW
 from utils.api_client import (
     detect_api_intent, extract_location_name, extract_time_mode,
+    extract_requested_metric, extract_date_from_query,
     get_sites_summary, get_coordinates, get_nearest_location_data,
     get_aggregate_data, format_sites_response, format_live_data_response,
-    format_aggregate_response,
+    format_aggregate_response, format_aggregate_metric_response,
 )
 
 # ---------------------------------------------------------------------------
@@ -274,8 +275,17 @@ def handle_api_query(query: str):
         )
 
     if intent == "live_data":
+        metric = extract_requested_metric(query)
+        # Route to aggregate API when a specific, aggregate-supported metric is
+        # requested (e.g. "dust level", "humidity").  Metrics only present in
+        # live readings (panel area, predicted output) still use /nearest-location.
+        if metric and metric[1] is not None:   # metric[1] = agg_field
+            target_date = extract_date_from_query(query)
+            agg_data = get_aggregate_data(coords["lat"], coords["lon"], mode="daily")
+            return format_aggregate_metric_response(agg_data, coords["name"], metric, target_date)
+        # No specific metric (or live-only metric) — fall back to latest reading
         records = get_nearest_location_data(coords["lat"], coords["lon"])
-        return format_live_data_response(records, coords["name"])
+        return format_live_data_response(records, coords["name"], metric=metric)
 
     # aggregate
     mode = extract_time_mode(query)
