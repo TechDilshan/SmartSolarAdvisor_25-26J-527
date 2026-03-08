@@ -15,6 +15,12 @@ from utils.translator import LanguageTranslator
 from rag.answer_generator import AnswerGenerator
 from utils.conversation_manager import ConversationManager
 from voice.voice_handler import VoiceHandler  # NEW
+from utils.api_client import (
+    detect_api_intent, extract_location_name, extract_time_mode,
+    get_sites_summary, get_coordinates, get_nearest_location_data,
+    get_aggregate_data, format_sites_response, format_live_data_response,
+    format_aggregate_response,
+)
 
 # ---------------------------------------------------------------------------
 # Pipeline scheduler (module-level — persists across Streamlit reruns)
@@ -237,6 +243,46 @@ def clean_retrieved_text(text: str) -> str:
     
     return text
 
+def handle_api_query(query: str):
+    """Try to answer a query using live monitoring APIs.
+
+    Returns a formatted string answer if the query matches a known API intent,
+    or ``None`` if the query should fall through to the normal RAG pipeline.
+    """
+    intent = detect_api_intent(query)
+    if intent is None:
+        return None
+
+    # --- Sites summary (no location needed) ---
+    if intent == "sites":
+        sites = get_sites_summary()
+        return format_sites_response(sites)
+
+    # --- Live data or aggregate — require a location name ---
+    location_name = extract_location_name(query)
+    if not location_name:
+        return (
+            "Please provide a location name so I can fetch the data.\n"
+            "For example: *'What is the dust level in Gampaha today?'*"
+        )
+
+    coords = get_coordinates(location_name)
+    if not coords:
+        return (
+            f"I couldn't find the location **'{location_name}'**. "
+            "Please check the spelling or try a nearby city name."
+        )
+
+    if intent == "live_data":
+        records = get_nearest_location_data(coords["lat"], coords["lon"])
+        return format_live_data_response(records, coords["name"])
+
+    # aggregate
+    mode = extract_time_mode(query)
+    data = get_aggregate_data(coords["lat"], coords["lon"], mode)
+    return format_aggregate_response(data, coords["name"], mode)
+
+
 def generate_answer(query: str, embeddings_handler, translator, answer_generator, conversation_manager):
     """Generate answer with conversation support"""
     # Detect query language
@@ -326,6 +372,28 @@ def generate_answer(query: str, embeddings_handler, translator, answer_generator
         if st.session_state.show_debug:
             st.info(f"🔄 Translation: {original_query} → {translated_query}")
     
+    # Check for live API data queries BEFORE the RAG relevance filter.
+    # This ensures monitoring/sensor questions are answered even if they don't
+    # contain traditional solar keywords.
+    try:
+        api_answer = handle_api_query(query)
+    except Exception as api_err:
+        api_answer = None
+        if st.session_state.show_debug:
+            st.warning(f"⚠️ API query failed: {api_err}")
+
+    if api_answer is not None:
+        if query_language == "sinhala":
+            api_answer = translator.translate_to_sinhala(api_answer)
+        return {
+            "answer": api_answer,
+            "sources": [{"filename": "Live Monitoring API", "source_type": "live_api"}],
+            "chunks_used": 0,
+            "language": query_language,
+            "translated_query": translated_query,
+            "intent": "api_data",
+        }
+
     # Check relevance before searching
     if not answer_generator.is_query_relevant(query):
         no_answer = "I'm sorry, but I can only answer questions related to solar energy systems, solar panels, installation, costs, and benefits in Sri Lanka. Please ask me about solar energy topics."
@@ -631,7 +699,8 @@ for message in st.session_state.messages:
             'help': '💡',
             'chitchat': '💬',
             'question': '🤖',
-            'affirmation': '✅'
+            'affirmation': '✅',
+            'api_data': '📡',
         }
         emoji = intent_emoji.get(message.get('intent', 'question'), '🤖')
         
