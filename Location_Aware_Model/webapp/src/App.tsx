@@ -6,7 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { DashboardLayout } from "@/layouts/DashboardLayout";
 import Index from "./pages/Index";
-import Login from "./pages/Login";
+
 import CustomerDashboard from "./pages/CustomerDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminSites from "./pages/AdminSites";
@@ -19,7 +19,7 @@ const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children, role }: { children: ReactNode; role?: string }) => {
   const { isAuthenticated, user } = useAuth();
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!isAuthenticated) return <Navigate to="/" replace />;
   if (role && user?.role !== role) return <Navigate to="/" replace />;
   return <DashboardLayout>{children}</DashboardLayout>;
 };
@@ -33,7 +33,7 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route path="/login" element={<Login />} />
+
             <Route path="/dashboard" element={<ProtectedRoute role="customer"><CustomerDashboard /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
             <Route path="/admin/sites" element={<ProtectedRoute role="admin"><AdminSites /></ProtectedRoute>} />

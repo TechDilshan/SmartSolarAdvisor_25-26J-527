@@ -18,8 +18,17 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(() => {
+    const params = new URLSearchParams(window.location.search);
+    const roleParam = params.get("role");
+
+    if (roleParam === "admin" || roleParam === "customer") {
+      const u: User = { email: "user@smartsolar.com", role: roleParam as UserRole };
+      localStorage.setItem("solar_user", JSON.stringify(u));
+      return u;
+    }
+
     const stored = localStorage.getItem("solar_user");
-    return stored ? JSON.parse(stored) : null;
+    return stored ? JSON.parse(stored) : { email: "user@smartsolar.com", role: "customer" as UserRole };
   });
 
   const login = useCallback(async (email: string, _password: string, role: UserRole) => {

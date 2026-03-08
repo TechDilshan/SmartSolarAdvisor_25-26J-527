@@ -8,9 +8,7 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8083,
-    hmr: {
-      overlay: false,
-    },
+    allowedHosts: ['nbfrontend.solaradvisor.site'],
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
