@@ -148,6 +148,14 @@ def extract_location_name(query: str) -> Optional[str]:
     """
     q = query.lower()
 
+    # Words that should never be the trailing part of a place name
+    _TRAILING_STRIP = (
+        set(_MONTH_NUM.keys()) |
+        {'month', 'months', 'year', 'years', 'week', 'weeks', 'day', 'days',
+         'average', 'avg', 'daily', 'monthly', 'weekly', 'today', 'now',
+         'currently', 'data', 'reading', 'level', 'report'}
+    )
+
     patterns = [
         # "in gampaha", "at london", "of colombo", "for kandy", "near negombo"
         r'\b(?:in|at|of|for|near)\s+([a-zA-Z][a-zA-Z]*(?:\s+[a-zA-Z]+){0,2})',
@@ -162,7 +170,11 @@ def extract_location_name(query: str) -> Optional[str]:
             first = words[0] if words else ""
             # Skip common non-place words and digit-starting tokens (e.g. "4am")
             if first and first not in _NON_PLACE_WORDS and not re.match(r'\d', first):
-                return " ".join(w.capitalize() for w in words)
+                # Strip trailing month/time words that crept into the capture
+                while words and words[-1].lower() in _TRAILING_STRIP:
+                    words.pop()
+                if words:
+                    return " ".join(w.capitalize() for w in words)
 
     return None
 
@@ -249,6 +261,27 @@ def extract_date_from_query(query: str) -> Optional[str]:
         return f"{year}-{_MONTH_NUM[month_name]}-{int(day):02d}"
 
     return None
+
+
+def extract_month_from_query(query: str) -> Optional[str]:
+    """Return a period string for a specific month mentioned in *query*.
+
+    Returns ``'YYYY-MM'`` when both year and month are found, ``'MM'`` when
+    only a month name is found, or ``None`` when no month is mentioned.
+    """
+    q = query.lower()
+    for name, num in _MONTH_NUM.items():
+        if re.search(r'\b' + re.escape(name) + r'\b', q):
+            year_m = re.search(r'\b(20\d{2})\b', q)
+            if year_m:
+                return f"{year_m.group(1)}-{num}"
+            return num   # e.g. "01"
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Response formatters
+# ---------------------------------------------------------------------------
 
 def format_sites_response(sites: List[Dict]) -> str:
     if not sites:
@@ -357,18 +390,31 @@ def format_aggregate_metric_response(
     from datetime import datetime as _dt
 
     def _parse(d: str):
-        try:
-            return _dt.strptime(d, "%Y-%m-%d")
-        except ValueError:
-            return None
+        for fmt in ("%Y-%m-%d", "%Y-%m"):
+            try:
+                return _dt.strptime(d, fmt)
+            except ValueError:
+                continue
+        return None
 
     valid_keys = [k for k in agg_data if _parse(k) is not None]
 
     note = ""
     if target_date:
         if target_date in agg_data:
+            # Exact match (e.g. "2026-01" or "2026-02-14")
             period = target_date
+        elif re.match(r'^\d{2}$', target_date):
+            # Bare month number (e.g. "01") — pick the most recent key with
+            # that month regardless of year.
+            matching = [k for k in valid_keys if _parse(k) and f"-{target_date}" in k]
+            if matching:
+                period = max(matching, key=_parse)
+            else:
+                period = max(valid_keys, key=_parse) if valid_keys else list(agg_data.keys())[-1]
+                note = f" *(no data for month {target_date}, showing latest available)*"
         else:
+            # Try to find the nearest date
             try:
                 target_dt = _dt.strptime(target_date, "%Y-%m-%d")
                 period = min(valid_keys, key=lambda d: abs((_parse(d) - target_dt).days))

@@ -17,7 +17,7 @@ from utils.conversation_manager import ConversationManager
 from voice.voice_handler import VoiceHandler  # NEW
 from utils.api_client import (
     detect_api_intent, extract_location_name, extract_time_mode,
-    extract_requested_metric, extract_date_from_query,
+    extract_requested_metric, extract_date_from_query, extract_month_from_query,
     get_sites_summary, get_coordinates, get_nearest_location_data,
     get_aggregate_data, format_sites_response, format_live_data_response,
     format_aggregate_response, format_aggregate_metric_response,
@@ -290,6 +290,14 @@ def handle_api_query(query: str):
     # aggregate
     mode = extract_time_mode(query)
     data = get_aggregate_data(coords["lat"], coords["lon"], mode)
+    metric = extract_requested_metric(query)
+    if metric and metric[1] is not None:
+        # Specific metric requested — filter to that metric and period
+        if mode == "monthly":
+            period = extract_month_from_query(query)
+        else:
+            period = extract_date_from_query(query)
+        return format_aggregate_metric_response(data, coords["name"], metric, period)
     return format_aggregate_response(data, coords["name"], mode)
 
 
