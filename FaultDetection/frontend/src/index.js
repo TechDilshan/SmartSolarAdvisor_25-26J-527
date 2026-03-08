@@ -15,6 +15,14 @@ import DailyHistory from './Pages/dailyHistory';
 import Forecast from './Pages/forecast';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
+
+// Sync auth from query params if embedded in iframe
+const urlParams = new URLSearchParams(window.location.search);
+const token = urlParams.get('token');
+const email = urlParams.get('email');
+if (token) localStorage.setItem('token', token);
+if (email) localStorage.setItem('userEmail', email);
+
 root.render(
   <React.StrictMode>
     <BrowserRouter>

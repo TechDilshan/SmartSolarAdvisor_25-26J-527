@@ -301,7 +301,7 @@ function AddDevice() {
         return;
       }
 
-      const response = await axios.get("http://localhost:5001/api/devices?refresh=true", {
+      const response = await axios.get(`${process.env.REACT_APP_BASE_URL}/api/devices?refresh=true`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -314,11 +314,11 @@ function AddDevice() {
         console.log('Setting devices:', deviceList);
         console.log('Device list length:', deviceList.length);
         console.log('Is array?', Array.isArray(deviceList));
-        
+
         if (Array.isArray(deviceList) && deviceList.length > 0) {
           console.log('First device:', deviceList[0]);
         }
-        
+
         setDevices(Array.isArray(deviceList) ? deviceList : []);
       } else {
         console.log('Response not successful, setting empty array');
@@ -365,7 +365,7 @@ function AddDevice() {
       const token = localStorage.getItem("token");
 
       const response = await axios.post(
-        "http://localhost:5001/api/devices/add",
+        `${process.env.REACT_APP_BASE_URL}/api/devices/add`,
         formData,
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -396,11 +396,11 @@ function AddDevice() {
     } catch (err) {
       console.error('Add device error:', err);
       console.error('Error response:', err.response?.data);
-      
+
       // Check if it's a 400 error - might be API connection issue but device could still be created
       if (err.response?.status === 400) {
         const errorMsg = err.response?.data?.message || '';
-        
+
         // If it's about API connection failure, device might still be created
         // Try to fetch devices to see if it was actually created
         if (errorMsg.includes('Failed to connect') || errorMsg.includes('API') || errorMsg.includes('405')) {
@@ -434,7 +434,6 @@ function AddDevice() {
         // Other errors (500, network, etc.)
         const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || "Failed to add device";
         setError(errorMessage);
-        
         // Still try to fetch devices in case it was partially successful
         setTimeout(() => {
           fetchDevices();
@@ -449,7 +448,7 @@ function AddDevice() {
       const token = localStorage.getItem("token");
 
       const response = await axios.post(
-        `http://localhost:5001/api/devices/${deviceId}/refresh`,
+        `${process.env.REACT_APP_BASE_URL}/api/devices/${deviceId}/refresh`,
         {},
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -475,7 +474,7 @@ function AddDevice() {
     try {
       const token = localStorage.getItem("token");
 
-      await axios.delete(`http://localhost:5001/api/devices/${deviceId}`, {
+      await axios.delete(`${process.env.REACT_APP_BASE_URL}/api/devices/${deviceId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 

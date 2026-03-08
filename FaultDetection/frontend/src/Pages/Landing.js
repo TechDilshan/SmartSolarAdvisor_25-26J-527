@@ -1,8 +1,15 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { Sun, ShieldCheck, Activity, Zap } from 'lucide-react';
 
+const BASE_URL = import.meta.env.VITE_BASE_URL;
+
 const Landing = () => {
+    const isIframe = window !== window.parent;
+    if (isIframe) {
+        return <Navigate to="/dashboard" replace />;
+    }
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex flex-col items-center justify-center p-6 relative overflow-hidden">
             {/* Background Decorative Elements */}
@@ -43,18 +50,18 @@ const Landing = () => {
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-4 w-full justify-center max-w-md">
-                    <Link
-                        to="/login"
+                    <button
+                        onClick={() => {
+                            if (window !== window.parent) {
+                                window.parent.postMessage({ type: 'redirect_login' }, '*');
+                            } else {
+                                window.location.href = `${BASE_URL}/login`;
+                            }
+                        }}
                         className="flex-1 bg-white text-blue-900 font-bold text-lg py-4 px-8 rounded-xl hover:bg-blue-50 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1 text-center"
                     >
                         Log In
-                    </Link>
-                    <Link
-                        to="/register"
-                        className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold text-lg py-4 px-8 rounded-xl hover:from-blue-600 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1 text-center border border-blue-400/30"
-                    >
-                        Sign Up
-                    </Link>
+                    </button>
                 </div>
             </div>
 

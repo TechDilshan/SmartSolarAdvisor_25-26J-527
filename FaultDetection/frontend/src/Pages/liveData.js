@@ -4,7 +4,7 @@ import { Activity, RefreshCw, AlertTriangle, CheckCircle, TrendingUp, TrendingDo
 import axios from 'axios';
 import Layout from '../components/Layout';
 
-function LiveData() {   
+function LiveData() {
   const navigate = useNavigate();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [username, setUsername] = useState('User');
@@ -42,7 +42,7 @@ function LiveData() {
   const fetchDevices = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5001/api/devices?refresh=true', {
+      const response = await axios.get(`${process.env.REACT_APP_BASE_URL}/api/devices?refresh=true`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -67,16 +67,16 @@ function LiveData() {
       const token = localStorage.getItem('token');
 
       // Fetch weather data
-      const weatherResponse = await axios.get('http://localhost:5001/api/weather/realtime');
-      
+      const weatherResponse = await axios.get(`${process.env.REACT_APP_BASE_URL}/api/weather/realtime`);
+
       // Fetch device data
-      const deviceResponse = await axios.get(`http://localhost:5001/api/devices/${selectedDevice._id}?refresh=true`, {
+      const deviceResponse = await axios.get(`${process.env.REACT_APP_BASE_URL}/api/devices/${selectedDevice._id}?refresh=true`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
       // Detect fault
       const faultResponse = await axios.post(
-        `http://localhost:5001/api/faults/detect/${selectedDevice._id}`,
+        `${process.env.REACT_APP_BASE_URL}/api/faults/detect/${selectedDevice._id}`,
         {},
         {
           headers: { Authorization: `Bearer ${token}` }
@@ -139,150 +139,150 @@ function LiveData() {
       <div className="p-6">
         <div className="max-w-7xl mx-auto">
           <div className="p-6">
-        {/* Header */}
-        <div className="bg-white rounded-xl shadow-md p-6 mb-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                <Activity className="w-6 h-6 text-blue-600" />
-                Live Data Monitoring
-              </h1>
-              <p className="text-slate-600 mt-1">Real-time solar system monitoring and fault detection</p>
-            </div>
-            <div className="flex items-center gap-4">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={autoRefresh}
-                  onChange={(e) => setAutoRefresh(e.target.checked)}
-                  className="w-4 h-4 text-blue-600"
-                />
-                <span className="text-sm text-slate-600">Auto Refresh (5 min)</span>
-              </label>
-              <button
-                onClick={fetchLiveData}
-                disabled={isRefreshing || !selectedDevice}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50"
-              >
-                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                Refresh
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Device Selector */}
-        {devices.length > 0 && (
-          <div className="bg-white rounded-xl shadow-md p-4 mb-6">
-            <label className="block text-sm font-medium text-slate-700 mb-2">Select Device</label>
-            <select
-              value={selectedDevice?._id || ''}
-              onChange={(e) => {
-                const device = devices.find(d => d._id === e.target.value);
-                setSelectedDevice(device);
-              }}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              {devices.map(device => (
-                <option key={device._id} value={device._id}>
-                  {device.deviceName} ({device.wifiSN})
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        {!selectedDevice ? (
-          <div className="bg-white rounded-xl shadow-md p-12 text-center">
-            <p className="text-slate-600">No devices available. Please add a device first.</p>
-            <button
-              onClick={() => navigate('/add-device')}
-              className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              Add Device
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Fault Status Card */}
-            <div className="lg:col-span-3 bg-white rounded-xl shadow-md p-6">
-              <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
-                Fault Detection Status
-              </h2>
-              {faultStatus ? (
-                <div className={`p-6 rounded-lg border-2 ${getFaultColor(faultStatus.faultSeverity)}`}>
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-4">
-                      {getFaultIcon(faultStatus.faultDetected)}
-                      <div>
-                        <h3 className="text-lg font-bold">
-                          {faultStatus.faultDetected ? 'Fault Detected' : 'System Normal'}
-                        </h3>
-                        <p className="text-sm mt-1">
-                          {faultStatus.faultDetected
-                            ? `Fault Type: ${faultStatus.faultType.replace('_', ' ').toUpperCase()}`
-                            : 'No faults detected in the system'}
-                        </p>
-                        <p className="text-xs mt-2 opacity-75">
-                          Severity: {faultStatus.faultSeverity.toUpperCase()}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold">
-                        {Number(faultStatus?.deviation || 0) > 0 ? '+' : ''}{Number(faultStatus?.deviation || 0).toFixed(1)}%
-                      </div>
-                      <div className="text-xs opacity-75">Deviation</div>
-                    </div>
-                  </div>
-                  {faultStatus.isDaytime === false && (
-                    <div className="mt-3 text-xs opacity-80">
-                      Night time (6:00 AM – 6:00 PM only). Production is expected to be 0.
-                    </div>
-                  )}
+            {/* Header */}
+            <div className="bg-white rounded-xl shadow-md p-6 mb-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                    <Activity className="w-6 h-6 text-blue-600" />
+                    Live Data Monitoring
+                  </h1>
+                  <p className="text-slate-600 mt-1">Real-time solar system monitoring and fault detection</p>
                 </div>
-              ) : (
-                <div className="text-center py-8 text-slate-500">
-                  Click Refresh to check fault status
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={autoRefresh}
+                      onChange={(e) => setAutoRefresh(e.target.checked)}
+                      className="w-4 h-4 text-blue-600"
+                    />
+                    <span className="text-sm text-slate-600">Auto Refresh (5 min)</span>
+                  </label>
+                  <button
+                    onClick={fetchLiveData}
+                    disabled={isRefreshing || !selectedDevice}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                    Refresh
+                  </button>
                 </div>
-              )}
+              </div>
             </div>
 
-            {/* Weather Data */}
-            {liveData?.weather && (
-              <div className="bg-white rounded-xl shadow-md p-6">
-                <h2 className="text-xl font-bold text-slate-800 mb-4">Weather Conditions</h2>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center py-2 border-b border-slate-100">
-                    <span className="text-slate-600">Temperature</span>
-                    <span className="font-semibold">{liveData.weather.airTemperature}°C</span>
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-slate-100">
-                    <span className="text-slate-600">Humidity</span>
-                    <span className="font-semibold">{liveData.weather.relativeAirHumidity}%</span>
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-slate-100">
-                    <span className="text-slate-600">Wind Speed</span>
-                    <span className="font-semibold">{liveData.weather.windSpeed} m/s</span>
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-slate-100">
-                    <span className="text-slate-600">Sunshine</span>
-                    <span className="font-semibold">{liveData.weather.sunshine}</span>
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-slate-100">
-                    <span className="text-slate-600">Radiation</span>
-                    <span className="font-semibold">{liveData.weather.radiation} W/m²</span>
-                  </div>
-                  <div className="flex justify-between items-center py-2">
-                    <span className="text-slate-600">Air Pressure</span>
-                    <span className="font-semibold">{liveData.weather.airPressure} hPa</span>
-                  </div>
-                </div>
+            {/* Device Selector */}
+            {devices.length > 0 && (
+              <div className="bg-white rounded-xl shadow-md p-4 mb-6">
+                <label className="block text-sm font-medium text-slate-700 mb-2">Select Device</label>
+                <select
+                  value={selectedDevice?._id || ''}
+                  onChange={(e) => {
+                    const device = devices.find(d => d._id === e.target.value);
+                    setSelectedDevice(device);
+                  }}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  {devices.map(device => (
+                    <option key={device._id} value={device._id}>
+                      {device.deviceName} ({device.wifiSN})
+                    </option>
+                  ))}
+                </select>
               </div>
             )}
 
-            {/* Production Comparison */}
-            {/* {faultStatus && faultStatus.isDaytime !== false && (
+            {!selectedDevice ? (
+              <div className="bg-white rounded-xl shadow-md p-12 text-center">
+                <p className="text-slate-600">No devices available. Please add a device first.</p>
+                <button
+                  onClick={() => navigate('/add-device')}
+                  className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Add Device
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Fault Status Card */}
+                <div className="lg:col-span-3 bg-white rounded-xl shadow-md p-6">
+                  <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    Fault Detection Status
+                  </h2>
+                  {faultStatus ? (
+                    <div className={`p-6 rounded-lg border-2 ${getFaultColor(faultStatus.faultSeverity)}`}>
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-4">
+                          {getFaultIcon(faultStatus.faultDetected)}
+                          <div>
+                            <h3 className="text-lg font-bold">
+                              {faultStatus.faultDetected ? 'Fault Detected' : 'System Normal'}
+                            </h3>
+                            <p className="text-sm mt-1">
+                              {faultStatus.faultDetected
+                                ? `Fault Type: ${faultStatus.faultType.replace('_', ' ').toUpperCase()}`
+                                : 'No faults detected in the system'}
+                            </p>
+                            <p className="text-xs mt-2 opacity-75">
+                              Severity: {faultStatus.faultSeverity.toUpperCase()}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-2xl font-bold">
+                            {Number(faultStatus?.deviation || 0) > 0 ? '+' : ''}{Number(faultStatus?.deviation || 0).toFixed(1)}%
+                          </div>
+                          <div className="text-xs opacity-75">Deviation</div>
+                        </div>
+                      </div>
+                      {faultStatus.isDaytime === false && (
+                        <div className="mt-3 text-xs opacity-80">
+                          Night time (6:00 AM – 6:00 PM only). Production is expected to be 0.
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-slate-500">
+                      Click Refresh to check fault status
+                    </div>
+                  )}
+                </div>
+
+                {/* Weather Data */}
+                {liveData?.weather && (
+                  <div className="bg-white rounded-xl shadow-md p-6">
+                    <h2 className="text-xl font-bold text-slate-800 mb-4">Weather Conditions</h2>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                        <span className="text-slate-600">Temperature</span>
+                        <span className="font-semibold">{liveData.weather.airTemperature}°C</span>
+                      </div>
+                      <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                        <span className="text-slate-600">Humidity</span>
+                        <span className="font-semibold">{liveData.weather.relativeAirHumidity}%</span>
+                      </div>
+                      <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                        <span className="text-slate-600">Wind Speed</span>
+                        <span className="font-semibold">{liveData.weather.windSpeed} m/s</span>
+                      </div>
+                      <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                        <span className="text-slate-600">Sunshine</span>
+                        <span className="font-semibold">{liveData.weather.sunshine}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                        <span className="text-slate-600">Radiation</span>
+                        <span className="font-semibold">{liveData.weather.radiation} W/m²</span>
+                      </div>
+                      <div className="flex justify-between items-center py-2">
+                        <span className="text-slate-600">Air Pressure</span>
+                        <span className="font-semibold">{liveData.weather.airPressure} hPa</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Production Comparison */}
+                {/* {faultStatus && faultStatus.isDaytime !== false && (
               <div className="bg-white rounded-xl shadow-md p-6">
                 <h2 className="text-xl font-bold text-slate-800 mb-4">Production Analysis</h2>
                 <div className="space-y-4">
@@ -325,50 +325,49 @@ function LiveData() {
               </div>
             )} */}
 
-            {/* Device Info */}
-            {liveData?.device && (
-              <div className="bg-white rounded-xl shadow-md p-6">
-                <h2 className="text-xl font-bold text-slate-800 mb-4">Device Information</h2>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center py-2 border-b border-slate-100">
-                    <span className="text-slate-600">Device Name</span>
-                    <span className="font-semibold">{liveData.device.deviceName}</span>
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-slate-100">
-                    <span className="text-slate-600">WiFi SN</span>
-                    <span className="font-semibold text-xs">{liveData.device.wifiSN}</span>
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-slate-100">
-                    <span className="text-slate-600">Status</span>
-                    <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                      liveData.device.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                    }`}>
-                      {liveData.device.status}
-                    </span>
-                  </div>
-                  {liveData.device.latestData && (
-                    <>
+                {/* Device Info */}
+                {liveData?.device && (
+                  <div className="bg-white rounded-xl shadow-md p-6">
+                    <h2 className="text-xl font-bold text-slate-800 mb-4">Device Information</h2>
+                    <div className="space-y-3">
                       <div className="flex justify-between items-center py-2 border-b border-slate-100">
-                        <span className="text-slate-600">AC Power</span>
-                        <span className="font-semibold">{liveData.device.latestData.acpower || 0} W</span>
+                        <span className="text-slate-600">Device Name</span>
+                        <span className="font-semibold">{liveData.device.deviceName}</span>
                       </div>
                       <div className="flex justify-between items-center py-2 border-b border-slate-100">
-                        <span className="text-slate-600">Daily Yield</span>
-                        <span className="font-semibold">{liveData.device.latestData.yieldtoday || 0} kWh</span>
+                        <span className="text-slate-600">WiFi SN</span>
+                        <span className="font-semibold text-xs">{liveData.device.wifiSN}</span>
                       </div>
-                      <div className="flex justify-between items-center py-2">
-                        <span className="text-slate-600">Battery SOC</span>
-                        <span className="font-semibold">{liveData.device.latestData.soc || 0}%</span>
+                      <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                        <span className="text-slate-600">Status</span>
+                        <span className={`px-2 py-1 rounded text-xs font-semibold ${liveData.device.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                          }`}>
+                          {liveData.device.status}
+                        </span>
                       </div>
-                    </>
-                  )}
-                </div>
+                      {liveData.device.latestData && (
+                        <>
+                          <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                            <span className="text-slate-600">AC Power</span>
+                            <span className="font-semibold">{liveData.device.latestData.acpower || 0} W</span>
+                          </div>
+                          <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                            <span className="text-slate-600">Daily Yield</span>
+                            <span className="font-semibold">{liveData.device.latestData.yieldtoday || 0} kWh</span>
+                          </div>
+                          <div className="flex justify-between items-center py-2">
+                            <span className="text-slate-600">Battery SOC</span>
+                            <span className="font-semibold">{liveData.device.latestData.soc || 0}%</span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
-        )}
-      </div>
-      </div>
+        </div>
       </div>
     </Layout>
   );

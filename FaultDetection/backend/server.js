@@ -38,7 +38,7 @@ app.use(cors({
     if (!origin) return callback(null, true);
 
     // Check if origin is allowed
-    const allowedOrigins = ['http://localhost:3000', 'http://127.0.0.1:3000'];
+    const allowedOrigins = ['http://localhost:8082', 'http://127.0.0.1:8082', 'https://fault.solaradvisor.site', 'https://www.fault.solaradvisor.site'];
     if (allowedOrigins.indexOf(origin) !== -1 || true) { // Temporarily allow all for debugging
       callback(null, true);
     } else {
@@ -240,7 +240,7 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-const PORT = process.env.PORT || 5001;
+const PORT = process.env.PORT || 5051;
 app.listen(PORT, () => {
   console.log(`Server is running on port: ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
