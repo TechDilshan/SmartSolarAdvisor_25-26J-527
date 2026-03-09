@@ -903,13 +903,13 @@ if user_input:
         with st.spinner("🔍 Thinking... | සිතමින්..."):
             try:
                 response = generate_answer(
-                    user_input, 
+                    user_input,
                     st.session_state.embeddings_handler,
                     st.session_state.translator,
                     st.session_state.answer_generator,
                     st.session_state.conversation_manager
                 )
-                
+
                 # Generate voice output if enabled - NEW
                 audio_file = None
                 if st.session_state.voice_output:
@@ -918,7 +918,7 @@ if user_input:
                             response['answer'],
                             response['language']
                         )
-                
+
                 # Add assistant message
                 st.session_state.messages.append({
                     "role": "assistant",
@@ -932,15 +932,15 @@ if user_input:
                     "timestamp": datetime.now().isoformat(),
                     "audio_file": audio_file  # NEW
                 })
-                
+
+                # Rerun to show new messages (only on success)
+                st.rerun()
+
             except Exception as e:
                 st.error(f"Error generating response: {str(e)}")
                 if st.session_state.show_debug:
                     import traceback
                     st.code(traceback.format_exc())
-        
-        # Rerun to show new messages
-        st.rerun()
 
 # Footer
 st.markdown("---")

@@ -45,7 +45,8 @@ class SolarRAGSystem:
             self.llm = ChatOpenAI(
                 api_key=config.OPENAI_API_KEY,
                 model=config.LLM_MODEL,
-                temperature=config.LLM_TEMPERATURE
+                temperature=config.LLM_TEMPERATURE,
+                request_timeout=30
             )
         
         # Create prompt template

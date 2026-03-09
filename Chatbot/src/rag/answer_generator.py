@@ -196,11 +196,11 @@ class AnswerGenerator:
         """Return True when the query looks like a follow-up to a previous answer."""
         q = query.lower().strip()
         followup_patterns = [
-            'more', 'further', 'explain', 'elaborate', 'continue', 'also',
-            'tell me more', 'what about', 'how about', 'and the', 'and for',
-            'that', 'this', 'it ', 'those', 'these', 'above', 'mentioned',
+            'tell me more', 'explain more', 'elaborate', 'continue',
+            'what about that', 'how about that', 'and the previous',
+            'mentioned above', 'you mentioned', 'as above',
         ]
-        return len(query.split()) <= 8 or any(p in q for p in followup_patterns)
+        return any(p in q for p in followup_patterns)
 
     def generate_answer(self, query: str, documents: List[str],
                         conversation_history: str = '') -> str:
