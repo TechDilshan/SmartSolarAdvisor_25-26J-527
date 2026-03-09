@@ -192,49 +192,27 @@ class AnswerGenerator:
         
         return answer
     
-    def _is_followup(self, query: str) -> bool:
-        """Return True when the query looks like a follow-up to a previous answer."""
-        q = query.lower().strip()
-        followup_patterns = [
-            'more', 'further', 'explain', 'elaborate', 'continue', 'also',
-            'tell me more', 'what about', 'how about', 'and the', 'and for',
-            'that', 'this', 'it ', 'those', 'these', 'above', 'mentioned',
-        ]
-        return len(query.split()) <= 8 or any(p in q for p in followup_patterns)
-
-    def generate_answer(self, query: str, documents: List[str],
-                        conversation_history: str = '') -> str:
+    def generate_answer(self, query: str, documents: List[str]) -> str:
         """
         Generate a clean, concise answer from retrieved documents
-
+        
         Args:
-            query: User's current question.
-            documents: List of retrieved document chunks.
-            conversation_history: Optional plain-text string of prior Q&A turns.
-                When provided and the query looks like a follow-up, the history
-                is used to resolve vague references during extraction.
-
+            query: User's question
+            documents: List of retrieved document chunks
+            
         Returns:
             Clean, formatted answer or "not relevant" message
         """
         # First check: Is the query about solar energy?
-        # Bypassed for follow-ups — the prior turn already validated the topic.
-        is_followup_with_history = bool(conversation_history) and self._is_followup(query)
-        if not is_followup_with_history and not self.is_query_relevant(query):
+        if not self.is_query_relevant(query):
             return "I'm sorry, but I can only answer questions related to solar energy systems, solar panels, installation, costs, and benefits in Sri Lanka. Please ask me about solar energy topics."
-
+        
         # Second check: Are retrieved documents relevant?
         if not documents or not self.is_retrieved_content_relevant(documents, query):
             return "I don't have enough information to answer that specific question about solar energy. Please try rephrasing your question or ask about solar panels, costs, installation, benefits, or technical specifications."
         
-        # Extract key information.
-        # For follow-up queries, enrich the extraction context with prior history
-        # so vague references like "tell me more" return relevant content.
-        if conversation_history and self._is_followup(query):
-            enriched_query = f"{conversation_history}\n\nCurrent question: {query}"
-            answer = self.extract_key_information(enriched_query, documents)
-        else:
-            answer = self.extract_key_information(query, documents)
+        # Extract key information
+        answer = self.extract_key_information(query, documents)
         
         # Remove any remaining artifacts
         answer = self.clean_text(answer)
