@@ -49,9 +49,9 @@ exports.addDevice = async (req, res) => {
       wifiSN: wifiSN.trim().toUpperCase(),
       ...buildUserIdQuery(userId)
     };
-    
+
     const existingDevice = await Device.findOne(existingDeviceQuery);
-    
+
     if (existingDevice) {
       console.log('Device already exists:', existingDevice._id);
       return res.status(400).json({
@@ -71,7 +71,7 @@ exports.addDevice = async (req, res) => {
       console.log('API test exception, but allowing device creation:', apiError.message);
       apiResult = { success: false, error: apiError.message || 'API test failed' };
     }
-    
+
     // Always create device - don't block on API test failure
     // Ensure userId is properly formatted (use normalized ObjectId)
     const newDevice = new Device({
@@ -80,10 +80,10 @@ exports.addDevice = async (req, res) => {
       apiUrl: apiUrl.trim(),
       wifiSN: wifiSN.trim().toUpperCase(),
       tokenId: tokenId.trim(),
-      latestData: apiResult.success ? normalizeRealtimeData(apiResult.data) : null,
+      latestData: apiResult.success ? apiResult.data : null,
       status: apiResult.success ? 'active' : 'error'
     });
-    
+
     console.log('💾 Creating device with userId:', newDevice.userId);
     console.log('💾 Device userId type:', typeof newDevice.userId);
 
@@ -92,10 +92,10 @@ exports.addDevice = async (req, res) => {
     console.log('Device saved successfully:', newDevice._id);
 
     // Always return success, but include warning if API test failed
-    const message = apiResult.success 
-      ? 'Device added successfully' 
+    const message = apiResult.success
+      ? 'Device added successfully'
       : `Device added successfully. Note: API connection test failed (${apiResult.error}). You can refresh data later or check your API URL and credentials.`;
-    
+
     res.status(201).json({
       success: true,
       message: message,
@@ -118,7 +118,7 @@ exports.getDevices = async (req, res) => {
 
     console.log('🔍 Fetching devices for user:', userId);
     console.log('📋 User ID type:', typeof userId);
-    
+
     // Test database connection first
     const dbStatus = await testConnection();
     console.log('💾 Database status:', dbStatus);
@@ -134,9 +134,9 @@ exports.getDevices = async (req, res) => {
 
     const shouldRefresh =
       req.query.refresh === 'true' || req.query.refresh === '1' || req.query.refresh === 'yes';
-    
+
     let devices = [];
-    
+
     try {
       // Optional: refresh latestData from device API (only if stale)
       if (shouldRefresh) {
@@ -150,7 +150,7 @@ exports.getDevices = async (req, res) => {
         for (const d of deviceDocs) {
           const lastFetchedMs = d.latestData?.lastFetched ? new Date(d.latestData.lastFetched).getTime() : 0;
           const isFresh = lastFetchedMs && now - lastFetchedMs < staleAfterMs;
-          if (isFresh) continue;
+          if (isFresh && req.query.refresh !== 'true') continue;
 
           const apiResult = await fetchDeviceData(d.apiUrl, d.tokenId, d.wifiSN);
           if (apiResult.success) {
@@ -170,13 +170,13 @@ exports.getDevices = async (req, res) => {
         .sort({ createdAt: -1 })
         .select('-__v')
         .lean();
-      
+
       console.log('✅ Found devices:', devices.length);
-      
+
       // If no devices found, try individual methods for debugging
       if (devices.length === 0) {
         console.log('⚠️ No devices found with flexible query, trying individual methods...');
-        
+
         // Try normalized ObjectId
         try {
           const test1 = await Device.find({ userId: normalizedUserId }).limit(1);
@@ -184,7 +184,7 @@ exports.getDevices = async (req, res) => {
         } catch (e) {
           console.log('  Method 1 error:', e.message);
         }
-        
+
         // Try string
         try {
           const test2 = await Device.find({ userId: userId.toString() }).limit(1);
@@ -192,7 +192,7 @@ exports.getDevices = async (req, res) => {
         } catch (e) {
           console.log('  Method 2 error:', e.message);
         }
-        
+
         // Try direct
         try {
           const test3 = await Device.find({ userId: userId }).limit(1);
@@ -200,7 +200,7 @@ exports.getDevices = async (req, res) => {
         } catch (e) {
           console.log('  Method 3 error:', e.message);
         }
-        
+
         // Debug: Show sample devices
         try {
           const allDevices = await Device.find({}).limit(3).select('userId deviceName').lean();
@@ -311,7 +311,7 @@ exports.refreshDeviceData = async (req, res) => {
     if (!apiResult.success) {
       device.status = 'error';
       await device.save();
-      
+
       return res.status(400).json({
         success: false,
         message: `Failed to refresh device data: ${apiResult.error}`
