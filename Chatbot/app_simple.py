@@ -1,5 +1,6 @@
 import streamlit as st
 import sys
+import re
 import subprocess
 import threading
 import time
@@ -244,6 +245,45 @@ def clean_retrieved_text(text: str) -> str:
     
     return text
 
+def build_context_aware_query(query: str, context: dict) -> str:
+    """Enrich a follow-up query with context from the previous API turn.
+
+    When the user omits the location (e.g. "What about the temperature?")
+    the last known location is appended so existing extractors work normally.
+    """
+    last_location = context.get('location_name')
+    last_intent   = context.get('last_intent')
+
+    # Only apply when the previous turn was an API (sensor) response
+    if not last_location or last_intent not in ('live_data', 'aggregate'):
+        return query
+
+    # Leave queries that already name a location unchanged
+    if extract_location_name(query) is not None:
+        return query
+
+    return f"{query} in {last_location}"
+
+
+def build_rag_history(messages: list, n_turns: int = 3) -> str:
+    """Return the last *n_turns* Q&A pairs as a plain-text context string."""
+    pairs = []
+    i = len(messages) - 1
+    while i >= 1 and len(pairs) < n_turns:
+        if messages[i]['role'] == 'assistant' and messages[i - 1]['role'] == 'user':
+            q = messages[i - 1]['content']
+            # Strip markdown bold markers to keep the text clean
+            a = re.sub(r'\*+', '', messages[i]['content']).strip()[:300]
+            pairs.append((q, a))
+            i -= 2
+        else:
+            i -= 1
+    pairs.reverse()
+    if not pairs:
+        return ''
+    return '\n'.join(f"User: {q}\nAssistant: {a}" for q, a in pairs)
+
+
 def handle_api_query(query: str):
     """Try to answer a query using live monitoring APIs.
 
@@ -386,21 +426,34 @@ def generate_answer(query: str, embeddings_handler, translator, answer_generator
     if query_language == 'sinhala':
         translated_query = translator.translate_to_english(query)
         query = translated_query
-        
+
         if st.session_state.show_debug:
             st.info(f"🔄 Translation: {original_query} → {translated_query}")
-    
+
+    # Enrich follow-up queries with context from the previous turn
+    # e.g. "What about the temperature?" → "What about the temperature? in Gampaha"
+    resolved_query = build_context_aware_query(
+        query, st.session_state.conversation_context
+    )
+
     # Check for live API data queries BEFORE the RAG relevance filter.
     # This ensures monitoring/sensor questions are answered even if they don't
     # contain traditional solar keywords.
     try:
-        api_answer = handle_api_query(query)
+        api_answer = handle_api_query(resolved_query)
     except Exception as api_err:
         api_answer = None
         if st.session_state.show_debug:
             st.warning(f"⚠️ API query failed: {api_err}")
 
     if api_answer is not None:
+        # Save context so the next query can carry it forward
+        _loc = extract_location_name(resolved_query)
+        if _loc:
+            st.session_state.conversation_context['location_name'] = _loc
+        st.session_state.conversation_context['last_intent'] = detect_api_intent(resolved_query)
+        st.session_state.conversation_context['mode']        = extract_time_mode(resolved_query)
+
         if query_language == "sinhala":
             api_answer = translator.translate_to_sinhala(api_answer)
         return {
@@ -412,13 +465,27 @@ def generate_answer(query: str, embeddings_handler, translator, answer_generator
             "intent": "api_data",
         }
 
-    # Check relevance before searching
-    if not answer_generator.is_query_relevant(query):
+    # Build conversation history early — used for the follow-up check below
+    # and later for enriched answer generation.
+    conv_history = build_rag_history(st.session_state.messages)
+
+    # Detect RAG follow-ups ("Explain more", "Tell me more about that", etc.)
+    # These contain no solar keywords of their own, so they would fail the
+    # relevance gate below.  We skip that gate when the previous turn was also
+    # a RAG answer and the current query looks like a follow-up.
+    is_rag_followup = (
+        bool(conv_history)
+        and answer_generator._is_followup(query)
+        and st.session_state.conversation_context.get('last_intent') == 'question'
+    )
+
+    # Check relevance before searching — bypassed for detected follow-ups
+    if not is_rag_followup and not answer_generator.is_query_relevant(query):
         no_answer = "I'm sorry, but I can only answer questions related to solar energy systems, solar panels, installation, costs, and benefits in Sri Lanka. Please ask me about solar energy topics."
-        
+
         if query_language == 'sinhala':
             no_answer = translator.translate_to_sinhala(no_answer)
-        
+
         return {
             "answer": no_answer,
             "sources": [],
@@ -427,17 +494,28 @@ def generate_answer(query: str, embeddings_handler, translator, answer_generator
             "translated_query": translated_query,
             "intent": "out_of_scope"
         }
-    
+
+    # For follow-up queries, search using the PREVIOUS user question so that
+    # "Explain more" retrieves the same documents as the original question.
+    if is_rag_followup:
+        search_query = next(
+            (m['content'] for m in reversed(st.session_state.messages[:-1])
+             if m['role'] == 'user'),
+            query,
+        )
+    else:
+        search_query = query
+
     # Search using English query
-    results = embeddings_handler.search(query, n_results=5)
-    
+    results = embeddings_handler.search(search_query, n_results=5)
+
     documents = results.get('documents', [[]])[0]
     metadatas = results.get('metadatas', [[]])[0]
     distances = results.get('distances', [[]])[0]
-    
+
     if st.session_state.show_debug and distances:
         st.info(f"📊 Top result distance: {distances[0]:.4f}")
-    
+
     if not documents:
         no_answer = "I don't have any information to answer that question."
         if query_language == 'sinhala':
@@ -450,9 +528,13 @@ def generate_answer(query: str, embeddings_handler, translator, answer_generator
             "translated_query": translated_query,
             "intent": "no_data"
         }
-    
-    # Generate answer
-    final_answer = answer_generator.generate_answer(query, documents)
+
+    # Generate answer, passing conversation history for follow-up awareness
+    final_answer = answer_generator.generate_answer(query, documents,
+                                                    conversation_history=conv_history)
+
+    # Update context so future queries know the last intent was a RAG question
+    st.session_state.conversation_context['last_intent'] = 'question'
     
     # Check if answer indicates irrelevant content
     if "I'm sorry" in final_answer or "I don't have enough information" in final_answer:
@@ -498,6 +580,13 @@ def generate_answer(query: str, embeddings_handler, translator, answer_generator
 # Initialize session state
 if 'messages' not in st.session_state:
     st.session_state.messages = []
+
+if 'conversation_context' not in st.session_state:
+    st.session_state.conversation_context = {
+        'location_name': None,   # last resolved place name
+        'last_intent': None,     # 'live_data' | 'aggregate' | 'question'
+        'mode': None,            # 'daily' | 'monthly'
+    }
 
 if 'system_ready' not in st.session_state:
     st.session_state.system_ready = False
@@ -656,6 +745,11 @@ with st.sidebar:
     
     if st.button("🗑️ Clear Chat History"):
         st.session_state.messages = []
+        st.session_state.conversation_context = {
+            'location_name': None,
+            'last_intent': None,
+            'mode': None,
+        }
         st.rerun()
     
     st.markdown("---")
