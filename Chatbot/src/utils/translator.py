@@ -50,37 +50,25 @@ class LanguageTranslator:
     def translate_to_sinhala(self, text: str) -> str:
         """Translate English answer to Sinhala"""
         try:
-            # For very long texts, split into smaller chunks
-            if len(text) > 5000:
-                # Split into paragraphs
-                paragraphs = text.split('\n\n')
-                translated_paragraphs = []
-                
-                for para in paragraphs:
-                    if para.strip():
-                        try:
-                            translated = self.english_to_sinhala.translate(para)
-                            translated_paragraphs.append(translated)
-                        except Exception as e:
-                            logger.warning(f"Failed to translate paragraph: {str(e)}")
-                            translated_paragraphs.append(para)  # Keep original if translation fails
-                
-                return '\n\n'.join(translated_paragraphs)
-            else:
-                # Split into sentences for better translation
-                sentences = text.split('. ')
-                translated_sentences = []
-                
-                for sentence in sentences:
-                    if sentence.strip():
-                        try:
-                            translated = self.english_to_sinhala.translate(sentence)
-                            translated_sentences.append(translated)
-                        except Exception as e:
-                            logger.warning(f"Failed to translate sentence: {str(e)}")
-                            translated_sentences.append(sentence)  # Keep original if translation fails
-                
-                return '. '.join(translated_sentences)
+            # Translate the full text in a single request to avoid
+            # making one HTTP call per sentence (which blocks Streamlit).
+            # Google Translate handles up to ~5000 chars per request.
+            MAX_CHARS = 4500
+            if len(text) <= MAX_CHARS:
+                return self.english_to_sinhala.translate(text)
+
+            # Only split when the text genuinely exceeds the limit.
+            paragraphs = text.split('\n\n')
+            translated_paragraphs = []
+            for para in paragraphs:
+                if not para.strip():
+                    continue
+                try:
+                    translated_paragraphs.append(self.english_to_sinhala.translate(para))
+                except Exception as e:
+                    logger.warning(f"Failed to translate paragraph: {str(e)}")
+                    translated_paragraphs.append(para)
+            return '\n\n'.join(translated_paragraphs)
         except Exception as e:
             logger.error(f"Translation error: {str(e)}")
             return text

@@ -219,7 +219,7 @@ if user_input:
         with st.spinner("🤔 Thinking..."):
             try:
                 response = st.session_state.rag_system.generate_response(user_input)
-                
+
                 # Add assistant message
                 st.session_state.messages.append({
                     "role": "assistant",
@@ -230,14 +230,14 @@ if user_input:
                     "raw_context": response['raw_context'],
                     "timestamp": datetime.now().isoformat()
                 })
-                
+
+                # Rerun to show new messages (only on success)
+                st.rerun()
+
             except Exception as e:
                 st.error(f"Error generating response: {str(e)}")
                 import traceback
                 st.code(traceback.format_exc())
-        
-        # Rerun to show new messages
-        st.rerun()
 
 # Footer
 st.markdown("---")

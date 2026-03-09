@@ -1,5 +1,9 @@
 import streamlit as st
 import sys
+import re
+import subprocess
+import threading
+import time
 from pathlib import Path
 from datetime import datetime
 
@@ -12,7 +16,68 @@ from utils.translator import LanguageTranslator
 from rag.answer_generator import AnswerGenerator
 from utils.conversation_manager import ConversationManager
 from voice.voice_handler import VoiceHandler  # NEW
+from utils.api_client import (
+    detect_api_intent, extract_location_name, extract_time_mode,
+    extract_requested_metric, extract_date_from_query, extract_month_from_query,
+    get_sites_summary, get_coordinates, get_nearest_location_data,
+    get_aggregate_data, format_sites_response, format_live_data_response,
+    format_aggregate_response, format_aggregate_metric_response,
+)
 
+# ---------------------------------------------------------------------------
+# Pipeline scheduler (module-level — persists across Streamlit reruns)
+# ---------------------------------------------------------------------------
+_PIPELINE_INTERVAL = 6 * 60 * 60  # 6 hours in seconds
+_PIPELINE_SCRIPT = str(Path(__file__).parent / "pipeline_runner.py")
+
+_pipeline_state: dict = {
+    "thread": None,
+    "last_run": None,
+    "next_run": None,
+    "status": "not started",
+}
+
+
+def _pipeline_worker() -> None:
+    """Background daemon thread: runs pipeline_runner.py on startup, then every 6 hours."""
+    first_run = True
+    while True:
+        if not first_run:
+            time.sleep(_PIPELINE_INTERVAL)
+        first_run = False
+
+        _pipeline_state["status"] = "running"
+        _pipeline_state["last_run"] = datetime.now()
+        try:
+            result = subprocess.run(
+                [sys.executable, _PIPELINE_SCRIPT],
+                capture_output=True,
+                text=True,
+                cwd=str(Path(__file__).parent),
+            )
+            if result.returncode == 0:
+                _pipeline_state["status"] = "success"
+            else:
+                _pipeline_state["status"] = f"failed (exit {result.returncode})"
+        except Exception as exc:
+            _pipeline_state["status"] = f"error: {exc}"
+
+        _pipeline_state["next_run"] = datetime.fromtimestamp(
+            time.time() + _PIPELINE_INTERVAL
+        )
+
+
+def start_pipeline_scheduler() -> None:
+    """Start the background pipeline scheduler if it is not already running."""
+    thread = _pipeline_state["thread"]
+    if thread is None or not thread.is_alive():
+        t = threading.Thread(target=_pipeline_worker, daemon=True)
+        t.start()
+        _pipeline_state["thread"] = t
+        _pipeline_state["next_run"] = datetime.now()  # first run is immediate
+
+
+# ---------------------------------------------------------------------------
 # Page configuration
 st.set_page_config(
     page_title="Smart Solar Advisor",
@@ -180,6 +245,102 @@ def clean_retrieved_text(text: str) -> str:
     
     return text
 
+def build_context_aware_query(query: str, context: dict) -> str:
+    """Enrich a follow-up query with context from the previous API turn.
+
+    When the user omits the location (e.g. "What about the temperature?")
+    the last known location is appended so existing extractors work normally.
+    """
+    last_location = context.get('location_name')
+    last_intent   = context.get('last_intent')
+
+    # Only apply when the previous turn was an API (sensor) response
+    if not last_location or last_intent not in ('live_data', 'aggregate'):
+        return query
+
+    # Leave queries that already name a location unchanged
+    if extract_location_name(query) is not None:
+        return query
+
+    return f"{query} in {last_location}"
+
+
+def build_rag_history(messages: list, n_turns: int = 3) -> str:
+    """Return the last *n_turns* Q&A pairs as a plain-text context string."""
+    pairs = []
+    i = len(messages) - 1
+    while i >= 1 and len(pairs) < n_turns:
+        if messages[i]['role'] == 'assistant' and messages[i - 1]['role'] == 'user':
+            q = messages[i - 1]['content']
+            # Strip markdown bold markers to keep the text clean
+            a = re.sub(r'\*+', '', messages[i]['content']).strip()[:300]
+            pairs.append((q, a))
+            i -= 2
+        else:
+            i -= 1
+    pairs.reverse()
+    if not pairs:
+        return ''
+    return '\n'.join(f"User: {q}\nAssistant: {a}" for q, a in pairs)
+
+
+def handle_api_query(query: str):
+    """Try to answer a query using live monitoring APIs.
+
+    Returns a formatted string answer if the query matches a known API intent,
+    or ``None`` if the query should fall through to the normal RAG pipeline.
+    """
+    intent = detect_api_intent(query)
+    if intent is None:
+        return None
+
+    # --- Sites summary (no location needed) ---
+    if intent == "sites":
+        sites = get_sites_summary()
+        return format_sites_response(sites)
+
+    # --- Live data or aggregate — require a location name ---
+    location_name = extract_location_name(query)
+    if not location_name:
+        return (
+            "Please provide a location name so I can fetch the data.\n"
+            "For example: *'What is the dust level in Gampaha today?'*"
+        )
+
+    coords = get_coordinates(location_name)
+    if not coords:
+        return (
+            f"I couldn't find the location **'{location_name}'**. "
+            "Please check the spelling or try a nearby city name."
+        )
+
+    if intent == "live_data":
+        metric = extract_requested_metric(query)
+        # Route to aggregate API when a specific, aggregate-supported metric is
+        # requested (e.g. "dust level", "humidity").  Metrics only present in
+        # live readings (panel area, predicted output) still use /nearest-location.
+        if metric and metric[1] is not None:   # metric[1] = agg_field
+            target_date = extract_date_from_query(query)
+            agg_data = get_aggregate_data(coords["lat"], coords["lon"], mode="daily")
+            return format_aggregate_metric_response(agg_data, coords["name"], metric, target_date)
+        # No specific metric (or live-only metric) — fall back to latest reading
+        records = get_nearest_location_data(coords["lat"], coords["lon"])
+        return format_live_data_response(records, coords["name"], metric=metric)
+
+    # aggregate
+    mode = extract_time_mode(query)
+    data = get_aggregate_data(coords["lat"], coords["lon"], mode)
+    metric = extract_requested_metric(query)
+    if metric and metric[1] is not None:
+        # Specific metric requested — filter to that metric and period
+        if mode == "monthly":
+            period = extract_month_from_query(query)
+        else:
+            period = extract_date_from_query(query)
+        return format_aggregate_metric_response(data, coords["name"], metric, period)
+    return format_aggregate_response(data, coords["name"], mode)
+
+
 def generate_answer(query: str, embeddings_handler, translator, answer_generator, conversation_manager):
     """Generate answer with conversation support"""
     # Detect query language
@@ -265,17 +426,66 @@ def generate_answer(query: str, embeddings_handler, translator, answer_generator
     if query_language == 'sinhala':
         translated_query = translator.translate_to_english(query)
         query = translated_query
-        
+
         if st.session_state.show_debug:
             st.info(f"🔄 Translation: {original_query} → {translated_query}")
-    
-    # Check relevance before searching
-    if not answer_generator.is_query_relevant(query):
+
+    # Enrich follow-up queries with context from the previous turn
+    # e.g. "What about the temperature?" → "What about the temperature? in Gampaha"
+    resolved_query = build_context_aware_query(
+        query, st.session_state.conversation_context
+    )
+
+    # Check for live API data queries BEFORE the RAG relevance filter.
+    # This ensures monitoring/sensor questions are answered even if they don't
+    # contain traditional solar keywords.
+    try:
+        api_answer = handle_api_query(resolved_query)
+    except Exception as api_err:
+        api_answer = None
+        if st.session_state.show_debug:
+            st.warning(f"⚠️ API query failed: {api_err}")
+
+    if api_answer is not None:
+        # Save context so the next query can carry it forward
+        _loc = extract_location_name(resolved_query)
+        if _loc:
+            st.session_state.conversation_context['location_name'] = _loc
+        st.session_state.conversation_context['last_intent'] = detect_api_intent(resolved_query)
+        st.session_state.conversation_context['mode']        = extract_time_mode(resolved_query)
+
+        if query_language == "sinhala":
+            api_answer = translator.translate_to_sinhala(api_answer)
+        return {
+            "answer": api_answer,
+            "sources": [{"filename": "Live Monitoring API", "source_type": "live_api"}],
+            "chunks_used": 0,
+            "language": query_language,
+            "translated_query": translated_query,
+            "intent": "api_data",
+        }
+
+    # Build conversation history early — used for the follow-up check below
+    # and later for enriched answer generation.
+    conv_history = build_rag_history(st.session_state.messages)
+
+    # Detect RAG follow-ups ("Explain more", "Tell me more about that", etc.)
+    # These contain no solar keywords of their own, so they would fail the
+    # relevance gate below.  We skip that gate when the previous turn was also
+    # a RAG answer and the current query looks like a follow-up.
+    is_rag_followup = (
+        bool(conv_history)
+        and answer_generator._is_followup(query)
+        and st.session_state.conversation_context.get('last_intent') == 'question'
+    )
+
+    # Check relevance before searching — bypassed for detected follow-ups
+    if not is_rag_followup and not answer_generator.is_query_relevant(query):
         no_answer = "I'm sorry, but I can only answer questions related to solar energy systems, solar panels, installation, costs, and benefits in Sri Lanka. Please ask me about solar energy topics."
-        
+
         if query_language == 'sinhala':
             no_answer = translator.translate_to_sinhala(no_answer)
-        
+
         return {
             "answer": no_answer,
             "sources": [],
@@ -284,17 +494,28 @@ def generate_answer(query: str, embeddings_handler, translator, answer_generator
             "translated_query": translated_query,
             "intent": "out_of_scope"
         }
-    
+
+    # For follow-up queries, search using the PREVIOUS user question so that
+    # "Explain more" retrieves the same documents as the original question.
+    if is_rag_followup:
+        search_query = next(
+            (m['content'] for m in reversed(st.session_state.messages[:-1])
+             if m['role'] == 'user'),
+            query,
+        )
+    else:
+        search_query = query
+
     # Search using English query
-    results = embeddings_handler.search(query, n_results=5)
-    
+    results = embeddings_handler.search(search_query, n_results=5)
+
     documents = results.get('documents', [[]])[0]
     metadatas = results.get('metadatas', [[]])[0]
     distances = results.get('distances', [[]])[0]
-    
+
     if st.session_state.show_debug and distances:
         st.info(f"📊 Top result distance: {distances[0]:.4f}")
-    
+
     if not documents:
         no_answer = "I don't have any information to answer that question."
         if query_language == 'sinhala':
@@ -307,9 +528,13 @@ def generate_answer(query: str, embeddings_handler, translator, answer_generator
             "translated_query": translated_query,
             "intent": "no_data"
         }
-    
-    # Generate answer
-    final_answer = answer_generator.generate_answer(query, documents)
+
+    # Generate answer, passing conversation history for follow-up awareness
+    final_answer = answer_generator.generate_answer(query, documents,
+                                                    conversation_history=conv_history)
+
+    # Update context so future queries know the last intent was a RAG question
+    st.session_state.conversation_context['last_intent'] = 'question'
     
     # Check if answer indicates irrelevant content
     if "I'm sorry" in final_answer or "I don't have enough information" in final_answer:
@@ -356,6 +581,13 @@ def generate_answer(query: str, embeddings_handler, translator, answer_generator
 if 'messages' not in st.session_state:
     st.session_state.messages = []
 
+if 'conversation_context' not in st.session_state:
+    st.session_state.conversation_context = {
+        'location_name': None,   # last resolved place name
+        'last_intent': None,     # 'live_data' | 'aggregate' | 'question'
+        'mode': None,            # 'daily' | 'monthly'
+    }
+
 if 'system_ready' not in st.session_state:
     st.session_state.system_ready = False
 
@@ -381,6 +613,9 @@ if 'embeddings_handler' not in st.session_state:
         except Exception as e:
             st.error(f"Error initializing system: {str(e)}")
             st.session_state.system_ready = False
+
+# Start the background pipeline scheduler (runs immediately, then every 6 hours)
+start_pipeline_scheduler()
 
 # Header
 st.markdown('<h1 class="main-header">🌞 Smart Solar Advisor</h1>', unsafe_allow_html=True)
@@ -408,8 +643,34 @@ with st.sidebar:
     else:
         st.warning("System not ready")
     
+    # st.markdown("---")
+
+    # # Pipeline Scheduler Status
+    # st.header("🔄 Pipeline Status")
+    # _status = _pipeline_state["status"]
+    # _last_run = _pipeline_state["last_run"]
+    # _next_run = _pipeline_state["next_run"]
+
+    # if "success" in _status:
+    #     _icon = "🟢"
+    # elif "running" in _status:
+    #     _icon = "🟡"
+    # elif "not started" in _status:
+    #     _icon = "⚪"
+    # else:
+    #     _icon = "🔴"
+
+    # st.markdown(f"""
+    # <div class="stats-box">
+    # <b>Status:</b> {_icon} {_status}<br>
+    # <b>Last Run:</b> {_last_run.strftime('%H:%M %d/%m/%Y') if _last_run else 'Never'}<br>
+    # <b>Next Run:</b> {_next_run.strftime('%H:%M %d/%m/%Y') if _next_run else 'N/A'}<br>
+    # <b>Interval:</b> Every 6 hours
+    # </div>
+    # """, unsafe_allow_html=True)
+
     st.markdown("---")
-    
+
     # Voice Settings - NEW
     st.header("🎤 Voice Settings")
     st.session_state.voice_enabled = st.checkbox(
@@ -484,6 +745,11 @@ with st.sidebar:
     
     if st.button("🗑️ Clear Chat History"):
         st.session_state.messages = []
+        st.session_state.conversation_context = {
+            'location_name': None,
+            'last_intent': None,
+            'mode': None,
+        }
         st.rerun()
     
     st.markdown("---")
@@ -545,7 +811,8 @@ for message in st.session_state.messages:
             'help': '💡',
             'chitchat': '💬',
             'question': '🤖',
-            'affirmation': '✅'
+            'affirmation': '✅',
+            'api_data': '📡',
         }
         emoji = intent_emoji.get(message.get('intent', 'question'), '🤖')
         
@@ -636,13 +903,13 @@ if user_input:
         with st.spinner("🔍 Thinking... | සිතමින්..."):
             try:
                 response = generate_answer(
-                    user_input, 
+                    user_input,
                     st.session_state.embeddings_handler,
                     st.session_state.translator,
                     st.session_state.answer_generator,
                     st.session_state.conversation_manager
                 )
-                
+
                 # Generate voice output if enabled - NEW
                 audio_file = None
                 if st.session_state.voice_output:
@@ -651,7 +918,7 @@ if user_input:
                             response['answer'],
                             response['language']
                         )
-                
+
                 # Add assistant message
                 st.session_state.messages.append({
                     "role": "assistant",
@@ -665,15 +932,15 @@ if user_input:
                     "timestamp": datetime.now().isoformat(),
                     "audio_file": audio_file  # NEW
                 })
-                
+
+                # Rerun to show new messages (only on success)
+                st.rerun()
+
             except Exception as e:
                 st.error(f"Error generating response: {str(e)}")
                 if st.session_state.show_debug:
                     import traceback
                     st.code(traceback.format_exc())
-        
-        # Rerun to show new messages
-        st.rerun()
 
 # Footer
 st.markdown("---")
