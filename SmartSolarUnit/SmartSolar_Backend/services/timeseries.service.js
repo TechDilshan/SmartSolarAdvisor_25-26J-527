@@ -1,13 +1,13 @@
-/**
- * Time-series forecast via Python ML engine (Prophet / SARIMA).
- */
+import dotenv from 'dotenv';
+dotenv.config();
 
 const PYTHON_ML_ENGINE_URL = process.env.PYTHON_ML_ENGINE_URL;
 
 export async function getTimeSeriesForecast(dailyData, periods = 30, useSarima = false) {
   try {
+    const validData = dailyData.filter((d) => d.readingsCount > 0 || d.totalKwh > 0);
     const body = {
-      daily_data: dailyData.map((d) => ({
+      daily_data: validData.map((d) => ({
         date: d.date,
         value: d.totalKwh,
         totalKwh: d.totalKwh,

@@ -43,7 +43,7 @@ import { cn } from "@/lib/utils";
 const Dashboard: React.FC = () => {
   const { isAdmin } = useAuth();
   const { sites, loading: sitesLoading } = useSolarSites();
-  
+
   // Get first running site for demo data
   const runningSite = sites.find((s) => s.status === "running");
   const { data: sensorData } = useSensorData(runningSite?.device_id || null);
@@ -77,25 +77,25 @@ const Dashboard: React.FC = () => {
   // Check device active/inactive status based on last sensor reading
   const deviceStatus = useMemo(() => {
     if (!sensorData || sensorData.length === 0) return { isActive: false, lastReadingMinutes: null };
-    
+
     // Get the most recent sensor reading
     const sorted = [...sensorData].sort((a, b) => {
       const tsA = new Date(a.timestamp).getTime();
       const tsB = new Date(b.timestamp).getTime();
       return tsB - tsA; // Descending order (newest first)
     });
-    
+
     const latestReading = sorted[0];
     if (!latestReading || !latestReading.timestamp) return { isActive: false, lastReadingMinutes: null };
-    
+
     // Calculate minutes since last reading
     const lastReadingTime = new Date(latestReading.timestamp).getTime();
     const now = new Date().getTime();
     const minutesAgo = Math.floor((now - lastReadingTime) / (1000 * 60));
-    
+
     // Device is active if last reading is within 24 hours (1440 minutes)
     const isActive = minutesAgo <= 1440;
-    
+
     return { isActive, lastReadingMinutes: minutesAgo };
   }, [sensorData]);
 
@@ -103,21 +103,21 @@ const Dashboard: React.FC = () => {
   // Get the actual prediction value even if device is inactive (for max calculation)
   const currentPredictedKwh5min = useMemo(() => {
     if (!predictionData || predictionData.length === 0) return 0;
-    
+
     // Sort by timestamp to ensure we get the most recent one
     const sorted = [...predictionData].sort((a, b) => {
       const tsA = a.timestamp || '';
       const tsB = b.timestamp || '';
       return tsB.localeCompare(tsA); // Descending order (newest first)
     });
-    
+
     // Get the most recent prediction (first after sorting)
     const latest = sorted[0];
-    
+
     // Ensure we return 0 if the value is null, undefined, or NaN
     const value = latest?.predicted_kwh_5min;
     if (value === null || value === undefined || isNaN(Number(value))) return 0;
-    
+
     // Return the actual value (including 0)
     // Note: If device is inactive, this value will be displayed as 0 in the gauge,
     // but we still use it for max calculation
@@ -177,7 +177,7 @@ const Dashboard: React.FC = () => {
             {isAdmin ? "Dashboard Overview" : "My Solar Dashboard"}
           </h1>
           <p className="text-muted-foreground">
-            {isAdmin 
+            {isAdmin
               ? "Real-time monitoring of all solar energy systems"
               : "Real-time monitoring of your solar energy systems"}
           </p>
@@ -522,12 +522,12 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Low Prediction Alert */}
-        {runningSite && (
+        {/* {runningSite && (
           <LowPredictionAlert
             explanation={lowPredictionExplanation}
             loading={explanationLoading}
           />
-        )}
+        )} */}
 
         {/* Full Year Forecast */}
         {runningSite && (

@@ -1,3 +1,6 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 /**
  * XAI Service - Interface for Python ML Engine SHAP/LIME integration
  * This service communicates with the Python ML engine for explainability

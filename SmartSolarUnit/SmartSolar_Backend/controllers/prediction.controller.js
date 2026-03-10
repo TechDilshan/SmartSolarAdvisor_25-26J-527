@@ -82,7 +82,7 @@ export const getByRange = async (req, res) => {
 export const getDailyTotal = async (req, res) => {
   try {
     const { customerName, siteId } = req.params;
-    const { date } = req.query;
+    let { date } = req.query;
 
     if (!date) {
       // Default to today
@@ -112,7 +112,7 @@ export const getDailyTotal = async (req, res) => {
 export const getMonthlyTotal = async (req, res) => {
   try {
     const { customerName, siteId } = req.params;
-    const { yearMonth } = req.query;
+    let { yearMonth } = req.query;
 
     if (!yearMonth) {
       // Default to current month
@@ -161,10 +161,10 @@ export const getMonthlyBreakdown = async (req, res) => {
 export const getSummary = async (req, res) => {
   try {
     const { customerName, siteId } = req.params;
-    
+
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0].replace(/-/g, '');
-    
+
     const [dailyTotal, monthlyTotal, latestPrediction] = await Promise.all([
       PredictionModel.getDailyTotal(customerName, siteId, todayStr),
       PredictionModel.getLast30DaysTotal(customerName, siteId),
@@ -213,7 +213,7 @@ export const getMonthlyAdjusted = async (req, res) => {
   try {
     const { customerName, siteId } = req.params;
     const { yearMonth, lat, lon } = req.query;
-    
+
     if (!yearMonth) {
       const now = new Date();
       const currentMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -228,7 +228,7 @@ export const getMonthlyAdjusted = async (req, res) => {
       );
       return res.json({ success: true, data });
     }
-    
+
     const seasonalForecastService = await import('../services/seasonal_forecast.service.js');
     const site = await import('../models/site.model.js').then(m => m.default.getById(siteId));
     const data = await seasonalForecastService.getMonthlyAdjusted(
@@ -328,7 +328,7 @@ export const getGlobalXaiSummary = async (req, res) => {
       const now = new Date();
       const diffMs = now.getTime() - start.getTime();
       const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1;
-      daysToAnalyze = Math.max(1, diffDays);
+      daysToAnalyze = Math.min(30, Math.max(1, diffDays));
     } else if (days) {
       daysToAnalyze = Math.max(1, parseInt(days, 10));
     } else {
@@ -357,12 +357,14 @@ export const getDailyAnalysis = async (req, res) => {
   try {
     const { customerName, siteId } = req.params;
     const { date, includeXai } = req.query;
+
     const targetDate = date || new Date().toISOString().slice(0, 10);
     const dateStr = targetDate.replace(/-/g, '');
     const [dailyTotal, latestPrediction] = await Promise.all([
       PredictionModel.getDailyTotal(customerName, siteId, dateStr),
       PredictionModel.getLatestPrediction(customerName, siteId),
     ]);
+
     let xaiExplanation = null;
     if (includeXai === 'true' && latestPrediction?.features_used) {
       const xaiService = await import('../services/xai.service.js');

@@ -89,12 +89,12 @@ const Analyze: React.FC = () => {
   const historyDays =
     selectedSite?.created_at
       ? Math.max(
-          7,
-          Math.floor(
-            (new Date().getTime() - new Date(selectedSite.created_at).getTime()) /
-              (1000 * 60 * 60 * 24)
-          ) + 1
-        )
+        7,
+        Math.floor(
+          (new Date().getTime() - new Date(selectedSite.created_at).getTime()) /
+          (1000 * 60 * 60 * 24)
+        ) + 1
+      )
       : 90;
   const {
     data: timeSeriesForecast,
@@ -161,10 +161,10 @@ const Analyze: React.FC = () => {
                 <Activity className="w-4 h-4" />
                 Daily
               </TabsTrigger>
-              <TabsTrigger value="timeseries" className="flex items-center gap-2">
+              {/* <TabsTrigger value="timeseries" className="flex items-center gap-2">
                 <TrendingUp className="w-4 h-4" />
                 Time-Series
-              </TabsTrigger>
+              </TabsTrigger> */}
               <TabsTrigger value="seasonal" className="flex items-center gap-2">
                 <CloudRain className="w-4 h-4" />
                 Seasonal
