@@ -434,7 +434,6 @@ function AddDevice() {
         // Other errors (500, network, etc.)
         const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || "Failed to add device";
         setError(errorMessage);
-
         // Still try to fetch devices in case it was partially successful
         setTimeout(() => {
           fetchDevices();

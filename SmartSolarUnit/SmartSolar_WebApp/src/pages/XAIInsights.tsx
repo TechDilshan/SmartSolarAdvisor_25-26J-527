@@ -64,7 +64,7 @@ const XAIInsights: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Explainable AI Summary</h1>
           <p className="text-muted-foreground">
-            Generate a text explanation using all collected energy predictions from Firebase –
+            Generate a text explanation using up to 30 days of collected energy predictions from Firebase –
             understand why some days had minimal generation (irradiance, rain, heat, dust, and more).
           </p>
         </div>
@@ -106,7 +106,7 @@ const XAIInsights: React.FC = () => {
                     Global Explainable AI (XAI) Result
                   </h2>
                   <p className="text-sm text-muted-foreground">
-                    Uses all collected prediction data (since site creation) to explain why some days
+                    Uses up to 30 days of collected prediction data (since site creation) to explain why some days
                     had low energy generation.
                   </p>
                 </div>
@@ -175,7 +175,7 @@ const XAIInsights: React.FC = () => {
 
             {!loadingSummary && !summary && !error && (
               <div className="min-h-[120px] flex items-center justify-center text-muted-foreground text-sm text-center">
-                Click &quot;Generate XAI Result&quot; to produce a natural-language explanation using all
+                Click &quot;Generate XAI Result&quot; to produce a natural-language explanation using up to 30 days of
                 collected prediction data from Firebase.
               </div>
             )}

@@ -212,7 +212,7 @@ function DailyHistory() {
                         <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Time</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Predicted</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Actual</th>
+                        {/* <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Actual</th> */}
                         <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Deviation</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Fault Type</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Severity</th>
@@ -239,9 +239,6 @@ function DailyHistory() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
                             {Number(record.prediction?.predictedProduction || 0).toFixed(2)} W
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                            {Number(record.prediction?.actualProduction || 0).toFixed(2)} W
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className={`inline-flex items-center gap-1 text-sm font-semibold ${Number(record.prediction?.deviation || 0) < 0 ? 'text-red-600' : 'text-green-600'

@@ -31,9 +31,9 @@ export const LowPredictionAlert: React.FC<LowPredictionAlertProps> = ({
       <div className="flex items-start gap-3">
         <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
         <div className="flex-1">
-          <h4 className="font-semibold text-yellow-900 dark:text-yellow-100 mb-2">
+          {/* <h4 className="font-semibold text-yellow-900 dark:text-yellow-100 mb-2">
             Low Energy Prediction Detected
-          </h4>
+          </h4> */}
           <p className="text-sm text-yellow-800 dark:text-yellow-200 mb-3">
             Today's prediction ({explanation.predictedKwh.toFixed(2)} kWh) is{" "}
             {explanation.percentage.toFixed(1)}% of the average ({explanation.averageKwh.toFixed(2)} kWh).

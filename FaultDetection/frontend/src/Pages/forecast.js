@@ -1,8 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TrendingUp, Calendar, Activity, AlertTriangle } from 'lucide-react';
+import { TrendingUp, Activity, AlertTriangle, Cpu } from 'lucide-react';
 import axios from 'axios';
 import Layout from '../components/Layout';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer
+} from 'recharts';
 
 function Forecast() {
   const navigate = useNavigate();
@@ -17,30 +26,33 @@ function Forecast() {
   useEffect(() => {
     const token = localStorage.getItem('token');
     const userEmail = localStorage.getItem('userEmail');
+
     if (!token) {
       navigate('/login');
       return;
     }
+
     setIsLoggedIn(true);
     setUsername(userEmail || 'User');
     fetchDevices();
   }, [navigate]);
 
   useEffect(() => {
-    if (selectedDevice) {
-      fetchForecast();
-    }
+    if (selectedDevice) fetchForecast();
   }, [selectedDevice, hoursAhead]);
 
   const fetchDevices = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`${process.env.REACT_APP_BASE_URL}/api/devices?refresh=true`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+
+      const response = await axios.get(
+        `${process.env.REACT_APP_BASE_URL}/api/devices?refresh=true`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
 
       if (response.data.success && response.data.devices) {
         setDevices(response.data.devices);
+
         if (response.data.devices.length > 0 && !selectedDevice) {
           setSelectedDevice(response.data.devices[0]);
         }
@@ -54,8 +66,10 @@ function Forecast() {
     if (!selectedDevice) return;
 
     setLoading(true);
+
     try {
       const token = localStorage.getItem('token');
+
       const response = await axios.get(
         `${process.env.REACT_APP_BASE_URL}/api/faults/forecast/${selectedDevice._id}?hoursAhead=${hoursAhead}`,
         { headers: { Authorization: `Bearer ${token}` } }
@@ -74,22 +88,16 @@ function Forecast() {
 
   const formatTime = (timestamp) => {
     const date = new Date(timestamp);
-    return date.toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   const getMaxProduction = () => {
-    if (forecasts.length === 0) return 0;
+    if (!forecasts.length) return 0;
     return Math.max(...forecasts.map(f => f.predictedProduction));
   };
 
   const getAverageProduction = () => {
-    if (forecasts.length === 0) return 0;
+    if (!forecasts.length) return 0;
     const sum = forecasts.reduce((acc, f) => acc + f.predictedProduction, 0);
     return sum / forecasts.length;
   };
@@ -104,164 +112,227 @@ function Forecast() {
     navigate('/login');
   };
 
+  const chartData = forecasts.map((f) => ({
+    time: formatTime(f.timestamp),
+    production: (f.predictedProduction / 1000).toFixed(2)
+  }));
+
   return (
     <Layout isLoggedIn={isLoggedIn} username={username} onLogout={handleLogout}>
-      <div className="p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="p-6">
-            {/* Header */}
-            <div className="bg-white rounded-xl shadow-md p-6 mb-6">
-              <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                <TrendingUp className="w-6 h-6 text-blue-600" />
-                Production Forecast
-              </h1>
-              <p className="text-slate-600 mt-1">Predict future solar production and potential faults</p>
-            </div>
+      <div className="p-6 max-w-7xl mx-auto">
 
-            {/* Filters */}
-            <div className="bg-white rounded-xl shadow-md p-6 mb-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Select Device</label>
-                  <select
-                    value={selectedDevice?._id || ''}
-                    onChange={(e) => {
-                      const device = devices.find(d => d._id === e.target.value);
-                      setSelectedDevice(device);
-                    }}
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    {devices.map(device => (
-                      <option key={device._id} value={device._id}>
-                        {device.deviceName} ({device.wifiSN})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Forecast Period</label>
-                  <select
-                    value={hoursAhead}
-                    onChange={(e) => setHoursAhead(parseInt(e.target.value))}
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value={6}>6 Hours</option>
-                    <option value={12}>12 Hours</option>
-                    <option value={24}>24 Hours</option>
-                    <option value={48}>48 Hours</option>
-                    <option value={72}>72 Hours</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Summary Stats */}
-            {forecasts.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                <div className="bg-white rounded-xl shadow-md p-6">
-                  <div className="text-sm text-slate-600 mb-1">Max Production</div>
-                  <div className="text-3xl font-bold text-blue-600">{(maxProduction / 1000).toFixed(2)} kW</div>
-                  <div className="text-xs text-slate-500 mt-1">Peak forecast</div>
-                </div>
-                <div className="bg-white rounded-xl shadow-md p-6">
-                  <div className="text-sm text-slate-600 mb-1">Average Production</div>
-                  <div className="text-3xl font-bold text-green-600">{(avgProduction / 1000).toFixed(2)} kW</div>
-                  <div className="text-xs text-slate-500 mt-1">Over forecast period</div>
-                </div>
-                <div className="bg-white rounded-xl shadow-md p-6">
-                  <div className="text-sm text-slate-600 mb-1">Total Forecast</div>
-                  <div className="text-3xl font-bold text-purple-600">{forecasts.length}</div>
-                  <div className="text-xs text-slate-500 mt-1">Data points</div>
-                </div>
-              </div>
-            )}
-
-            {/* Forecast Chart */}
-            {!selectedDevice ? (
-              <div className="bg-white rounded-xl shadow-md p-12 text-center">
-                <p className="text-slate-600">Please select a device to view forecast</p>
-              </div>
-            ) : loading ? (
-              <div className="bg-white rounded-xl shadow-md p-12 text-center">
-                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <p className="mt-4 text-slate-600">Generating forecast...</p>
-              </div>
-            ) : forecasts.length === 0 ? (
-              <div className="bg-white rounded-xl shadow-md p-12 text-center">
-                <p className="text-slate-600">No forecast data available</p>
-              </div>
-            ) : (
-              <>
-                {/* Chart Visualization */}
-                <div className="bg-white rounded-xl shadow-md p-6 mb-6">
-                  <h2 className="text-xl font-bold text-slate-800 mb-4">Production Forecast Chart</h2>
-                  <div className="h-64 flex items-end justify-between gap-1">
-                    {forecasts.map((forecast, index) => {
-                      const height = maxProduction > 0 ? (forecast.predictedProduction / maxProduction) * 100 : 0;
-                      return (
-                        <div key={index} className="flex-1 flex flex-col items-center">
-                          <div
-                            className="w-full bg-gradient-to-t from-blue-500 to-blue-400 rounded-t transition-all hover:from-blue-600 hover:to-blue-500"
-                            style={{ height: `${height}%`, minHeight: '4px' }}
-                            title={`${formatTime(forecast.timestamp)}: ${(forecast.predictedProduction / 1000).toFixed(2)} kW`}
-                          />
-                          {index % Math.ceil(forecasts.length / 8) === 0 && (
-                            <div className="text-xs text-slate-500 mt-1 transform -rotate-45 origin-left whitespace-nowrap">
-                              {new Date(forecast.timestamp).getHours()}:00
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Forecast Table */}
-                <div className="bg-white rounded-xl shadow-md overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-slate-50 border-b border-slate-200">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Time</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Predicted Production</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Temperature</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Radiation</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Sunshine</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-slate-200">
-                        {forecasts.map((forecast, index) => (
-                          <tr key={index} className="hover:bg-slate-50">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                              {formatTime(forecast.timestamp)}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="flex items-center gap-2">
-                                <Activity className="w-4 h-4 text-blue-600" />
-                                <span className="text-sm font-semibold text-slate-900">
-                                  {(forecast.predictedProduction / 1000).toFixed(2)} kW
-                                </span>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                              {forecast.weather.AirTemperature}°C
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                              {forecast.weather.Radiation} W/m²
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                              {forecast.weather.Sunshine}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </>
-            )}
+        {/* Header */}
+        <div className="bg-white rounded-xl shadow-md p-6 mb-6 flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <TrendingUp className="text-blue-600" />
+              Solar Production Forecast
+            </h1>
+            <p className="text-slate-500">AI predicted solar energy generation</p>
           </div>
         </div>
+
+        {/* Filters */}
+        <div className="bg-white rounded-xl shadow-md p-6 mb-6 grid md:grid-cols-2 gap-6">
+
+          <div>
+            <label className="text-sm font-medium">Device</label>
+            <select
+              value={selectedDevice?._id || ''}
+              onChange={(e) => {
+                const device = devices.find(d => d._id === e.target.value);
+                setSelectedDevice(device);
+              }}
+              className="w-full border rounded-lg px-4 py-2 mt-1"
+            >
+              {devices.map(d => (
+                <option key={d._id} value={d._id}>
+                  {d.deviceName} ({d.wifiSN})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Forecast Range</label>
+            <select
+              value={hoursAhead}
+              onChange={(e) => setHoursAhead(parseInt(e.target.value))}
+              className="w-full border rounded-lg px-4 py-2 mt-1"
+            >
+              <option value={6}>6 Hours</option>
+              <option value={12}>12 Hours</option>
+              <option value={24}>24 Hours</option>
+              <option value={48}>48 Hours</option>
+              <option value={72}>72 Hours</option>
+            </select>
+          </div>
+
+        </div>
+
+        {/* Device Info */}
+        {selectedDevice && (
+          <div className="bg-white rounded-xl shadow-md p-6 mb-6 flex items-center gap-4">
+            <Cpu className="text-blue-600" />
+            <div>
+              <div className="font-semibold">{selectedDevice.deviceName}</div>
+              <div className="text-sm text-slate-500">
+                Serial: {selectedDevice.wifiSN}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Stats */}
+        {forecasts.length > 0 && (
+          <div className="grid md:grid-cols-3 gap-6 mb-6">
+
+            <div className="bg-white rounded-xl shadow-md p-6">
+              <div className="text-sm text-slate-500">Peak Production</div>
+              <div className="text-3xl font-bold text-blue-600">
+                {(maxProduction / 1000).toFixed(2)} kW
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-md p-6">
+              <div className="text-sm text-slate-500">Average Production</div>
+              <div className="text-3xl font-bold text-green-600">
+                {(avgProduction / 1000).toFixed(2)} kW
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-md p-6">
+              <div className="text-sm text-slate-500">Forecast Points</div>
+              <div className="text-3xl font-bold text-purple-600">
+                {forecasts.length}
+              </div>
+            </div>
+
+          </div>
+        )}
+
+        {/* Chart */}
+        {forecasts.length > 0 && (
+          <div className="bg-white rounded-xl shadow-md p-6 mb-6">
+
+            <h2 className="text-lg font-semibold mb-4">
+              Energy Production Forecast
+            </h2>
+
+            <div className="h-80">
+
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData}>
+
+                  <defs>
+                    <linearGradient id="solarGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#2563eb" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
+                    </linearGradient>
+
+                    <filter id="shadow">
+                      <feDropShadow dx="0" dy="0" stdDeviation="6" floodColor="#2563eb"/>
+                    </filter>
+                  </defs>
+
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb"/>
+
+                  <XAxis
+                    dataKey="time"
+                    tick={{ fontSize: 12 }}
+                    stroke="#64748b"
+                  />
+
+                  <YAxis
+                    stroke="#64748b"
+                    label={{
+                      value: "kW",
+                      angle: -90,
+                      position: "insideLeft"
+                    }}
+                  />
+
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#fff",
+                      borderRadius: "10px",
+                      border: "1px solid #e2e8f0",
+                      boxShadow: "0px 4px 20px rgba(0,0,0,0.08)"
+                    }}
+                  />
+
+                  <Line
+                    type="monotone"
+                    dataKey="production"
+                    stroke="#2563eb"
+                    strokeWidth={3}
+                    dot={false}
+                    activeDot={{ r: 6 }}
+                    animationDuration={1200}
+                    animationEasing="ease-in-out"
+                    filter="url(#shadow)"
+                  />
+
+                </LineChart>
+              </ResponsiveContainer>
+
+            </div>
+          </div>
+        )}
+
+        {/* Table */}
+        {forecasts.length > 0 && (
+          <div className="bg-white rounded-xl shadow-md overflow-hidden">
+
+            <table className="w-full text-sm">
+
+              <thead className="bg-slate-100">
+                <tr>
+                  <th className="p-3 text-left">Time</th>
+                  <th className="p-3 text-left">Production</th>
+                  <th className="p-3 text-left">Temperature</th>
+                  <th className="p-3 text-left">Radiation</th>
+                  <th className="p-3 text-left">Sunshine</th>
+                </tr>
+              </thead>
+
+              <tbody>
+
+                {forecasts.map((f, i) => (
+
+                  <tr key={i} className="border-t hover:bg-slate-50">
+
+                    <td className="p-3">
+                      {formatTime(f.timestamp)}
+                    </td>
+
+                    <td className="p-3 font-semibold text-blue-600">
+                      {(f.predictedProduction / 1000).toFixed(2)} kW
+                    </td>
+
+                    <td className="p-3">
+                      {f.weather.AirTemperature}°C
+                    </td>
+
+                    <td className="p-3">
+                      {f.weather.Radiation} W/m²
+                    </td>
+
+                    <td className="p-3">
+                      {f.weather.Sunshine}
+                    </td>
+
+                  </tr>
+
+                ))}
+
+              </tbody>
+
+            </table>
+
+          </div>
+        )}
+
       </div>
     </Layout>
   );

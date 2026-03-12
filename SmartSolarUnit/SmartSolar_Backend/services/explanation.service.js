@@ -23,10 +23,10 @@ export async function explainLowPrediction(
   // Get prediction for the date
   const dateStr = date ? date.replace(/-/g, '') : new Date().toISOString().slice(0, 10).replace(/-/g, '');
   const dailyTotal = await PredictionModel.getDailyTotal(customerName, siteId, dateStr);
-  
+
   // Get site info
   const site = await SiteModel.getById(siteId);
-  
+
   // Calculate average daily generation.
   // If an override is provided (from a known window), use that value.
   // Otherwise, fall back to last 30 days with an estimate of days with data.
@@ -43,11 +43,11 @@ export async function explainLowPrediction(
       ? last30Days.totalKwh / estimatedDaysWithData
       : dailyTotal.totalKwh;
   }
-  
+
   const predictedKwh = dailyTotal.totalKwh;
   const percentage = avgDailyKwh > 0 ? (predictedKwh / avgDailyKwh) * 100 : 100;
   const isLow = percentage < (threshold * 100);
-  
+
   if (!isLow) {
     return {
       isLow: false,
@@ -57,7 +57,7 @@ export async function explainLowPrediction(
       message: 'Prediction is within normal range',
     };
   }
-  
+
   // Get weather data for explanation
   const lat = site?.latitude;
   const lon = site?.longitude;
@@ -67,7 +67,7 @@ export async function explainLowPrediction(
   } catch (error) {
     console.error('Failed to fetch weather for explanation:', error);
   }
-  
+
   // Get recent predictions to analyze features
   const predictions = await PredictionModel.getPredictions(customerName, siteId);
   const recentPredictions = predictions
@@ -76,10 +76,10 @@ export async function explainLowPrediction(
       return predDate === dateStr;
     })
     .slice(-10); // Last 10 predictions for the day
-  
+
   // Analyze factors
   const factors = [];
-  
+
   // Temperature analysis
   if (currentWeather?.temperature) {
     const temp = currentWeather.temperature;
@@ -103,7 +103,7 @@ export async function explainLowPrediction(
       });
     }
   }
-  
+
   // Cloud cover analysis
   if (currentWeather?.cloud_cover != null) {
     const cloudCover = currentWeather.cloud_cover;
@@ -127,7 +127,7 @@ export async function explainLowPrediction(
       });
     }
   }
-  
+
   // Precipitation analysis
   if (currentWeather?.precipitation != null && currentWeather.precipitation > 0) {
     factors.push({
@@ -139,15 +139,15 @@ export async function explainLowPrediction(
       contribution: Math.min(currentWeather.precipitation / 10, 0.4), // Up to 40% reduction
     });
   }
-  
+
   // Dust level analysis (from sensor data)
   const avgDust = recentPredictions.length > 0
     ? recentPredictions.reduce((sum, p) => {
-        const dust = p.features_used?.dust_level || 0;
-        return sum + dust;
-      }, 0) / recentPredictions.length
+      const dust = p.features_used?.dust_level || 0;
+      return sum + dust;
+    }, 0) / recentPredictions.length
     : null;
-  
+
   if (avgDust != null && avgDust > 0.5) {
     factors.push({
       name: 'High Dust Level',
@@ -158,15 +158,15 @@ export async function explainLowPrediction(
       contribution: Math.min(avgDust * 0.1, 0.15), // Up to 15% reduction
     });
   }
-  
+
   // Irradiance analysis
   const avgIrradiance = recentPredictions.length > 0
     ? recentPredictions.reduce((sum, p) => {
-        const irr = p.features_used?.irradiance || 0;
-        return sum + irr;
-      }, 0) / recentPredictions.length
+      const irr = p.features_used?.irradiance || 0;
+      return sum + irr;
+    }, 0) / recentPredictions.length
     : null;
-  
+
   if (avgIrradiance != null && avgIrradiance < 50000) {
     factors.push({
       name: 'Low Solar Irradiance',
@@ -177,7 +177,7 @@ export async function explainLowPrediction(
       contribution: 0.3,
     });
   }
-  
+
   // Humidity analysis (minor factor)
   if (currentWeather?.humidity != null && currentWeather.humidity > 80) {
     factors.push({
@@ -189,13 +189,13 @@ export async function explainLowPrediction(
       contribution: 0.05,
     });
   }
-  
+
   // Sort factors by impact
   factors.sort((a, b) => {
     const impactOrder = { high: 3, medium: 2, low: 1 };
     return impactOrder[b.impact] - impactOrder[a.impact];
   });
-  
+
   // Generate recommendations
   const recommendations = [];
   if (factors.some(f => f.name.includes('Dust'))) {
@@ -211,7 +211,7 @@ export async function explainLowPrediction(
     recommendations.push('Check for shading or obstructions blocking panels');
     recommendations.push('Verify system is operating normally');
   }
-  
+
   return {
     isLow: true,
     predictedKwh: Math.round(predictedKwh * 1000) / 1000,
@@ -232,47 +232,47 @@ export async function getFeatureImportance(customerName, siteId) {
   // Get recent predictions to analyze feature patterns
   const predictions = await PredictionModel.getPredictions(customerName, siteId);
   const recent = predictions.slice(-100); // Last 100 predictions
-  
+
   if (recent.length === 0) {
     return {
       features: [],
       message: 'Insufficient data for feature importance analysis',
     };
   }
-  
+
   // Calculate correlation-based importance (simplified)
   // In production, this would use SHAP values from Python ML engine
   const features = ['irradiance', 'temperature', 'humidity', 'rainfall', 'dust_level'];
   const importance = {};
-  
+
   features.forEach(feature => {
     const values = recent
       .map(p => p.features_used?.[feature])
       .filter(v => v != null);
-    
+
     if (values.length === 0) {
       importance[feature] = 0;
       return;
     }
-    
+
     // Simple variance-based importance (higher variance = more important)
     const mean = values.reduce((a, b) => a + b, 0) / values.length;
     const variance = values.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / values.length;
     importance[feature] = Math.sqrt(variance);
   });
-  
+
   // Normalize to 0-1 scale
   const maxImportance = Math.max(...Object.values(importance));
   const normalized = {};
   Object.keys(importance).forEach(key => {
     normalized[key] = maxImportance > 0 ? importance[key] / maxImportance : 0;
   });
-  
+
   // Sort by importance
   const sorted = Object.entries(normalized)
     .map(([name, value]) => ({ name, importance: Math.round(value * 1000) / 1000 }))
     .sort((a, b) => b.importance - a.importance);
-  
+
   return {
     features: sorted,
     method: 'variance-based (simplified)',
@@ -288,7 +288,13 @@ export async function getFeatureImportance(customerName, siteId) {
  * @param {number} threshold - low threshold 0-1 (default from env)
  */
 export async function getLowPredictionDates(customerName, siteId, days = 30, threshold = LOW_PREDICTION_THRESHOLD) {
-  const now = new Date();
+  const latestPrediction = await PredictionModel.getLatestPrediction(customerName, siteId);
+  let now = new Date();
+  if (latestPrediction && latestPrediction.timestamp && latestPrediction.timestamp.length >= 8) {
+    const ts = latestPrediction.timestamp;
+    now = new Date(ts.substring(0, 4) + '-' + ts.substring(4, 6) + '-' + ts.substring(6, 8));
+  }
+
   const dates = [];
   for (let i = 0; i < days; i++) {
     const d = new Date(now);
@@ -315,6 +321,9 @@ export async function getLowPredictionDates(customerName, siteId, days = 30, thr
 
   const results = [];
   for (const dateStr of dates) {
+    const dailyTotal = dailyTotalsByDate[dateStr];
+    if (!dailyTotal || dailyTotal.readingsCount === 0) continue;
+
     const dateLabel = dateStr.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3');
 
     // Reuse explainLowPrediction but force it to compare against this window's average.

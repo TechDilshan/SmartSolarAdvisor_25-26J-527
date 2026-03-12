@@ -14,11 +14,11 @@ class PredictionModel {
       .child(customerName)
       .child(siteId)
       .once('value');
-    
+
     const data = snapshot.val();
-    
+
     if (!data) return [];
-    
+
     return Object.entries(data).map(([timestamp, prediction]) => ({
       timestamp,
       ...prediction
@@ -32,11 +32,11 @@ class PredictionModel {
       .orderByKey()
       .limitToLast(1)
       .once('value');
-    
+
     const data = snapshot.val();
-    
+
     if (!data) return null;
-    
+
     const timestamp = Object.keys(data)[0];
     return {
       timestamp,
@@ -52,11 +52,11 @@ class PredictionModel {
       .startAt(startDate)
       .endAt(endDate)
       .once('value');
-    
+
     const data = snapshot.val();
-    
+
     if (!data) return [];
-    
+
     return Object.entries(data).map(([timestamp, prediction]) => ({
       timestamp,
       ...prediction
@@ -68,19 +68,19 @@ class PredictionModel {
     // Timestamp format: YYYYMMDD_HHMMSS
     const dayStart = date + '_000000';
     const dayEnd = date + '_235959';
-    
+
     const predictions = await this.getPredictionsInRange(
       customerName,
       siteId,
       dayStart,
       dayEnd
     );
-    
+
     const totalKwh = predictions.reduce(
       (sum, pred) => sum + (pred.predicted_kwh_5min || 0),
       0
     );
-    
+
     return {
       date,
       totalKwh,
@@ -93,19 +93,19 @@ class PredictionModel {
     // Timestamp format: YYYYMMDD_HHMMSS
     const monthStart = yearMonth + '01_000000';
     const monthEnd = yearMonth + '31_235959';
-    
+
     const predictions = await this.getPredictionsInRange(
       customerName,
       siteId,
       monthStart,
       monthEnd
     );
-    
+
     const totalKwh = predictions.reduce(
       (sum, pred) => sum + (pred.predicted_kwh_5min || 0),
       0
     );
-    
+
     return {
       yearMonth,
       totalKwh,
@@ -115,14 +115,19 @@ class PredictionModel {
 
   async getLast30DaysTotal(customerName, siteId) {
     // Calculate last 30 days (rolling period, not calendar month)
-    const now = new Date();
+    const latestPrediction = await this.getLatestPrediction(customerName, siteId);
+    let now = new Date();
+    if (latestPrediction && latestPrediction.timestamp && latestPrediction.timestamp.length >= 15) {
+      const ts = latestPrediction.timestamp;
+      now = new Date(ts.substring(0, 4) + '-' + ts.substring(4, 6) + '-' + ts.substring(6, 8) + 'T' + ts.substring(9, 11) + ':' + ts.substring(11, 13) + ':' + ts.substring(13, 15));
+    }
     const endDate = new Date(now);
     endDate.setHours(23, 59, 59, 999);
-    
+
     const startDate = new Date(now);
     startDate.setDate(startDate.getDate() - 29); // 30 days including today
     startDate.setHours(0, 0, 0, 0);
-    
+
     // Format dates as YYYYMMDD_HHMMSS
     const formatDate = (date) => {
       const year = date.getFullYear();
@@ -133,22 +138,22 @@ class PredictionModel {
       const seconds = String(date.getSeconds()).padStart(2, '0');
       return `${year}${month}${day}_${hours}${minutes}${seconds}`;
     };
-    
+
     const startTime = formatDate(startDate);
     const endTime = formatDate(endDate);
-    
+
     const predictions = await this.getPredictionsInRange(
       customerName,
       siteId,
       startTime,
       endTime
     );
-    
+
     const totalKwh = predictions.reduce(
       (sum, pred) => sum + (pred.predicted_kwh_5min || 0),
       0
     );
-    
+
     return {
       yearMonth: null, // Not applicable for rolling 30 days
       totalKwh,
@@ -161,7 +166,12 @@ class PredictionModel {
    * Returns array of { date (YYYY-MM-DD), dateStr (YYYYMMDD), totalKwh, readingsCount }.
    */
   async getDailyTotalsForRange(customerName, siteId, days = 90) {
-    const now = new Date();
+    const latestPrediction = await this.getLatestPrediction(customerName, siteId);
+    let now = new Date();
+    if (latestPrediction && latestPrediction.timestamp && latestPrediction.timestamp.length >= 15) {
+      const ts = latestPrediction.timestamp;
+      now = new Date(ts.substring(0, 4) + '-' + ts.substring(4, 6) + '-' + ts.substring(6, 8) + 'T' + ts.substring(9, 11) + ':' + ts.substring(11, 13) + ':' + ts.substring(13, 15));
+    }
     const results = [];
     for (let i = 0; i < days; i++) {
       const d = new Date(now);
@@ -187,7 +197,12 @@ class PredictionModel {
    * Returns array of { yearMonth (YYYYMM), yearMonthLabel (e.g. '2024-01'), totalKwh, readingsCount }.
    */
   async getLast12MonthsBreakdown(customerName, siteId) {
-    const now = new Date();
+    const latestPrediction = await this.getLatestPrediction(customerName, siteId);
+    let now = new Date();
+    if (latestPrediction && latestPrediction.timestamp && latestPrediction.timestamp.length >= 15) {
+      const ts = latestPrediction.timestamp;
+      now = new Date(ts.substring(0, 4) + '-' + ts.substring(4, 6) + '-' + ts.substring(6, 8) + 'T' + ts.substring(9, 11) + ':' + ts.substring(11, 13) + ':' + ts.substring(13, 15));
+    }
     const results = [];
     for (let i = 0; i < 12; i++) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -210,7 +225,7 @@ class PredictionModel {
 
   subscribeToPredictions(customerName, siteId, callback) {
     const predRef = this.predictionsRef.child(customerName).child(siteId);
-    
+
     predRef.on('child_added', (snapshot) => {
       callback({
         timestamp: snapshot.key,

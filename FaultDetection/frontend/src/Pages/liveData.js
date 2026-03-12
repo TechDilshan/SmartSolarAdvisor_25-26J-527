@@ -16,6 +16,21 @@ function LiveData() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(true);
 
+  // ✅ ADD: live solax data state (same as App.js)
+  const [solaxLive, setSolaxLive] = useState({
+    acpower: 0,
+    yieldtoday: 0,
+    yieldtotal: 0,
+    batPower: 0,
+    soc: 0,
+    powerdc1: 0,
+    powerdc2: 0,
+    inverterSN: null,
+    inverterStatus: null,
+    inverterType: null,
+    uploadTime: null,
+  });
+
   useEffect(() => {
     const token = localStorage.getItem('token');
     const userEmail = localStorage.getItem('userEmail');
@@ -25,19 +40,52 @@ function LiveData() {
     }
     setIsLoggedIn(true);
     setUsername(userEmail || 'User');
-    fetchDevices();
+
+    // ✅ Run in sequence so live data overwrites DB zeros
+    const init = async () => {
+      await fetchDevices();
+      await fetchLiveSolaxData();
+    };
+    init();
   }, [navigate]);
 
   useEffect(() => {
     if (selectedDevice && autoRefresh) {
       fetchLiveData();
-      const interval = setInterval(() => {
-        fetchLiveData();
-      }, 5 * 60 * 1000); // Every 5 minutes
-
+      const interval = setInterval(async () => {
+        await fetchLiveData();
+        await fetchLiveSolaxData(); // ✅ keep live data fresh
+      }, 5 * 60 * 1000);
       return () => clearInterval(interval);
     }
   }, [selectedDevice, autoRefresh]);
+
+  // ✅ ADD: same fetchLiveSolaxData as App.js
+  const fetchLiveSolaxData = async () => {
+    try {
+      const response = await axios.get(`${process.env.REACT_APP_BASE_URL}/api/solax/realtime`);
+      console.log('LiveData.js - Live Solax Data:', response.data);
+
+      if (response.data && response.data.success && response.data.result) {
+        const live = response.data.result;
+        setSolaxLive({
+          acpower: live.acpower || 0,
+          yieldtoday: live.yieldtoday || 0,
+          yieldtotal: live.yieldtotal || 0,
+          batPower: live.batPower || 0,
+          soc: live.soc || 0,
+          powerdc1: live.powerdc1 || 0,
+          powerdc2: live.powerdc2 || 0,
+          inverterSN: live.inverterSN || null,
+          inverterStatus: live.inverterStatus || null,
+          inverterType: live.inverterType || null,
+          uploadTime: live.uploadTime || null,
+        });
+      }
+    } catch (error) {
+      console.error('LiveData.js - Failed to fetch live Solax data:', error);
+    }
+  };
 
   const fetchDevices = async () => {
     try {
@@ -66,21 +114,15 @@ function LiveData() {
       setIsRefreshing(true);
       const token = localStorage.getItem('token');
 
-      // Fetch weather data
       const weatherResponse = await axios.get(`${process.env.REACT_APP_BASE_URL}/api/weather/realtime`);
-
-      // Fetch device data
-      const deviceResponse = await axios.get(`${process.env.REACT_APP_BASE_URL}/api/devices/${selectedDevice._id}?refresh=true`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      // Detect fault
+      const deviceResponse = await axios.get(
+        `${process.env.REACT_APP_BASE_URL}/api/devices/${selectedDevice._id}?refresh=true`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
       const faultResponse = await axios.post(
         `${process.env.REACT_APP_BASE_URL}/api/faults/detect/${selectedDevice._id}`,
         {},
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
       setLiveData({
@@ -88,8 +130,11 @@ function LiveData() {
         device: deviceResponse.data.device,
         fault: faultResponse.data.faultDetection
       });
-
       setFaultStatus(faultResponse.data.faultDetection);
+
+      // ✅ Also refresh live solax data on manual refresh
+      await fetchLiveSolaxData();
+
     } catch (error) {
       console.error('Failed to fetch live data:', error);
     } finally {
@@ -281,51 +326,7 @@ function LiveData() {
                   </div>
                 )}
 
-                {/* Production Comparison */}
-                {/* {faultStatus && faultStatus.isDaytime !== false && (
-              <div className="bg-white rounded-xl shadow-md p-6">
-                <h2 className="text-xl font-bold text-slate-800 mb-4">Production Analysis</h2>
-                <div className="space-y-4">
-                  <div className="bg-blue-50 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-slate-600">Predicted Production</span>
-                      <TrendingUp className="w-4 h-4 text-blue-600" />
-                    </div>
-                    <div className="text-2xl font-bold text-blue-600">
-                      {Number(faultStatus?.predictedProduction || 0).toFixed(2)} W
-                    </div>
-                  </div>
-                  <div className="bg-green-50 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-slate-600">Actual Production</span>
-                      <Activity className="w-4 h-4 text-green-600" />
-                    </div>
-                    <div className="text-2xl font-bold text-green-600">
-                      {Number(faultStatus?.actualProduction || 0).toFixed(2)} W
-                    </div>
-                  </div>
-                  <div className={`rounded-lg p-4 ${
-                    faultStatus.deviation < 0 ? 'bg-red-50' : 'bg-green-50'
-                  }`}>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-slate-600">Difference</span>
-                      {faultStatus.deviation < 0 ? (
-                        <TrendingDown className="w-4 h-4 text-red-600" />
-                      ) : (
-                        <TrendingUp className="w-4 h-4 text-green-600" />
-                      )}
-                    </div>
-                    <div className={`text-2xl font-bold ${
-                      faultStatus.deviation < 0 ? 'text-red-600' : 'text-green-600'
-                    }`}>
-                      {Math.abs(faultStatus.deviation).toFixed(1)}%
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )} */}
-
-                {/* Device Info */}
+                {/* Device Info — ✅ now uses solaxLive instead of latestData */}
                 {liveData?.device && (
                   <div className="bg-white rounded-xl shadow-md p-6">
                     <h2 className="text-xl font-bold text-slate-800 mb-4">Device Information</h2>
@@ -340,27 +341,48 @@ function LiveData() {
                       </div>
                       <div className="flex justify-between items-center py-2 border-b border-slate-100">
                         <span className="text-slate-600">Status</span>
-                        <span className={`px-2 py-1 rounded text-xs font-semibold ${liveData.device.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                          }`}>
+                        <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                          liveData.device.status === 'active'
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-red-100 text-red-700'
+                        }`}>
                           {liveData.device.status}
                         </span>
                       </div>
-                      {liveData.device.latestData && (
-                        <>
-                          <div className="flex justify-between items-center py-2 border-b border-slate-100">
-                            <span className="text-slate-600">AC Power</span>
-                            <span className="font-semibold">{liveData.device.latestData.acpower || 0} W</span>
-                          </div>
-                          <div className="flex justify-between items-center py-2 border-b border-slate-100">
-                            <span className="text-slate-600">Daily Yield</span>
-                            <span className="font-semibold">{liveData.device.latestData.yieldtoday || 0} kWh</span>
-                          </div>
-                          <div className="flex justify-between items-center py-2">
-                            <span className="text-slate-600">Battery SOC</span>
-                            <span className="font-semibold">{liveData.device.latestData.soc || 0}%</span>
-                          </div>
-                        </>
-                      )}
+
+                      {/* ✅ Use solaxLive for real values */}
+                      <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                        <span className="text-slate-600">AC Power</span>
+                        <span className="font-semibold">{solaxLive.acpower} W</span>
+                      </div>
+                      <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                        <span className="text-slate-600">Daily Yield</span>
+                        <span className="font-semibold">{solaxLive.yieldtoday} kWh</span>
+                      </div>
+                      <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                        <span className="text-slate-600">Total Yield</span>
+                        <span className="font-semibold">{solaxLive.yieldtotal} kWh</span>
+                      </div>
+                      <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                        <span className="text-slate-600">PV1 Power</span>
+                        <span className="font-semibold">{solaxLive.powerdc1} W</span>
+                      </div>
+                      <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                        <span className="text-slate-600">PV2 Power</span>
+                        <span className="font-semibold">{solaxLive.powerdc2} W</span>
+                      </div>
+                      <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                        <span className="text-slate-600">Battery Power</span>
+                        <span className="font-semibold">{solaxLive.batPower ?? '--'} W</span>
+                      </div>
+                      <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                        <span className="text-slate-600">Battery SOC</span>
+                        <span className="font-semibold">{solaxLive.soc ?? '--'}%</span>
+                      </div>
+                      <div className="flex justify-between items-center py-2">
+                        <span className="text-slate-600">Upload Time</span>
+                        <span className="font-semibold text-xs">{solaxLive.uploadTime || '--'}</span>
+                      </div>
                     </div>
                   </div>
                 )}
