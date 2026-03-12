@@ -8,9 +8,13 @@ Connects to three monitoring APIs provided by other project components:
 
 A geocoding API is used to convert user-supplied location names to coordinates.
 """
+import os
 import re
 import requests
+from dotenv import load_dotenv
 from typing import Dict, List, Optional
+
+load_dotenv()
 
 # ---------------------------------------------------------------------------
 # Endpoint configuration
@@ -19,7 +23,7 @@ _SITES_URL    = "https://nbbackend.solaradvisor.site/sites-summary"
 _NEAREST_URL  = "https://nbbackend.solaradvisor.site/nearest-location"
 _AGGREGATE_URL = "https://nbbackend.solaradvisor.site/aggregate-data"
 _GEO_URL      = "http://api.openweathermap.org/geo/1.0/direct"
-_GEO_APPID    = "dcac4d4dd117b0702f0af20b9a8455ca"
+_GEO_APPID    = os.getenv("GEO_APPID", "")
 _TIMEOUT      = 10  # seconds
 
 # Words that are never place names — used when parsing the user query
