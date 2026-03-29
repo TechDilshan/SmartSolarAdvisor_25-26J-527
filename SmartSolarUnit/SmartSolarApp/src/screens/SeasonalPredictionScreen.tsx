@@ -137,6 +137,22 @@ export default function SeasonalPredictionScreen() {
     const weatherByMonth = new Map<string, any>(
       (weatherSeasonal?.monthly || []).map((m: any) => [m.yearMonth, m])
     );
+
+    const historyData = timeSeriesForecast?.historyData || timeSeriesForecast?.history || [];
+    if (historyData.length > 0) {
+      return historyData.map((h: any) => {
+        // h.date is like "2024-03-01"
+        const monthPrefix = h.date?.substring(0, 7); // e.g. "2024-03"
+        const w: any = weatherByMonth.get(monthPrefix);
+        return {
+          month: monthPrefix,
+          label: h.date,
+          avgTemp: w?.avgTemperature ?? null,
+          solarKwh: Math.round((h.value ?? h.totalKwh ?? 0) * 1000) / 1000,
+        };
+      });
+    }
+
     return (monthlyBreakdown || []).map((p: any) => {
       const w: any = weatherByMonth.get(p.yearMonthLabel);
       return {
@@ -146,7 +162,7 @@ export default function SeasonalPredictionScreen() {
         solarKwh: Math.round(p.totalKwh * 1000) / 1000,
       };
     });
-  }, [weatherSeasonal?.monthly, monthlyBreakdown]);
+  }, [weatherSeasonal?.monthly, timeSeriesForecast, monthlyBreakdown]);
 
   const renderSiteSelector = () => {
     if (sites.length === 0) return null;
@@ -382,7 +398,7 @@ export default function SeasonalPredictionScreen() {
                   </Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity
+                {/* <TouchableOpacity
                   style={[
                     styles.boxItem,
                     {
@@ -421,7 +437,7 @@ export default function SeasonalPredictionScreen() {
                   >
                     Prophet model
                   </Text>
-                </TouchableOpacity>
+                </TouchableOpacity> */}
 
                 <TouchableOpacity
                   style={[
@@ -460,7 +476,7 @@ export default function SeasonalPredictionScreen() {
                       },
                     ]}
                   >
-                    Last 12 months
+                    Since creation date
                   </Text>
                 </TouchableOpacity>
 
@@ -783,9 +799,9 @@ export default function SeasonalPredictionScreen() {
                         { color: colors.textSecondary },
                       ]}
                     >
-                      Monthly average temperature and predicted solar yield.
+                      Daily energy results collected by the device and monthly average temperature.
                     </Text>
-                    {weatherLoading || breakdownLoading ? (
+                    {weatherLoading || timeSeriesLoading ? (
                       <View style={styles.centerBlock}>
                         <ActivityIndicator
                           size="large"

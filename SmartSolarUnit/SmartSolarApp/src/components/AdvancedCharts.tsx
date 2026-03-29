@@ -179,10 +179,10 @@ export const SeasonalTrendsChart: React.FC<SeasonalChartProps> = ({ data }) => {
         <VictoryAxis
           fixLabelOverlap={true}
           tickValues={data.map((d) => d.label)}
-          tickFormat={(t: any) => t}
+          tickFormat={(t: any) => (typeof t === 'string' && t.length === 10 ? t.substring(5) : t)}
           style={{
             grid: { stroke: '#f1f5f9', strokeDasharray: '3,3' },
-            tickLabels: { fontSize: 9, fill: '#64748b' },
+            tickLabels: { fontSize: 9, fill: '#64748b', angle: -45, textAnchor: 'end' },
           }}
         />
 
@@ -258,7 +258,7 @@ export const SeasonalTrendsChart: React.FC<SeasonalChartProps> = ({ data }) => {
               labels: { fill: '#ef4444' }
             },
             {
-              name: 'Predicted solar (kWh)',
+              name: 'Daily result (kWh)',
               symbol: { type: 'minus', fill: 'transparent' },
               labels: { fill: '#334155' }
             },
