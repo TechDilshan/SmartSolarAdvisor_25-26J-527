@@ -53,8 +53,9 @@ const CustomerDashboard = () => {
       }
 
       if (!records?.length) toast({ title: "No Data", description: "No records found for this location." });
-    } catch (e: any) {
-      toast({ title: "API Error", description: e?.message || "Something went wrong.", variant: "destructive" });
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Something went wrong.";
+      toast({ title: "API Error", description: message, variant: "destructive" });
     } finally {
       setLoading(false);
     }

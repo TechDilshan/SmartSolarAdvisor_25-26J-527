@@ -1,11 +1,8 @@
 import { useMemo } from "react";
 import {
-  BarChart, Bar, LineChart, Line,
-  ScatterChart, Scatter,
+  BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from "recharts";
-import { KPICard } from "./KPICard";
-import { Zap, Thermometer, Droplets, Sun, Wind, CloudRain } from "lucide-react";
 import type { AggregateResponse } from "@/services/api";
 
 interface MonthlyChartsProps {
@@ -38,29 +35,20 @@ export const MonthlyCharts = ({ data, scaleFactor = 1, systemKw = 5 }: MonthlyCh
     const avgIrradiance = chartData.reduce((s, d) => s + d.irradiance, 0) / (chartData.length || 1);
     const avgDust = chartData.reduce((s, d) => s + d.dust, 0) / (chartData.length || 1);
     const avgRainfall = chartData.reduce((s, d) => s + d.rainfall, 0) / (chartData.length || 1);
-    return { totalEnergy: +totalEnergy.toFixed(2), avgTemp: +avgTemp.toFixed(2), avgHumidity: +avgHumidity.toFixed(2), avgIrradiance: +avgIrradiance.toFixed(2), avgDust: +avgDust.toFixed(4), avgRainfall: +avgRainfall.toFixed(2) };
+    return {
+      totalEnergy: +totalEnergy.toFixed(2),
+      avgTemp: +avgTemp.toFixed(2),
+      avgHumidity: +avgHumidity.toFixed(2),
+      avgIrradiance: +avgIrradiance.toFixed(2),
+      avgDust: +avgDust.toFixed(4),
+      avgRainfall: +avgRainfall.toFixed(2),
+    };
   }, [chartData]);
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center gap-2">
-        <h3 className="text-lg font-semibold text-foreground">📊 Monthly Summary</h3>
-        <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">{systemKw} kW System</span>
-      </div>
-
-      {/* KPI Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
-        <KPICard title="Total Energy" value={totals.totalEnergy} unit="kWh" icon={Zap} color="green" />
-        <KPICard title="Avg Temperature" value={totals.avgTemp} unit="°C" icon={Thermometer} color="gold" />
-        <KPICard title="Avg Humidity" value={totals.avgHumidity} unit="%" icon={Droplets} color="sky" />
-        <KPICard title="Avg Irradiance" value={totals.avgIrradiance} unit="W/m²" icon={Sun} color="gold" />
-        <KPICard title="Avg Dust Level" value={totals.avgDust} icon={Wind} color="blue" />
-        <KPICard title="Avg Rainfall" value={totals.avgRainfall} unit="mm" icon={CloudRain} color="sky" />
-      </div>
-
-      {/* Monthly Energy Bar */}
       <div className="card-solar">
-        <h4 className="text-sm font-medium text-muted-foreground mb-4">Monthly Energy Production — {systemKw} kW System (Bar)</h4>
+        <h4 className="text-sm font-medium text-muted-foreground mb-4">Monthly energy production</h4>
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(214 20% 90%)" />
@@ -73,26 +61,8 @@ export const MonthlyCharts = ({ data, scaleFactor = 1, systemKw = 5 }: MonthlyCh
         </ResponsiveContainer>
       </div>
 
-      {/* Irradiance & Energy Lines */}
-      <div className="card-solar">
-        <h4 className="text-sm font-medium text-muted-foreground mb-4">Irradiance & Energy (Line Chart)</h4>
-        <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(214 20% 90%)" />
-            <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-            <YAxis yAxisId="left" tick={{ fontSize: 11 }} />
-            <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} />
-            <Tooltip />
-            <Legend />
-            <Line yAxisId="left" type="monotone" dataKey="energy" stroke="hsl(155 70% 45%)" strokeWidth={2} dot={{ r: 4 }} name="Energy (kWh)" />
-            <Line yAxisId="right" type="monotone" dataKey="irradiance" stroke="hsl(42 100% 50%)" strokeWidth={2} dot={{ r: 4 }} name="Irradiance (W/m²)" />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-
-      {/* Detailed Data Table */}
       <div className="card-solar overflow-x-auto">
-        <h4 className="text-sm font-medium text-muted-foreground mb-4">📋 Monthly Detailed Data Table — {systemKw} kW System</h4>
+        <h4 className="text-sm font-medium text-muted-foreground mb-4">Monthly data</h4>
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-border">
@@ -120,7 +90,9 @@ export const MonthlyCharts = ({ data, scaleFactor = 1, systemKw = 5 }: MonthlyCh
           </tbody>
           <tfoot>
             <tr className="border-t-2 border-border font-semibold">
-              <td className="py-2.5 px-3 text-foreground">Summary</td>
+              <td className="py-2.5 px-3 text-foreground">
+                Summary{systemKw !== 5 ? ` · ${systemKw} kW` : ""}
+              </td>
               <td className="py-2.5 px-3 text-right tabular-nums">{totals.totalEnergy}</td>
               <td className="py-2.5 px-3 text-right tabular-nums">{totals.avgTemp}</td>
               <td className="py-2.5 px-3 text-right tabular-nums">{totals.avgHumidity}</td>

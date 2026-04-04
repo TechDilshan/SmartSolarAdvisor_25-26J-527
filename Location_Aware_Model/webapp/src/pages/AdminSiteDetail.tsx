@@ -3,16 +3,13 @@ import { useParams, Link } from "react-router-dom";
 import { fetchSitesSummary, fetchAggregateData, fetchNearestLocation } from "@/services/api";
 import type { SiteSummary, AggregateResponse, SolarRecord } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ArrowLeft, Zap, Thermometer, Droplets, Sun, Wind, CloudRain } from "lucide-react";
-import { KPICard } from "@/components/KPICard";
+import { Loader2, ArrowLeft, Zap, ChevronLeft, ChevronRight } from "lucide-react";
 import { MapPicker } from "@/components/MapPicker";
 import { DailyCharts } from "@/components/DailyCharts";
 import { MonthlyCharts } from "@/components/MonthlyCharts";
-import {
-  BarChart, Bar, LineChart, Line, ScatterChart, Scatter,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
-} from "recharts";
 import { Button } from "@/components/ui/button";
+
+const RECORDS_PAGE_SIZE = 10;
 
 const AdminSiteDetail = () => {
   const { siteId } = useParams<{ siteId: string }>();
@@ -20,6 +17,7 @@ const AdminSiteDetail = () => {
   const [dailyData, setDailyData] = useState<AggregateResponse | null>(null);
   const [monthlyData, setMonthlyData] = useState<AggregateResponse | null>(null);
   const [records, setRecords] = useState<SolarRecord[]>([]);
+  const [recordsPage, setRecordsPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [totalEnergy, setTotalEnergy] = useState(0);
   const { toast } = useToast();
@@ -51,14 +49,31 @@ const AdminSiteDetail = () => {
           const total = Object.values(daily).reduce((s, v) => s + v.total_predicted_kwh_per5min, 0);
           setTotalEnergy(+total.toFixed(2));
         }
-      } catch (e: any) {
-        toast({ title: "API Error", description: e?.message || "Failed to load.", variant: "destructive" });
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : "Failed to load.";
+        toast({ title: "API Error", description: message, variant: "destructive" });
       } finally {
         setLoading(false);
       }
     };
     load();
   }, [siteId]);
+
+  useEffect(() => {
+    setRecordsPage(1);
+  }, [siteId]);
+
+  const recordsTotalPages = Math.max(1, Math.ceil(records.length / RECORDS_PAGE_SIZE));
+
+  useEffect(() => {
+    setRecordsPage((p) => Math.min(p, recordsTotalPages));
+  }, [recordsTotalPages]);
+  const recordsPageClamped = Math.min(recordsPage, recordsTotalPages);
+  const paginatedRecords = useMemo(() => {
+    const page = Math.min(recordsPage, recordsTotalPages);
+    const start = (page - 1) * RECORDS_PAGE_SIZE;
+    return records.slice(start, start + RECORDS_PAGE_SIZE);
+  }, [records, recordsPage, recordsTotalPages]);
 
   if (loading) {
     return (
@@ -129,8 +144,8 @@ const AdminSiteDetail = () => {
               </tr>
             </thead>
             <tbody>
-              {records.map((r, i) => (
-                <tr key={`${r.date}-${r.time}-${i}`} className={`border-b border-border/50 ${i % 2 === 0 ? "bg-muted/30" : ""}`}>
+              {paginatedRecords.map((r, i) => (
+                <tr key={`${r.date}-${r.time}-${(recordsPageClamped - 1) * RECORDS_PAGE_SIZE + i}`} className={`border-b border-border/50 ${i % 2 === 0 ? "bg-muted/30" : ""}`}>
                   <td className="py-2 px-2 font-medium">{r.date}</td>
                   <td className="py-2 px-2">{r.time}</td>
                   <td className="py-2 px-2 text-right tabular-nums">{r.temperature}</td>
@@ -143,6 +158,40 @@ const AdminSiteDetail = () => {
               ))}
             </tbody>
           </table>
+          {records.length > RECORDS_PAGE_SIZE && (
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4 pt-4 border-t border-border">
+              <p className="text-sm text-muted-foreground">
+                Showing {(recordsPageClamped - 1) * RECORDS_PAGE_SIZE + 1}–{Math.min(recordsPageClamped * RECORDS_PAGE_SIZE, records.length)} of {records.length}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={recordsPageClamped <= 1}
+                  onClick={() => setRecordsPage((p) => Math.max(1, p - 1))}
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Previous
+                </Button>
+                <span className="text-sm tabular-nums text-muted-foreground px-1">
+                  Page {recordsPageClamped} of {recordsTotalPages}
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={recordsPageClamped >= recordsTotalPages}
+                  onClick={() => setRecordsPage((p) => Math.min(recordsTotalPages, p + 1))}
+                  aria-label="Next page"
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
