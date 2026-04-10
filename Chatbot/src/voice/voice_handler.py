@@ -14,33 +14,41 @@ logger = logging.getLogger(__name__)
 
 class VoiceHandler:
     """Handle voice input and output with language detection"""
-    
+
     def __init__(self):
-        """Initialize voice handler"""
-        self.recognizer = sr.Recognizer()
-        
+        """Initialize voice handler (lazy initialization of recognizer)"""
+        self.recognizer = None  # Lazy initialize to avoid PyAudio stack issues on Windows
+
         # Supported languages for speech recognition
         self.language_codes = {
             'english': 'en-US',
             'sinhala': 'si-LK'
         }
-        
+
         # For gTTS output
         self.tts_codes = {
             'english': 'en',
             'sinhala': 'si'
         }
+
+    def _get_recognizer(self):
+        """Lazily initialize recognizer on first use"""
+        if self.recognizer is None:
+            self.recognizer = sr.Recognizer()
+        return self.recognizer
         
     def detect_language_from_speech(self, audio_data) -> Tuple[Optional[str], Optional[str]]:
         """
         Try to recognize speech in both languages and determine which one worked
-        
+
         Returns:
             Tuple of (detected_language, recognized_text)
         """
+        recognizer = self._get_recognizer()
+
         # Try English first
         try:
-            text_en = self.recognizer.recognize_google(audio_data, language='en-US')
+            text_en = recognizer.recognize_google(audio_data, language='en-US')
             if text_en and len(text_en.strip()) > 0:
                 logger.info(f"Recognized English: {text_en}")
                 return ('english', text_en)
@@ -48,10 +56,10 @@ class VoiceHandler:
             logger.info("Could not recognize as English")
         except sr.RequestError as e:
             logger.error(f"English recognition error: {e}")
-        
+
         # Try Sinhala
         try:
-            text_si = self.recognizer.recognize_google(audio_data, language='si-LK')
+            text_si = recognizer.recognize_google(audio_data, language='si-LK')
             if text_si and len(text_si.strip()) > 0:
                 logger.info(f"Recognized Sinhala: {text_si}")
                 return ('sinhala', text_si)
@@ -59,35 +67,36 @@ class VoiceHandler:
             logger.info("Could not recognize as Sinhala")
         except sr.RequestError as e:
             logger.error(f"Sinhala recognition error: {e}")
-        
+
         return (None, None)
     
     def listen_from_microphone(self, timeout: int = 5, phrase_time_limit: int = 10) -> Tuple[Optional[str], Optional[str]]:
         """
         Listen to microphone input and detect language
-        
+
         Args:
             timeout: Seconds to wait for speech to start
             phrase_time_limit: Maximum seconds for the phrase
-            
+
         Returns:
             Tuple of (detected_language, recognized_text)
         """
         try:
+            recognizer = self._get_recognizer()
             with sr.Microphone() as source:
                 logger.info("Adjusting for ambient noise...")
-                self.recognizer.adjust_for_ambient_noise(source, duration=1)
-                
+                recognizer.adjust_for_ambient_noise(source, duration=1)
+
                 logger.info("Listening... Please speak now!")
-                audio_data = self.recognizer.listen(
-                    source, 
-                    timeout=timeout, 
+                audio_data = recognizer.listen(
+                    source,
+                    timeout=timeout,
                     phrase_time_limit=phrase_time_limit
                 )
-                
+
                 logger.info("Processing speech...")
                 return self.detect_language_from_speech(audio_data)
-                
+
         except sr.WaitTimeoutError:
             logger.warning("Listening timed out - no speech detected")
             return (None, None)
