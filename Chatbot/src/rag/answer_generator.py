@@ -1,12 +1,32 @@
-"""Answer generation using summarization and formatting"""
+"""Answer generation using OpenAI LLM with retrieved documents"""
 import re
+import sys
 from typing import List
+from pathlib import Path
+
+# Add parent directory to path to import config
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from config import Config
+
+try:
+    from openai import OpenAI
+except ImportError:
+    OpenAI = None
 
 class AnswerGenerator:
     """Generate clean, concise answers from retrieved chunks"""
     
     def __init__(self):
-        """Initialize the answer generator"""
+        """Initialize the answer generator with OpenAI client"""
+        # Initialize OpenAI client
+        config = Config()
+        if not config.OPENAI_API_KEY:
+            raise ValueError("OPENAI_API_KEY not found in .env file")
+
+        self.client = OpenAI(api_key=config.OPENAI_API_KEY)
+        self.model = config.LLM_MODEL
+        self.temperature = config.LLM_TEMPERATURE
+
         # Define solar-related keywords
         self.solar_keywords = [
             'solar', 'photovoltaic', 'pv', 'panel', 'renewable', 'energy',
@@ -205,20 +225,18 @@ class AnswerGenerator:
     def generate_answer(self, query: str, documents: List[str],
                         conversation_history: str = '') -> str:
         """
-        Generate a clean, concise answer from retrieved documents
+        Generate answer using OpenAI LLM with retrieved documents as context.
+        IMPORTANT: The LLM will ONLY use the provided documents to answer.
 
         Args:
             query: User's current question.
-            documents: List of retrieved document chunks.
-            conversation_history: Optional plain-text string of prior Q&A turns.
-                When provided and the query looks like a follow-up, the history
-                is used to resolve vague references during extraction.
+            documents: List of retrieved document chunks (from vector DB only).
+            conversation_history: Optional prior Q&A turns for context.
 
         Returns:
-            Clean, formatted answer or "not relevant" message
+            Generated answer or "not relevant" message
         """
         # First check: Is the query about solar energy?
-        # Bypassed for follow-ups — the prior turn already validated the topic.
         is_followup_with_history = bool(conversation_history) and self._is_followup(query)
         if not is_followup_with_history and not self.is_query_relevant(query):
             return "I'm sorry, but I can only answer questions related to solar energy systems, solar panels, installation, costs, and benefits in Sri Lanka. Please ask me about solar energy topics."
@@ -226,25 +244,76 @@ class AnswerGenerator:
         # Second check: Are retrieved documents relevant?
         if not documents or not self.is_retrieved_content_relevant(documents, query):
             return "I don't have enough information to answer that specific question about solar energy. Please try rephrasing your question or ask about solar panels, costs, installation, benefits, or technical specifications."
-        
-        # Extract key information.
-        # For follow-up queries, enrich the extraction context with prior history
-        # so vague references like "tell me more" return relevant content.
+
+        # Clean and prepare context from documents (ONLY SOURCE OF KNOWLEDGE)
+        cleaned_docs = [self.clean_text(doc) for doc in documents]
+        context = "\n\n".join(cleaned_docs)
+
+        # Build the prompt with strict instructions
+        system_prompt = """You are a helpful solar energy advisor for Sri Lanka.
+
+IMPORTANT RULES:
+1. Answer ONLY using the provided document context below
+2. Do NOT use any external knowledge or information
+3. If the answer is not in the provided documents, say "I don't have enough information"
+4. Keep answers concise, clear, and factual
+5. If asked about costs, always mention they may vary by location/installer
+6. Be friendly but professional
+
+DOCUMENT CONTEXT:
+""" + context
+
+        # Prepare conversation context if this is a follow-up
+        messages = []
+
+        # Add system prompt as first message
+        messages.append({
+            "role": "system",
+            "content": system_prompt
+        })
+
         if conversation_history and self._is_followup(query):
-            enriched_query = f"{conversation_history}\n\nCurrent question: {query}"
-            answer = self.extract_key_information(enriched_query, documents)
-        else:
-            answer = self.extract_key_information(query, documents)
-        
-        # Remove any remaining artifacts
-        answer = self.clean_text(answer)
-        
-        # Format nicely
-        answer = self.format_answer(answer, query)
-        
-        # Ensure answer is not too long (max 500 words)
-        words = answer.split()
-        if len(words) > 500:
-            answer = ' '.join(words[:500]) + '...'
-        
-        return answer
+            messages.append({
+                "role": "user",
+                "content": f"Previous conversation:\n{conversation_history}"
+            })
+            messages.append({
+                "role": "assistant",
+                "content": "I understand the context from our previous discussion."
+            })
+
+        # Add current question
+        messages.append({
+            "role": "user",
+            "content": f"Question: {query}\n\nPlease answer using ONLY the documents provided above."
+        })
+
+        try:
+            # Call OpenAI API
+            response = self.client.chat.completions.create(
+                model=self.model,
+                temperature=self.temperature,
+                max_tokens=500,
+                messages=messages
+            )
+
+            answer = response.choices[0].message.content.strip()
+            return answer
+
+        except Exception as e:
+            # Fallback: if API fails, use old extraction method
+            print(f"⚠️ LLM generation failed: {str(e)}")
+            if conversation_history and self._is_followup(query):
+                enriched_query = f"{conversation_history}\n\nCurrent question: {query}"
+                answer = self.extract_key_information(enriched_query, documents)
+            else:
+                answer = self.extract_key_information(query, documents)
+
+            answer = self.clean_text(answer)
+            answer = self.format_answer(answer, query)
+
+            words = answer.split()
+            if len(words) > 500:
+                answer = ' '.join(words[:500]) + '...'
+
+            return answer
