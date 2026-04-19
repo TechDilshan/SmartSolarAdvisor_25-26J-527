@@ -38,8 +38,8 @@ class Config:
     
     # LLM Configuration
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-    LLM_MODEL = "gpt-3.5-turbo"
-    LLM_TEMPERATURE = 0.7
+    LLM_MODEL = os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")
+    LLM_TEMPERATURE = 0.5  # Lower for more focused, factual responses
     
     # RAG Configuration
     SIMILARITY_THRESHOLD = 0.6
