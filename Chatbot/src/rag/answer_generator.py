@@ -1,4 +1,4 @@
-"""Answer generation using OpenAI LLM with retrieved documents"""
+"""Answer generation using Google Gemini LLM with retrieved documents"""
 import re
 import sys
 from typing import List
@@ -9,22 +9,22 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from config import Config
 
 try:
-    from openai import OpenAI
+    import google.generativeai as genai
 except ImportError:
-    OpenAI = None
+    genai = None
 
 class AnswerGenerator:
     """Generate clean, concise answers from retrieved chunks"""
     
     def __init__(self):
-        """Initialize the answer generator with OpenAI client"""
-        # Initialize OpenAI client
+        """Initialize the answer generator with Google Gemini client"""
+        # Initialize Google Gemini client
         config = Config()
-        if not config.OPENAI_API_KEY:
-            raise ValueError("OPENAI_API_KEY not found in .env file")
+        if not config.GOOGLE_API_KEY:
+            raise ValueError("GOOGLE_API_KEY not found in .env file")
 
-        self.client = OpenAI(api_key=config.OPENAI_API_KEY)
-        self.model = config.LLM_MODEL
+        genai.configure(api_key=config.GOOGLE_API_KEY)
+        self.model = genai.GenerativeModel(config.LLM_MODEL)
         self.temperature = config.LLM_TEMPERATURE
 
         # Define solar-related keywords
@@ -225,7 +225,7 @@ class AnswerGenerator:
     def generate_answer(self, query: str, documents: List[str],
                         conversation_history: str = '') -> str:
         """
-        Generate answer using OpenAI LLM with retrieved documents as context.
+        Generate answer using Google Gemini LLM with retrieved documents as context.
         IMPORTANT: The LLM will ONLY use the provided documents to answer.
 
         Args:
@@ -250,7 +250,7 @@ class AnswerGenerator:
         context = "\n\n".join(cleaned_docs)
 
         # Build the prompt with strict instructions
-        system_prompt = """You are a helpful solar energy advisor for Sri Lanka.
+        system_instructions = """You are a helpful solar energy advisor for Sri Lanka.
 
 IMPORTANT RULES:
 1. Answer ONLY using the provided document context below
@@ -261,43 +261,32 @@ IMPORTANT RULES:
 6. Be friendly but professional
 
 DOCUMENT CONTEXT:
-""" + context
+""" + context + "\n\n"
 
-        # Prepare conversation context if this is a follow-up
-        messages = []
-
-        # Add system prompt as first message
-        messages.append({
-            "role": "system",
-            "content": system_prompt
-        })
-
+        # Build the full prompt
         if conversation_history and self._is_followup(query):
-            messages.append({
-                "role": "user",
-                "content": f"Previous conversation:\n{conversation_history}"
-            })
-            messages.append({
-                "role": "assistant",
-                "content": "I understand the context from our previous discussion."
-            })
+            full_prompt = system_instructions + f"""Previous conversation:
+{conversation_history}
 
-        # Add current question
-        messages.append({
-            "role": "user",
-            "content": f"Question: {query}\n\nPlease answer using ONLY the documents provided above."
-        })
+Current question: {query}
+
+Please answer using ONLY the documents provided above."""
+        else:
+            full_prompt = system_instructions + f"""Question: {query}
+
+Please answer using ONLY the documents provided above."""
 
         try:
-            # Call OpenAI API
-            response = self.client.chat.completions.create(
-                model=self.model,
-                temperature=self.temperature,
-                max_tokens=500,
-                messages=messages
+            # Call Google Gemini API
+            response = self.model.generate_content(
+                full_prompt,
+                generation_config=genai.types.GenerationConfig(
+                    temperature=self.temperature,
+                    max_output_tokens=500,
+                )
             )
 
-            answer = response.choices[0].message.content.strip()
+            answer = response.text.strip()
             return answer
 
         except Exception as e:
