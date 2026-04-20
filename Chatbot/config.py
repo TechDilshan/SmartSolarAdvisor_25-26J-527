@@ -38,7 +38,7 @@ class Config:
     
     # LLM Configuration - Google Gemini (Free tier)
     GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
-    LLM_MODEL = "gemini-1.5-flash"
+    LLM_MODEL = "gemini-2.0-flash"
     LLM_TEMPERATURE = 0.5  # Lower for more focused, factual responses
     
     # RAG Configuration
