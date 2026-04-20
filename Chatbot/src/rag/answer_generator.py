@@ -1,6 +1,8 @@
 """Answer generation using Google Gemini LLM with retrieved documents"""
 import re
 import sys
+import requests
+import json
 from typing import List
 from pathlib import Path
 
@@ -17,15 +19,22 @@ class AnswerGenerator:
     """Generate clean, concise answers from retrieved chunks"""
     
     def __init__(self):
-        """Initialize the answer generator with Google Gemini client"""
-        # Initialize Google Gemini client
+        """Initialize the answer generator with Google Gemini REST API"""
         config = Config()
         if not config.GOOGLE_API_KEY:
             raise ValueError("GOOGLE_API_KEY not found in .env file")
 
-        genai.configure(api_key=config.GOOGLE_API_KEY)
-        self.model = genai.GenerativeModel(config.LLM_MODEL)
+        self.api_key = config.GOOGLE_API_KEY
+        self.model_name = config.LLM_MODEL  # "gemini-2.0-flash"
         self.temperature = config.LLM_TEMPERATURE
+
+        # Ensure model name has models/ prefix for API call
+        if not self.model_name.startswith("models/"):
+            self.model_name = f"models/{self.model_name}"
+
+        self.api_url = f"https://generativelanguage.googleapis.com/v1beta/{self.model_name}:generateContent?key={self.api_key}"
+
+        print(f"✓ Using Gemini REST API with model: {self.model_name}")
 
         # Define solar-related keywords
         self.solar_keywords = [
@@ -277,17 +286,32 @@ Please answer using ONLY the documents provided above."""
 Please answer using ONLY the documents provided above."""
 
         try:
-            # Call Google Gemini API
-            response = self.model.generate_content(
-                full_prompt,
-                generation_config=genai.types.GenerationConfig(
-                    temperature=self.temperature,
-                    max_output_tokens=500,
-                )
-            )
+            # Call Google Gemini REST API
+            headers = {"Content-Type": "application/json"}
+            payload = {
+                "contents": [
+                    {
+                        "parts": [{"text": full_prompt}]
+                    }
+                ],
+                "generationConfig": {
+                    "temperature": self.temperature,
+                    "maxOutputTokens": 500,
+                }
+            }
 
-            answer = response.text.strip()
-            return answer
+            response = requests.post(self.api_url, json=payload, headers=headers, timeout=30)
+
+            if response.status_code != 200:
+                raise Exception(f"API error {response.status_code}: {response.text}")
+
+            result = response.json()
+
+            if "candidates" in result and len(result["candidates"]) > 0:
+                answer = result["candidates"][0]["content"]["parts"][0]["text"].strip()
+                return answer
+            else:
+                raise Exception("No response from API")
 
         except Exception as e:
             # Fallback: if API fails, use old extraction method
