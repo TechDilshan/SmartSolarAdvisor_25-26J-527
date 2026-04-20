@@ -36,9 +36,9 @@ class Config:
     # Embedding model - Multilingual for Sinhala-English support
     EMBEDDING_MODEL = "paraphrase-multilingual-MiniLM-L12-v2"
     
-    # LLM Configuration
-    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-    LLM_MODEL = os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")
+    # LLM Configuration - Google Gemini (Free tier)
+    GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
+    LLM_MODEL = "gemini-1.5-flash"
     LLM_TEMPERATURE = 0.5  # Lower for more focused, factual responses
     
     # RAG Configuration
