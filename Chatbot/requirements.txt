@@ -8,8 +8,8 @@ python-dotenv>=1.0.0
 deep-translator>=1.11.4
 langdetect>=1.0.9
 
-# LLM - OpenAI for RAG answer generation
-openai>=1.0.0
+# LLM - Google Gemini (Free tier available)
+google-generativeai>=0.3.0
 
 # Data processing
 PyPDF2>=3.0.1
