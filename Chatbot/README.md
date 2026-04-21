@@ -93,6 +93,7 @@ python test_search.py
 python pipeline_runner.py
 
 # Run web app (Pipeline run scheduled in app_simple.py)
+# streamlit run app_simple.py
 python -m streamlit run app_simple.py
 
 # Stop app
