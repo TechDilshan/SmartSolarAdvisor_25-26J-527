@@ -97,6 +97,14 @@ export interface WeatherResponse {
   elevation: number;
   current: WeatherCurrent;
   current_units: Record<string, string>;
+  daily?: {
+    time: string[];
+    weathercode: number[];
+    temperature_2m_max: number[];
+    temperature_2m_min: number[];
+    precipitation_sum: number[];
+    shortwave_radiation_sum: number[];
+  };
 }
 
 export const fetchRealtimeWeather = async (
@@ -110,6 +118,9 @@ export const fetchRealtimeWeather = async (
         latitude,
         longitude,
         current: "temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,rain,showers,snowfall,weathercode,cloud_cover,surface_pressure,wind_speed_10m,wind_direction_10m,wind_gusts_10m,shortwave_radiation,direct_radiation,diffuse_radiation,global_tilted_irradiance",
+        daily: "weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,shortwave_radiation_sum",
+        forecast_days: 3,
+        timezone: "auto",
       },
     }
   );

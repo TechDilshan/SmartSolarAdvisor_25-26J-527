@@ -11,6 +11,18 @@ interface MonthlyChartsProps {
   systemKw?: number;
 }
 
+const downloadTextFile = (filename: string, content: string, mime = "text/plain;charset=utf-8") => {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+};
+
 export const MonthlyCharts = ({ data, scaleFactor = 1, systemKw = 5 }: MonthlyChartsProps) => {
   const chartData = useMemo(
     () =>
@@ -45,6 +57,34 @@ export const MonthlyCharts = ({ data, scaleFactor = 1, systemKw = 5 }: MonthlyCh
     };
   }, [chartData]);
 
+  const csv = useMemo(() => {
+    const header = [
+      "Month",
+      "Energy_kWh",
+      "Temp_C",
+      "Humidity_pct",
+      "Irradiance_Wm2",
+      "DustLevel",
+      "Rainfall_mm",
+    ].join(",");
+
+    const rows = chartData.map((r) =>
+      [r.name, r.energy, r.temp, r.humidity, r.irradiance, r.dust, r.rainfall].join(",")
+    );
+
+    const summaryRow = [
+      `Summary${systemKw !== 5 ? `_${systemKw}kW` : ""}`,
+      totals.totalEnergy,
+      totals.avgTemp,
+      totals.avgHumidity,
+      totals.avgIrradiance,
+      totals.avgDust,
+      totals.avgRainfall,
+    ].join(",");
+
+    return [header, ...rows, summaryRow].join("\n");
+  }, [chartData, systemKw, totals]);
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="card-solar">
@@ -62,7 +102,16 @@ export const MonthlyCharts = ({ data, scaleFactor = 1, systemKw = 5 }: MonthlyCh
       </div>
 
       <div className="card-solar overflow-x-auto">
-        <h4 className="text-sm font-medium text-muted-foreground mb-4">Monthly data</h4>
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <h4 className="text-sm font-medium text-muted-foreground">Monthly data</h4>
+          <button
+            type="button"
+            className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-border bg-background hover:bg-muted transition-colors"
+            onClick={() => downloadTextFile(`monthly_data_${systemKw}kW.csv`, csv, "text/csv;charset=utf-8")}
+          >
+            Export CSV
+          </button>
+        </div>
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-border">

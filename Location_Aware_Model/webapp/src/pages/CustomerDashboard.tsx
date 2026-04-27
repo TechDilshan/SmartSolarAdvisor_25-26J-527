@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { LocationInput } from "@/components/LocationInput";
 import { NearestDataCards } from "@/components/NearestDataCards";
 import { MonthlyCharts } from "@/components/MonthlyCharts";
@@ -8,9 +8,15 @@ import { FinancialCalculator } from "@/components/FinancialCalculator";
 import { fetchNearestLocation, fetchAggregateData, fetchRealtimeWeather } from "@/services/api";
 import type { SolarRecord, AggregateResponse, WeatherResponse } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Zap, Sun } from "lucide-react";
+import { Lightbulb, Loader2, Sun, Zap } from "lucide-react";
 
 const BASE_SYSTEM_KW = 5;
+
+interface WeatherTip {
+  type: "Rain" | "Wind" | "Temperature";
+  severity: "good" | "warning";
+  message: string;
+}
 
 const CustomerDashboard = () => {
   const [loading, setLoading] = useState(false);
@@ -20,9 +26,89 @@ const CustomerDashboard = () => {
   const [weatherData, setWeatherData] = useState<WeatherResponse | null>(null);
   const [totalEnergy, setTotalEnergy] = useState<number | null>(null);
   const [systemKw, setSystemKw] = useState(BASE_SYSTEM_KW);
+  const [showRecommendations, setShowRecommendations] = useState(false);
   const { toast } = useToast();
 
   const scaleFactor = systemKw / BASE_SYSTEM_KW;
+
+  const weatherTips = useMemo<WeatherTip[]>(() => {
+    if (!weatherData?.current) return [];
+
+    const current = weatherData.current;
+    const todayRain = weatherData.daily?.precipitation_sum?.[0] ?? current.precipitation ?? 0;
+    const todayMax = weatherData.daily?.temperature_2m_max?.[0];
+    const todayMin = weatherData.daily?.temperature_2m_min?.[0];
+
+    const tempText =
+      typeof todayMin === "number" && typeof todayMax === "number"
+        ? `${Math.round(todayMin)}-${Math.round(todayMax)}°C`
+        : `${Math.round(current.temperature_2m)}°C`;
+    const absLat = Math.abs(weatherData.latitude ?? 0);
+    const locationProfile = absLat < 15 ? "humid" : absLat < 30 ? "warm" : "mild";
+    const feltTemp = current.apparent_temperature ?? current.temperature_2m;
+    const tempRef = typeof todayMax === "number" ? todayMax : current.temperature_2m;
+    const rainSeverity: WeatherTip["severity"] = todayRain > 8 ? "warning" : "good";
+    const windSeverity: WeatherTip["severity"] = current.wind_speed_10m > 20 ? "warning" : "good";
+    const tempSeverity: WeatherTip["severity"] = tempRef > 35 || tempRef < 16 ? "warning" : "good";
+
+    const rainAlert =
+      todayRain >= 10
+        ? "Heavy rain likely today. Keep umbrella/raincoat ready and expect wet travel conditions."
+        : todayRain >= 3
+          ? "Light to moderate rain is possible today. Keep rain protection with you."
+          : "No major rain expected today. Outdoor movement should be easier.";
+
+    const windAlert =
+      current.wind_speed_10m >= 30
+        ? "Strong wind expected today. Outdoor conditions can change quickly."
+        : current.wind_speed_10m >= 18
+          ? "Breezy weather expected today, especially in open areas."
+          : "Winds are generally mild today.";
+
+    const tempAlert =
+      (typeof todayMax === "number" ? todayMax : current.temperature_2m) >= 35
+        ? `Hot day expected (${tempText}). Stay hydrated and avoid long afternoon sun exposure.`
+        : (typeof todayMax === "number" ? todayMax : current.temperature_2m) >= 30
+          ? `Warm weather expected today (${tempText}). Keep water with you during daytime travel.`
+          : `Pleasant to mild temperature expected today (${tempText}).`;
+
+    return [
+      {
+        type: "Rain",
+        severity: rainSeverity,
+        message:
+          todayRain > 8
+            ? "Heavy rain is expected today. Keep an umbrella or raincoat ready and allow extra travel time."
+            : todayRain >= 2
+              ? "Light rain may happen today. Keep rain protection with you if going out."
+              : locationProfile === "humid"
+                ? "No major rain expected, but humidity can still be high in your area."
+                : "No major rain expected today. Outdoor plans can continue normally.",
+      },
+      {
+        type: "Wind",
+        severity: windSeverity,
+        message:
+          current.wind_speed_10m > 30
+            ? "Strong wind expected today. Be careful in open areas and with loose outdoor items."
+            : current.wind_speed_10m >= 15
+              ? "Breezy weather expected. You may feel gusts in open roads and rooftops."
+              : "Wind is light today and outdoor movement should feel comfortable.",
+      },
+      {
+        type: "Temperature",
+        severity: tempSeverity,
+        message:
+          tempRef > 35
+            ? `Very hot weather today (${tempText}). It may feel like ${Math.round(feltTemp)}°C, so avoid long afternoon sun exposure.`
+            : tempRef >= 30
+              ? `Warm weather today (${tempText}). It may feel like ${Math.round(feltTemp)}°C, so keep water with you.`
+              : tempRef < 16
+                ? `Cool weather today (${tempText}). It may feel like ${Math.round(feltTemp)}°C, so carry a light layer if needed.`
+                : `Comfortable weather today (${tempText}) with a feel-like temperature near ${Math.round(feltTemp)}°C.`,
+      },
+    ];
+  }, [weatherData]);
 
   const handleSearch = async (lat: number, lng: number, kw: number) => {
     setLoading(true);
@@ -31,6 +117,7 @@ const CustomerDashboard = () => {
     setDailyData(null);
     setWeatherData(null);
     setTotalEnergy(null);
+    setShowRecommendations(false);
     setSystemKw(kw);
 
     try {
@@ -96,6 +183,67 @@ const CustomerDashboard = () => {
       {/* Financial Calculator */}
       {!loading && totalEnergy !== null && (
         <FinancialCalculator totalEnergyKwh={totalEnergy} systemKw={systemKw} />
+      )}
+
+      {!loading && weatherData && (
+        <div className="card-solar relative overflow-hidden">
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-blue-100/50 via-sky-100/35 to-cyan-100/45" />
+          <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">
+            <div className="relative z-10">
+              <h3 className="text-xl font-extrabold text-foreground tracking-tight">Location Weather Alerts</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Real-Time Personalized Weather Alerts Based on Your Location
+              </p>
+            </div>
+            <button
+              type="button"
+              className="relative z-10 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 text-white text-sm font-semibold shadow-md hover:shadow-lg hover:scale-[1.02] transition-all"
+              onClick={() => setShowRecommendations((prev) => !prev)}
+            >
+              <Lightbulb className="h-4 w-4" />
+              {showRecommendations ? "Hide Alerts" : "Show Alerts"}
+            </button>
+          </div>
+
+          {showRecommendations && (
+            <div className="relative z-10 mt-4 space-y-3">
+              {weatherTips.length > 0 ? (
+                <div className="grid gap-4 md:grid-cols-3">
+                  {weatherTips.map((item, idx) => (
+                      <div
+                        key={`tip-${idx}`}
+                        className={`rounded-2xl border p-4 shadow-sm backdrop-blur-sm transition-all hover:shadow-lg hover:-translate-y-0.5 ${
+                          item.severity === "warning"
+                            ? "border-red-300/80 bg-gradient-to-b from-red-50/95 to-rose-50/80"
+                            : "border-emerald-300/80 bg-gradient-to-b from-emerald-50/95 to-green-50/80"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <p className="font-semibold text-sm text-foreground">{item.type}</p>
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`text-[11px] px-2 py-1 rounded-full font-semibold ${
+                                item.severity === "warning"
+                                  ? "bg-red-100 text-red-700"
+                                  : "bg-emerald-100 text-emerald-700"
+                              }`}
+                            >
+                              {item.severity === "warning" ? "Weather Warning" : "Good Alert"}
+                            </span>
+                          </div>
+                        </div>
+                        <p className="text-sm text-foreground/85 leading-relaxed">{item.message}</p>
+                      </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6 bg-gray-50/50 rounded-lg">
+                  <p className="text-sm text-muted-foreground">Loading alerts...</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       )}
 
       {!loading && nearestRecord && <NearestDataCards record={nearestRecord} />}
