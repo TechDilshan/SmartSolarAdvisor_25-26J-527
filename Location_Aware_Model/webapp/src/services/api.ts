@@ -126,3 +126,41 @@ export const fetchRealtimeWeather = async (
   );
   return data;
 };
+
+export interface BatteryBackupRequest {
+  latitude: number;
+  longitude: number;
+  battery_capacity_kwh: number;
+  usable_dod: number;
+  efficiency: number;
+  essential_load_kw: number;
+  start_hour_local: number;
+  horizon_hours: number;
+  system_kw: number;
+}
+
+export interface BatteryBackupTimelinePoint {
+  hour: number;
+  hour_of_day: number;
+  solar_kwh: number;
+  load_kwh: number;
+  soc_kwh: number;
+}
+
+export interface BatteryBackupResponse {
+  backup_hours: number;
+  without_solar_hours: number;
+  solar_extension_hours: number;
+  nearest_site: {
+    latitude: number;
+    longitude: number;
+  };
+  timeline: BatteryBackupTimelinePoint[];
+}
+
+export const fetchBatteryBackupEstimate = async (
+  payload: BatteryBackupRequest
+): Promise<BatteryBackupResponse> => {
+  const { data } = await api.post<BatteryBackupResponse>("/battery-backup-estimate", payload);
+  return data;
+};

@@ -5,6 +5,7 @@ import { MonthlyCharts } from "@/components/MonthlyCharts";
 import { DailyCharts } from "@/components/DailyCharts";
 import { RealtimeWeather } from "@/components/RealtimeWeather";
 import { FinancialCalculator } from "@/components/FinancialCalculator";
+import { BatteryBackupEstimator } from "@/components/BatteryBackupEstimator";
 import { fetchNearestLocation, fetchAggregateData, fetchRealtimeWeather } from "@/services/api";
 import type { SolarRecord, AggregateResponse, WeatherResponse } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
@@ -27,6 +28,7 @@ const CustomerDashboard = () => {
   const [totalEnergy, setTotalEnergy] = useState<number | null>(null);
   const [systemKw, setSystemKw] = useState(BASE_SYSTEM_KW);
   const [showRecommendations, setShowRecommendations] = useState(false);
+  const [lastLocation, setLastLocation] = useState<{ lat: number; lng: number } | null>(null);
   const { toast } = useToast();
 
   const scaleFactor = systemKw / BASE_SYSTEM_KW;
@@ -119,6 +121,7 @@ const CustomerDashboard = () => {
     setTotalEnergy(null);
     setShowRecommendations(false);
     setSystemKw(kw);
+    setLastLocation({ lat, lng });
 
     try {
       const [records, monthly, daily, weather] = await Promise.all([
@@ -183,6 +186,14 @@ const CustomerDashboard = () => {
       {/* Financial Calculator */}
       {!loading && totalEnergy !== null && (
         <FinancialCalculator totalEnergyKwh={totalEnergy} systemKw={systemKw} />
+      )}
+
+      {!loading && lastLocation && (
+        <BatteryBackupEstimator
+          latitude={lastLocation.lat}
+          longitude={lastLocation.lng}
+          systemKw={systemKw}
+        />
       )}
 
       {!loading && weatherData && (
