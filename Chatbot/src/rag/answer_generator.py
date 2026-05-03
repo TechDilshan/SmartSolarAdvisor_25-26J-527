@@ -1,20 +1,82 @@
-"""Answer generation using summarization and formatting"""
+"""Answer generation using Google Gemini LLM with retrieved documents"""
 import re
+import sys
+import requests
+import json
 from typing import List
+from pathlib import Path
+
+# Add parent directory to path to import config
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from config import Config
+
+try:
+    import google.generativeai as genai
+except ImportError:
+    genai = None
 
 class AnswerGenerator:
     """Generate clean, concise answers from retrieved chunks"""
     
     def __init__(self):
-        """Initialize the answer generator"""
+        """Initialize the answer generator with Google Gemini REST API"""
+        config = Config()
+        if not config.GOOGLE_API_KEY:
+            raise ValueError("GOOGLE_API_KEY not found in .env file")
+
+        self.api_key = config.GOOGLE_API_KEY
+        self.model_name = config.LLM_MODEL  # "gemini-2.0-flash"
+        self.temperature = config.LLM_TEMPERATURE
+
+        # Ensure model name has models/ prefix for API call
+        if not self.model_name.startswith("models/"):
+            self.model_name = f"models/{self.model_name}"
+
+        self.api_url = f"https://generativelanguage.googleapis.com/v1beta/{self.model_name}:generateContent?key={self.api_key}"
+
+        print(f"✓ Using Gemini REST API with model: {self.model_name}")
+
         # Define solar-related keywords
         self.solar_keywords = [
-            'solar', 'photovoltaic', 'pv', 'panel', 'renewable', 'energy',
-            'electricity', 'inverter', 'battery', 'net metering', 'grid',
-            'installation', 'monocrystalline', 'polycrystalline', 'efficiency',
-            'sunlight', 'rooftop', 'power', 'watt', 'kilowatt', 'ceb',
-            'sun', 'irradiance', 'system', 'benefit', 'cost', 'price',
-            'saving', 'subsidy', 'incentive', 'feed-in', 'tariff'
+            # Core solar technology
+            'solar', 'photovoltaic', 'pv', 'panel', 'cell', 'crystalline', 'monocrystalline',
+            'polycrystalline', 'thin-film', 'bifacial', 'perovskite',
+
+            # System components
+            'inverter', 'micro-inverter', 'string inverter', 'charge controller', 'mppt', 'pwm',
+            'battery', 'storage', 'combiner box', 'junction box', 'breaker', 'conduit',
+            'racking', 'mounting', 'tracker', 'load controller',
+
+            # Electrical terms
+            'grid', 'net metering', 'on-grid', 'off-grid', 'hybrid', 'dc', 'ac', 'voltage',
+            'ampere', 'kwh', 'kwp', 'watt', 'kilowatt', 'capacity', 'output', 'generation',
+            'production', 'yield', 'ir drop', 'mismatch',
+
+            # Performance & efficiency
+            'efficiency', 'irradiance', 'sunlight', 'radiation', 'temperature coefficient',
+            'degradation', 'soiling', 'shading', 'orientation', 'tilt', 'azimuth',
+
+            # Installation & maintenance
+            'installation', 'rooftop', 'mounting', 'wire', 'connection', 'maintenance',
+            'warranty', 'inspection', 'cleaning',
+
+            # Renewable energy related
+            'renewable', 'energy', 'electricity', 'power', 'sun', 'clean energy', 'green energy',
+            'alternative energy', 'sustainable', 'eco-friendly', 'environmental', 'carbon offset',
+            'emissions', 'distributed generation',
+
+            # Financial & incentives
+            'cost', 'price', 'benefit', 'advantage', 'saving', 'save money', 'payback',
+            'roi', 'irr', 'npv', 'financing', 'loan', 'grant', 'subsidy', 'incentive',
+            'rebate', 'feed-in', 'tariff', 'electricity bill',
+
+            # Sri Lanka specific
+            'ceb', 'power cut', 'backup power', 'energy independence', 'blackout',
+            'fuel cost', 'electricity tariff', 'sri lanka',
+
+            # Installation context
+            'residential', 'home', 'house', 'rooftop', 'setup', 'how much', 'install',
+            'system', 'upgrade', 'retrofit'
         ]
     
     def is_query_relevant(self, query: str) -> bool:
@@ -72,9 +134,9 @@ class AnswerGenerator:
         
         # Count solar keywords in retrieved content
         keyword_count = sum(1 for keyword in self.solar_keywords if keyword in combined_text)
-        
-        # Need at least 3 solar keywords in retrieved content
-        return keyword_count >= 3
+
+        # Need at least 2 solar keywords in retrieved content (lowered from 3 for better match)
+        return keyword_count >= 2
     
     def clean_text(self, text: str) -> str:
         """Clean retrieved text by removing citations, URLs, and formatting"""
@@ -197,28 +259,26 @@ class AnswerGenerator:
         q = query.lower().strip()
         followup_patterns = [
             'tell me more', 'explain more', 'elaborate', 'continue',
-            'what about that', 'how about that', 'and the previous',
-            'mentioned above', 'you mentioned', 'as above',
+            'what about that', 'how about that', 'and the previous', 'give more details', 'give more information', 'can you expand on that', 'give me more', 'provide more', 'explain further',
+            'mentioned above', 'you mentioned', 'as above', 'previous answer', 'previous response', 'more details', 'more information', 'can you expand', 'can you clarify', 'can you give more', 'can you provide more', 'can you explain further'
         ]
         return any(p in q for p in followup_patterns)
 
     def generate_answer(self, query: str, documents: List[str],
                         conversation_history: str = '') -> str:
         """
-        Generate a clean, concise answer from retrieved documents
+        Generate answer using Google Gemini LLM with retrieved documents as context.
+        IMPORTANT: The LLM will ONLY use the provided documents to answer.
 
         Args:
             query: User's current question.
-            documents: List of retrieved document chunks.
-            conversation_history: Optional plain-text string of prior Q&A turns.
-                When provided and the query looks like a follow-up, the history
-                is used to resolve vague references during extraction.
+            documents: List of retrieved document chunks (from vector DB only).
+            conversation_history: Optional prior Q&A turns for context.
 
         Returns:
-            Clean, formatted answer or "not relevant" message
+            Generated answer or "not relevant" message
         """
         # First check: Is the query about solar energy?
-        # Bypassed for follow-ups — the prior turn already validated the topic.
         is_followup_with_history = bool(conversation_history) and self._is_followup(query)
         if not is_followup_with_history and not self.is_query_relevant(query):
             return "I'm sorry, but I can only answer questions related to solar energy systems, solar panels, installation, costs, and benefits in Sri Lanka. Please ask me about solar energy topics."
@@ -226,25 +286,80 @@ class AnswerGenerator:
         # Second check: Are retrieved documents relevant?
         if not documents or not self.is_retrieved_content_relevant(documents, query):
             return "I don't have enough information to answer that specific question about solar energy. Please try rephrasing your question or ask about solar panels, costs, installation, benefits, or technical specifications."
-        
-        # Extract key information.
-        # For follow-up queries, enrich the extraction context with prior history
-        # so vague references like "tell me more" return relevant content.
+
+        # Clean and prepare context from documents (ONLY SOURCE OF KNOWLEDGE)
+        cleaned_docs = [self.clean_text(doc) for doc in documents]
+        context = "\n\n".join(cleaned_docs)
+
+        # Build the prompt with strict instructions
+        system_instructions = """You are a helpful solar energy advisor for Sri Lanka.
+
+IMPORTANT RULES:
+1. Answer ONLY using the provided document context below
+2. Do NOT use any external knowledge or information
+3. If the answer is not in the provided documents, say "I don't have enough information"
+4. Keep answers concise, clear, and factual
+5. If asked about costs, always mention they may vary by location/installer
+6. Be friendly but professional
+
+DOCUMENT CONTEXT:
+""" + context + "\n\n"
+
+        # Build the full prompt
         if conversation_history and self._is_followup(query):
-            enriched_query = f"{conversation_history}\n\nCurrent question: {query}"
-            answer = self.extract_key_information(enriched_query, documents)
+            full_prompt = system_instructions + f"""Previous conversation:
+{conversation_history}
+
+Current question: {query}
+
+Please answer using ONLY the documents provided above."""
         else:
-            answer = self.extract_key_information(query, documents)
-        
-        # Remove any remaining artifacts
-        answer = self.clean_text(answer)
-        
-        # Format nicely
-        answer = self.format_answer(answer, query)
-        
-        # Ensure answer is not too long (max 500 words)
-        words = answer.split()
-        if len(words) > 500:
-            answer = ' '.join(words[:500]) + '...'
-        
-        return answer
+            full_prompt = system_instructions + f"""Question: {query}
+
+Please answer using ONLY the documents provided above."""
+
+        try:
+            # Call Google Gemini REST API
+            headers = {"Content-Type": "application/json"}
+            payload = {
+                "contents": [
+                    {
+                        "parts": [{"text": full_prompt}]
+                    }
+                ],
+                "generationConfig": {
+                    "temperature": self.temperature,
+                    "maxOutputTokens": 500,
+                }
+            }
+
+            response = requests.post(self.api_url, json=payload, headers=headers, timeout=30)
+
+            if response.status_code != 200:
+                raise Exception(f"API error {response.status_code}: {response.text}")
+
+            result = response.json()
+
+            if "candidates" in result and len(result["candidates"]) > 0:
+                answer = result["candidates"][0]["content"]["parts"][0]["text"].strip()
+                return answer
+            else:
+                raise Exception("No response from API")
+
+        except Exception as e:
+            # Fallback: if API fails, use old extraction method
+            print(f"⚠️ LLM generation failed: {str(e)}")
+            if conversation_history and self._is_followup(query):
+                enriched_query = f"{conversation_history}\n\nCurrent question: {query}"
+                answer = self.extract_key_information(enriched_query, documents)
+            else:
+                answer = self.extract_key_information(query, documents)
+
+            answer = self.clean_text(answer)
+            answer = self.format_answer(answer, query)
+
+            words = answer.split()
+            if len(words) > 500:
+                answer = ' '.join(words[:500]) + '...'
+
+            return answer

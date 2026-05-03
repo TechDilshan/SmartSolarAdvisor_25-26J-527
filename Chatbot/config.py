@@ -36,10 +36,10 @@ class Config:
     # Embedding model - Multilingual for Sinhala-English support
     EMBEDDING_MODEL = "paraphrase-multilingual-MiniLM-L12-v2"
     
-    # LLM Configuration
-    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-    LLM_MODEL = "gpt-3.5-turbo"
-    LLM_TEMPERATURE = 0.7
+    # LLM Configuration - Google Gemini (Free tier)
+    GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
+    LLM_MODEL = "gemini-2.5-flash"
+    LLM_TEMPERATURE = 0.5  # Lower for more focused, factual responses
     
     # RAG Configuration
     SIMILARITY_THRESHOLD = 0.6
@@ -77,8 +77,8 @@ class Config:
         errors = []
         
         # Optional: Only warn if API key is missing
-        if not self.OPENAI_API_KEY:
-            print("⚠ Warning: OPENAI_API_KEY not set in .env file")
+        if not self.GOOGLE_API_KEY:
+            print("⚠ Warning: GOOGLE_API_KEY not set in .env file")
         
         if errors:
             raise ValueError(f"Configuration errors:\n" + "\n".join(f"- {e}" for e in errors))

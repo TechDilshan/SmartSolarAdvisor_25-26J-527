@@ -49,16 +49,20 @@ def _pipeline_worker() -> None:
         _pipeline_state["status"] = "running"
         _pipeline_state["last_run"] = datetime.now()
         try:
-            result = subprocess.run(
-                [sys.executable, _PIPELINE_SCRIPT],
-                capture_output=True,
-                text=True,
-                cwd=str(Path(__file__).parent),
-            )
-            if result.returncode == 0:
-                _pipeline_state["status"] = "success"
-            else:
-                _pipeline_state["status"] = f"failed (exit {result.returncode})"
+            # IMPORTANT: Don't run pipeline in background while chatbot is active
+            # This causes memory contention and crashes. Disable for now.
+            _pipeline_state["status"] = "skipped (disabled during active sessions)"
+            # Uncomment below to enable background pipeline updates
+            # result = subprocess.run(
+            #     [sys.executable, _PIPELINE_SCRIPT],
+            #     capture_output=True,
+            #     text=True,
+            #     cwd=str(Path(__file__).parent),
+            # )
+            # if result.returncode == 0:
+            #     _pipeline_state["status"] = "success"
+            # else:
+            #     _pipeline_state["status"] = f"failed (exit {result.returncode})"
         except Exception as exc:
             _pipeline_state["status"] = f"error: {exc}"
 
@@ -913,11 +917,17 @@ if user_input:
                 # Generate voice output if enabled - NEW
                 audio_file = None
                 if st.session_state.voice_output:
-                    with st.spinner("🔊 Generating voice response..."):
-                        audio_file = st.session_state.voice_handler.text_to_speech(
-                            response['answer'],
-                            response['language']
-                        )
+                    try:
+                        with st.spinner("🔊 Generating voice response..."):
+                            audio_file = st.session_state.voice_handler.text_to_speech(
+                                response['answer'],
+                                response['language']
+                            )
+                    except Exception as voice_err:
+                        st.warning(f"⚠️ Voice output failed: {str(voice_err)}")
+                        if st.session_state.show_debug:
+                            import traceback
+                            st.error(traceback.format_exc())
 
                 # Add assistant message
                 st.session_state.messages.append({
@@ -936,6 +946,11 @@ if user_input:
                 # Rerun to show new messages (only on success)
                 st.rerun()
 
+            except MemoryError as mem_err:
+                st.error(f"❌ Memory error: The system ran out of memory. Please refresh the page or clear chat history.")
+                if st.session_state.show_debug:
+                    import traceback
+                    st.error(traceback.format_exc())
             except Exception as e:
                 st.error(f"Error generating response: {str(e)}")
                 if st.session_state.show_debug:
