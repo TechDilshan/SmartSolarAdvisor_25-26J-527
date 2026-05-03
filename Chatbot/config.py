@@ -38,7 +38,7 @@ class Config:
     
     # LLM Configuration - Google Gemini (Free tier)
     GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
-    LLM_MODEL = "gemini-2.0-flash"
+    LLM_MODEL = "gemini-2.5-flash"
     LLM_TEMPERATURE = 0.5  # Lower for more focused, factual responses
     
     # RAG Configuration
@@ -77,8 +77,8 @@ class Config:
         errors = []
         
         # Optional: Only warn if API key is missing
-        if not self.OPENAI_API_KEY:
-            print("⚠ Warning: OPENAI_API_KEY not set in .env file")
+        if not self.GOOGLE_API_KEY:
+            print("⚠ Warning: GOOGLE_API_KEY not set in .env file")
         
         if errors:
             raise ValueError(f"Configuration errors:\n" + "\n".join(f"- {e}" for e in errors))
