@@ -38,12 +38,45 @@ class AnswerGenerator:
 
         # Define solar-related keywords
         self.solar_keywords = [
-            'solar', 'photovoltaic', 'pv', 'panel', 'renewable', 'energy',
-            'electricity', 'inverter', 'battery', 'net metering', 'grid',
-            'installation', 'monocrystalline', 'polycrystalline', 'efficiency',
-            'sunlight', 'rooftop', 'power', 'watt', 'kilowatt', 'ceb',
-            'sun', 'irradiance', 'system', 'benefit', 'cost', 'price',
-            'saving', 'subsidy', 'incentive', 'feed-in', 'tariff'
+            # Core solar technology
+            'solar', 'photovoltaic', 'pv', 'panel', 'cell', 'crystalline', 'monocrystalline',
+            'polycrystalline', 'thin-film', 'bifacial', 'perovskite',
+
+            # System components
+            'inverter', 'micro-inverter', 'string inverter', 'charge controller', 'mppt', 'pwm',
+            'battery', 'storage', 'combiner box', 'junction box', 'breaker', 'conduit',
+            'racking', 'mounting', 'tracker', 'load controller',
+
+            # Electrical terms
+            'grid', 'net metering', 'on-grid', 'off-grid', 'hybrid', 'dc', 'ac', 'voltage',
+            'ampere', 'kwh', 'kwp', 'watt', 'kilowatt', 'capacity', 'output', 'generation',
+            'production', 'yield', 'ir drop', 'mismatch',
+
+            # Performance & efficiency
+            'efficiency', 'irradiance', 'sunlight', 'radiation', 'temperature coefficient',
+            'degradation', 'soiling', 'shading', 'orientation', 'tilt', 'azimuth',
+
+            # Installation & maintenance
+            'installation', 'rooftop', 'mounting', 'wire', 'connection', 'maintenance',
+            'warranty', 'inspection', 'cleaning',
+
+            # Renewable energy related
+            'renewable', 'energy', 'electricity', 'power', 'sun', 'clean energy', 'green energy',
+            'alternative energy', 'sustainable', 'eco-friendly', 'environmental', 'carbon offset',
+            'emissions', 'distributed generation',
+
+            # Financial & incentives
+            'cost', 'price', 'benefit', 'advantage', 'saving', 'save money', 'payback',
+            'roi', 'irr', 'npv', 'financing', 'loan', 'grant', 'subsidy', 'incentive',
+            'rebate', 'feed-in', 'tariff', 'electricity bill',
+
+            # Sri Lanka specific
+            'ceb', 'power cut', 'backup power', 'energy independence', 'blackout',
+            'fuel cost', 'electricity tariff', 'sri lanka',
+
+            # Installation context
+            'residential', 'home', 'house', 'rooftop', 'setup', 'how much', 'install',
+            'system', 'upgrade', 'retrofit'
         ]
     
     def is_query_relevant(self, query: str) -> bool:
@@ -101,9 +134,9 @@ class AnswerGenerator:
         
         # Count solar keywords in retrieved content
         keyword_count = sum(1 for keyword in self.solar_keywords if keyword in combined_text)
-        
-        # Need at least 3 solar keywords in retrieved content
-        return keyword_count >= 3
+
+        # Need at least 2 solar keywords in retrieved content (lowered from 3 for better match)
+        return keyword_count >= 2
     
     def clean_text(self, text: str) -> str:
         """Clean retrieved text by removing citations, URLs, and formatting"""
@@ -226,8 +259,8 @@ class AnswerGenerator:
         q = query.lower().strip()
         followup_patterns = [
             'tell me more', 'explain more', 'elaborate', 'continue',
-            'what about that', 'how about that', 'and the previous',
-            'mentioned above', 'you mentioned', 'as above',
+            'what about that', 'how about that', 'and the previous', 'give more details', 'give more information', 'can you expand on that', 'give me more', 'provide more', 'explain further',
+            'mentioned above', 'you mentioned', 'as above', 'previous answer', 'previous response', 'more details', 'more information', 'can you expand', 'can you clarify', 'can you give more', 'can you provide more', 'can you explain further'
         ]
         return any(p in q for p in followup_patterns)
 
