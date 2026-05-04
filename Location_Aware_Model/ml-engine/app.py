@@ -247,7 +247,7 @@ raw_data = ref.get()
 
 records = []
 coordinates = []
-sites_info = []  # <-- new structure
+sites_info = [] 
 
 for customer_key, customer in raw_data.items():
     for site_key, site in customer.items():
@@ -281,6 +281,7 @@ for customer_key, customer in raw_data.items():
                 "longitude": site_lon,
                 "first_date": first_date
             })
+
 
 # Convert to radians
 coordinates = np.radians(coordinates)
