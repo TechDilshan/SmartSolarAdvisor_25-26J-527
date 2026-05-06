@@ -49,20 +49,19 @@ def _pipeline_worker() -> None:
         _pipeline_state["status"] = "running"
         _pipeline_state["last_run"] = datetime.now()
         try:
-            # IMPORTANT: Don't run pipeline in background while chatbot is active
-            # This causes memory contention and crashes. Disable for now.
+           
             _pipeline_state["status"] = "skipped (disabled during active sessions)"
-            # Uncomment below to enable background pipeline updates
-            # result = subprocess.run(
-            #     [sys.executable, _PIPELINE_SCRIPT],
-            #     capture_output=True,
-            #     text=True,
-            #     cwd=str(Path(__file__).parent),
-            # )
-            # if result.returncode == 0:
-            #     _pipeline_state["status"] = "success"
-            # else:
-            #     _pipeline_state["status"] = f"failed (exit {result.returncode})"
+            
+            result = subprocess.run(
+                [sys.executable, _PIPELINE_SCRIPT],
+                capture_output=True,
+                text=True,
+                cwd=str(Path(__file__).parent),
+            )
+            if result.returncode == 0:
+                _pipeline_state["status"] = "success"
+            else:
+                _pipeline_state["status"] = f"failed (exit {result.returncode})"
         except Exception as exc:
             _pipeline_state["status"] = f"error: {exc}"
 
